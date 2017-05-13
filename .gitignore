@@ -1,0 +1,12 @@
+**/build/*
+**/bin/*
+**/lib/*
+build/*
+bin/*
+lib/*
+*.user**
+*.aps
+*.pdb
+*.user
+dist/*
+*.7z
