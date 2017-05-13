@@ -3,6 +3,14 @@ ActWebSocket overlay utility based on ImGui
 
 *ActWebSocket needed.
 
+## Font
+* Windows/Fonts Check.
+
+Language | File
+-------- | ----
+Japanese | ArialUni.ttf
+Korean | NanumBarunGothic.ttf
+
 ## File Overview
 Path | Description | License 
 ---- | ----------- | -------
