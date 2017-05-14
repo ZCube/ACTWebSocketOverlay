@@ -373,8 +373,9 @@ void RenderTable(Table& table)
 		const std::string& progressStr =  table.values[i][2];
 		const std::string& nameStr = table.values[i][1];
 
-		float progress = (double)rand() / (double)RAND_MAX;
-		progress = atof(progressStr.c_str()) / table.maxValue;
+		if (table.maxValue == 0.0)
+			table.maxValue = 1.0;
+		float progress = atof(progressStr.c_str()) / table.maxValue;
 
 		ImVec4 progressColor = ImVec4(0, 0, 0, 1);
 		ColorMapType::iterator ji;
@@ -441,34 +442,41 @@ void RenderTable(Table& table)
 
 extern "C" int ModRender(ImGuiContext* context)
 {
-	ImGui::SetCurrentContext(context);
+	try {
+		ImGui::SetCurrentContext(context);
 
-	{
-		int next_column_max = column_max;
-		ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.2, 0.2, 0.2, (float)global_opacity / 100.0f));
-		ImGui::Begin("AWIO (ActWebSocket ImGui Overlay)", nullptr, ImVec2(300, 500), -1,
-			ImGuiWindowFlags_ShowBorders);
-
-		mutex.lock();
-		ImGui::Text(Title.c_str());
-
-		if (ImGui::TreeNode("Preferences"))
 		{
-			if (ImGui::SmallButton("Mode")) next_column_max = column_max == 9 ? 3 : 9;
-			ImGui::SliderInt("Opacity", &global_opacity, 0, 100);
-			ImGui::InputText("WebSocket Port", websocket_port, 50, ImGuiInputTextFlags_CharsDecimal);
-			ImGui::TreePop();
+			int next_column_max = column_max;
+			ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.2, 0.2, 0.2, (float)global_opacity / 100.0f));
+			ImGui::Begin("AWIO (ActWebSocket ImGui Overlay)", nullptr, ImVec2(300, 500), -1,
+				ImGuiWindowFlags_ShowBorders);
+
+			mutex.lock();
+			ImGui::Text(Title.c_str());
+
+			if (ImGui::TreeNode("Preferences"))
+			{
+				if (ImGui::SmallButton("Mode")) next_column_max = column_max == 9 ? 3 : 9;
+				ImGui::SliderInt("Opacity", &global_opacity, 0, 100);
+				ImGui::InputText("WebSocket Port", websocket_port, 50, ImGuiInputTextFlags_CharsDecimal);
+				ImGui::TreePop();
+			}
+
+			ImGui::Separator();
+			RenderTable(dealerTable);
+			column_max = next_column_max;
+			mutex.unlock();
+
+			ImGui::Separator();
+
+			ImGui::End();
+			ImGui::PopStyleColor();
 		}
-
-		ImGui::Separator();
-		RenderTable(dealerTable);
-		column_max = next_column_max;
-		mutex.unlock();
-
-		ImGui::Separator();
-
+	}
+	catch (std::exception& e)
+	{
 		ImGui::End();
-		ImGui::PopStyleColor();
+		std::cerr << e.what() << std::endl;
 	}
 	return 0;
 }
