@@ -25,4 +25,5 @@ Library | Description
 [ImGui](https://github.com/ocornut/imgui) | Dear ImGui 
 [JsonCPP](https://github.com/open-source-parsers/jsoncpp) | Json Library for parsing Message and Settings
 
-
+## Manual
+[Manual Google Presentation](https://docs.google.com/presentation/d/19uWnxraScX6bXAaX3My4YcTMnHZPDmXxNpg8QXjCeDY/pub?start=false&loop=false&delayms=3000)
