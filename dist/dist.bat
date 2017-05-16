@@ -10,6 +10,7 @@ call build.bat
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 if not exist dist\temp mkdir dist\temp
+if not exist dist\ffxiv mkdir dist\ffxiv
 
 xcopy /hrkysd "bin\64\Release\ActWebSocketImguiOverlay.dll" "dist\temp\ACTWebSocketOverlay64.*"
 if %errorlevel% neq 0 exit /b %errorlevel%
@@ -20,15 +21,6 @@ if %errorlevel% neq 0 exit /b %errorlevel%
 xcopy /hrkysd "external\reshade\bin\Win32\Release\ReShade32.dll" "dist\temp\ReShade32.*"
 if %errorlevel% neq 0 exit /b %errorlevel%
 
-popd
-
-if exist ACTWebSocketOverlay_latest.7z del ACTWebSocketOverlay_latest.7z
-pushd temp
-"c:\Program Files\7-Zip\7z.exe" a ..\ACTWebSocketOverlay_latest.7z *
-if %errorlevel% neq 0 exit /b %errorlevel%
-popd temp
-
-if not exist dist\ffxiv mkdir dist\ffxiv
 
 xcopy /hrkysd "bin\64\Release\ActWebSocketImguiOverlay.dll" "dist\ffxiv\ffxiv_mod.*"
 if %errorlevel% neq 0 exit /b %errorlevel%
@@ -40,6 +32,12 @@ xcopy /hrkysd "external\reshade\bin\Win32\Release\ReShade32.dll" "dist\ffxiv\d3d
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 popd
+
+if exist ACTWebSocketOverlay_latest.7z del ACTWebSocketOverlay_latest.7z
+pushd temp
+"c:\Program Files\7-Zip\7z.exe" a ..\ACTWebSocketOverlay_latest.7z *
+if %errorlevel% neq 0 exit /b %errorlevel%
+popd temp
 
 if exist ACTWebSocketOverlay_ffxiv_latest.7z del ACTWebSocketOverlay_ffxiv_latest.7z
 pushd ffxiv
