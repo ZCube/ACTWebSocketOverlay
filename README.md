@@ -29,3 +29,7 @@ Library | Description
 
 ## Manual
 [Manual Google Presentation](https://docs.google.com/presentation/d/19uWnxraScX6bXAaX3My4YcTMnHZPDmXxNpg8QXjCeDY/pub?start=false&loop=false&delayms=3000)
+
+## Release
+[Latest](https://www.dropbox.com/s/vzlte4zvst71f9j/ACTWebSocketOverlay_latest.7z?dl=1)
+[Release](https://github.com/ZCube/ActWebSocketOverlay/releases)

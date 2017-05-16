@@ -76,6 +76,7 @@ public:
 
 typedef std::map<std::string, ImVec4> ColorMapType;
 static ColorMapType colorMap;
+std::map<std::string, std::string> iconMap;
 static std::string Title;
 static Table dealerTable;
 static Table healerTable;
@@ -425,18 +426,23 @@ void RenderTable(Table& table)
 
 			if (j != 1 || show_name)
 			{
+				std::string text = table.values[i][j];
+				if (iconMap.find(text) != iconMap.end())
+				{
+					text = iconMap[text];
+				}
 				//ImGuiCol_Text
 				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0, 0.0, 0.0, 1.0));
 				ImGui::RenderTextClipped(ImVec2(pos.x + 1, pos.y + 1), ImVec2(pos.x + table.columns[j].size + 1, pos.y + height + 1),
-					table.values[i][j].c_str(),
-					table.values[i][j].c_str() + table.values[i][j].size(),
+					text.c_str(),
+					text.c_str() + text.size(),
 					nullptr,
 					table.columns[j].align,
 					nullptr);
 				ImGui::PopStyleColor();
 				ImGui::RenderTextClipped(pos, ImVec2(pos.x + table.columns[j].size, pos.y + height),
-					table.values[i][j].c_str(),
-					table.values[i][j].c_str() + table.values[i][j].size(),
+					text.c_str(),
+					text.c_str() + text.size(),
 					nullptr,
 					table.columns[j].align,
 					nullptr);

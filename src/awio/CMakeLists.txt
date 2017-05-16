@@ -1,17 +1,19 @@
+SET(IMGUI_DIRECTORY ${CMAKE_HOME_DIRECTORY}/external/reshade/deps/imgui)
+
 INCLUDE_DIRECTORIES(
-	${CMAKE_HOME_DIRECTORY}/external/imgui
+	${IMGUI_DIRECTORY}
 )
 
 ADD_LIBRARY(ActWebSocketImguiOverlay
 	SHARED
-	${CMAKE_HOME_DIRECTORY}/external/imgui/imconfig.h
-	${CMAKE_HOME_DIRECTORY}/external/imgui/imgui.cpp
-	${CMAKE_HOME_DIRECTORY}/external/imgui/imgui.h
-	${CMAKE_HOME_DIRECTORY}/external/imgui/imgui_draw.cpp
-	${CMAKE_HOME_DIRECTORY}/external/imgui/imgui_internal.h
-	${CMAKE_HOME_DIRECTORY}/external/imgui/stb_rect_pack.h
-	${CMAKE_HOME_DIRECTORY}/external/imgui/stb_textedit.h
-	${CMAKE_HOME_DIRECTORY}/external/imgui/stb_truetype.h
+	${IMGUI_DIRECTORY}/imconfig.h
+	${IMGUI_DIRECTORY}/imgui.cpp
+	${IMGUI_DIRECTORY}/imgui.h
+	${IMGUI_DIRECTORY}/imgui_draw.cpp
+	${IMGUI_DIRECTORY}/imgui_internal.h
+	${IMGUI_DIRECTORY}/stb_rect_pack.h
+	${IMGUI_DIRECTORY}/stb_textedit.h
+	${IMGUI_DIRECTORY}/stb_truetype.h
 	overlay.cpp
 	overlay.def
 	Resource.rc
@@ -24,24 +26,24 @@ TARGET_LINK_LIBRARIES(ActWebSocketImguiOverlay
 )
 
 include_directories(
-	${CMAKE_HOME_DIRECTORY}/external/imgui/examples/directx11_example
+	${IMGUI_DIRECTORY}/examples/directx11_example
 )
 
 ADD_EXECUTABLE(test_main
-	${CMAKE_HOME_DIRECTORY}/external/imgui/imconfig.h
-	${CMAKE_HOME_DIRECTORY}/external/imgui/imgui.cpp
-	${CMAKE_HOME_DIRECTORY}/external/imgui/imgui.h
-	${CMAKE_HOME_DIRECTORY}/external/imgui/imgui_demo.cpp
-	${CMAKE_HOME_DIRECTORY}/external/imgui/imgui_draw.cpp
-	${CMAKE_HOME_DIRECTORY}/external/imgui/examples/directx11_example/imgui_impl_dx11.h
-	${CMAKE_HOME_DIRECTORY}/external/imgui/examples/directx11_example/imgui_impl_dx11.cpp
-	${CMAKE_HOME_DIRECTORY}/external/imgui/imgui_internal.h
+	${IMGUI_DIRECTORY}/imconfig.h
+	${IMGUI_DIRECTORY}/imgui.cpp
+	${IMGUI_DIRECTORY}/imgui.h
+	${IMGUI_DIRECTORY}/imgui_demo.cpp
+	${IMGUI_DIRECTORY}/imgui_draw.cpp
+	${IMGUI_DIRECTORY}/examples/directx11_example/imgui_impl_dx11.h
+	${IMGUI_DIRECTORY}/examples/directx11_example/imgui_impl_dx11.cpp
+	${IMGUI_DIRECTORY}/imgui_internal.h
 	main.cpp
 	Resource.rc
 	resource.h
-	${CMAKE_HOME_DIRECTORY}/external/imgui/stb_rect_pack.h
-	${CMAKE_HOME_DIRECTORY}/external/imgui/stb_textedit.h
-	${CMAKE_HOME_DIRECTORY}/external/imgui/stb_truetype.h
+	${IMGUI_DIRECTORY}/stb_rect_pack.h
+	${IMGUI_DIRECTORY}/stb_textedit.h
+	${IMGUI_DIRECTORY}/stb_truetype.h
 )
 
 TARGET_LINK_LIBRARIES(test_main

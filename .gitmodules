@@ -2,9 +2,9 @@
 	path = external/jsoncpp
 	url = https://github.com/open-source-parsers/jsoncpp.git
 	ignore = dirty
-[submodule "external/imgui"]
-	path = external/imgui
-	url = https://github.com/ocornut/imgui.git
 [submodule "external/beast"]
 	path = external/beast
 	url = https://github.com/vinniefalco/Beast.git
+[submodule "external/reshade"]
+	path = external/reshade
+	url = https://github.com/ZCube/reshade
