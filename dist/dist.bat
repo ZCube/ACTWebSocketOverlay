@@ -22,9 +22,9 @@ xcopy /hrkysd "external\reshade\bin\Win32\Release\ReShade32.dll" "dist\temp\ReSh
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 
-xcopy /hrkysd "bin\64\Release\ActWebSocketImguiOverlay.dll" "dist\ffxiv\ffxiv_mod.*"
+xcopy /hrkysd "bin\64\Release\ActWebSocketImguiOverlay.dll" "dist\ffxiv\ffxiv_dx11_mod.*"
 if %errorlevel% neq 0 exit /b %errorlevel%
-xcopy /hrkysd "bin\32\Release\ActWebSocketImguiOverlay.dll" "dist\ffxiv\ffxiv_dx11_mod.*"
+xcopy /hrkysd "bin\32\Release\ActWebSocketImguiOverlay.dll" "dist\ffxiv\ffxiv_mod.*"
 if %errorlevel% neq 0 exit /b %errorlevel%
 xcopy /hrkysd "external\reshade\bin\x64\Release\ReShade64.dll" "dist\ffxiv\dxgi.*"
 if %errorlevel% neq 0 exit /b %errorlevel%
