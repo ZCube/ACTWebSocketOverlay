@@ -14,6 +14,8 @@ ADD_LIBRARY(ActWebSocketImguiOverlay
 	${CMAKE_HOME_DIRECTORY}/external/imgui/stb_truetype.h
 	overlay.cpp
 	overlay.def
+	Resource.rc
+	resource.h
 )
 
 TARGET_LINK_LIBRARIES(ActWebSocketImguiOverlay
@@ -35,6 +37,8 @@ ADD_EXECUTABLE(test_main
 	${CMAKE_HOME_DIRECTORY}/external/imgui/examples/directx11_example/imgui_impl_dx11.cpp
 	${CMAKE_HOME_DIRECTORY}/external/imgui/imgui_internal.h
 	main.cpp
+	Resource.rc
+	resource.h
 	${CMAKE_HOME_DIRECTORY}/external/imgui/stb_rect_pack.h
 	${CMAKE_HOME_DIRECTORY}/external/imgui/stb_textedit.h
 	${CMAKE_HOME_DIRECTORY}/external/imgui/stb_truetype.h

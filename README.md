@@ -1,6 +1,8 @@
 # ActWebSocketOverlay
 ActWebSocket overlay utility based on ImGui
 
+[![Build Status](https://jenkins.zcube.kr/buildStatus/icon?job=ACTWebSocketOverlay)](https://jenkins.zcube.kr/job/ACTWebSocketOverlay/)
+
 *ActWebSocket needed.
 
 ## Font
@@ -9,7 +11,7 @@ ActWebSocket overlay utility based on ImGui
 Language | File
 -------- | ----
 Japanese | ArialUni.ttf
-Korean | NanumBarunGothic.ttf
+Korean | gulim.ttc
 
 ## File Overview
 Path | Description | License 

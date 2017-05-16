@@ -210,16 +210,28 @@ extern "C" int ModInit(ImGuiContext* context)
 	ImGui::GetIO().Fonts->AddFontDefault();
 	ImFontConfig config;
 	config.MergeMode = true;
+	ImFontConfig configMerge;
+	configMerge.MergeMode = true;
 	struct stat buffer;
 
+	static const ImWchar ranges[] =
+	{
+		0x25A0, 0x25FF,
+		0,
+	};
+
+	if (boost::filesystem::exists(p / "Fonts" / "gulim.ttc"))
+		io.Fonts->AddFontFromFileTTF((p / "Fonts" / "gulim.ttc").string().c_str(), 13.0f, &config, ranges);
 	if (boost::filesystem::exists(p / "Fonts" / "ArialUni.ttf"))
-		io.Fonts->AddFontFromFileTTF((p / "Fonts" / "ArialUni.ttf").string().c_str(), 15.0f, &config, io.Fonts->GetGlyphRangesJapanese());
-	if (boost::filesystem::exists(p / "Fonts" / "NanumBarunGothic.ttf"))
+		io.Fonts->AddFontFromFileTTF((p / "Fonts" / "ArialUni.ttf").string().c_str(), 15.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
+	if (boost::filesystem::exists(p / "Fonts" / "gulim.ttc"))
+		io.Fonts->AddFontFromFileTTF((p / "Fonts" / "gulim.ttc").string().c_str(), 13.0f, &config, io.Fonts->GetGlyphRangesKorean());
+	else if (boost::filesystem::exists(p / "Fonts" / "NanumBarunGothic.ttf"))
 		io.Fonts->AddFontFromFileTTF((p / "Fonts" / "NanumBarunGothic.ttf").string().c_str(), 15.0f, &config, io.Fonts->GetGlyphRangesKorean());
 	else if (boost::filesystem::exists(m.parent_path() / "NanumBarunGothic.ttf"))
 		io.Fonts->AddFontFromFileTTF((m.parent_path() / "NanumBarunGothic.ttf").string().c_str(), 15.0f, &config, io.Fonts->GetGlyphRangesKorean());
 
-	dealerTable.columns.push_back(Table::Column("Job", "Job", 30, 0, ImVec2(0.0f, 0.5f)));
+	dealerTable.columns.push_back(Table::Column("Job", "Job", 30, 0, ImVec2(0.5f, 0.5f)));
 	dealerTable.columns.push_back(Table::Column("Name", "name", 0, 1, ImVec2(0.0f, 0.5f)));
 	dealerTable.columns.push_back(Table::Column("DPS", "encdps", 50, 0, ImVec2(1.0f, 0.5f)));
 	dealerTable.columns.push_back(Table::Column("D%%", "damage%", 40, 0, ImVec2(1.0f, 0.5f)));
