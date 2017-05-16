@@ -33,15 +33,15 @@ if %errorlevel% neq 0 exit /b %errorlevel%
 
 popd
 
-if exist ACTWebSocketOverlay_latest.7z del ACTWebSocketOverlay_latest.7z
+if exist ACTWebSocketOverlay_latest.zip del ACTWebSocketOverlay_latest.zip
 pushd temp
-"c:\Program Files\7-Zip\7z.exe" a ..\ACTWebSocketOverlay_latest.7z *
+"c:\Program Files\7-Zip\7z.exe" a ..\ACTWebSocketOverlay_latest.zip *
 if %errorlevel% neq 0 exit /b %errorlevel%
 popd temp
 
-if exist ACTWebSocketOverlay_ffxiv_latest.7z del ACTWebSocketOverlay_ffxiv_latest.7z
+if exist ACTWebSocketOverlay_ffxiv_latest.zip del ACTWebSocketOverlay_ffxiv_latest.zip
 pushd ffxiv
-"c:\Program Files\7-Zip\7z.exe" a ..\ACTWebSocketOverlay_ffxiv_latest.7z *
+"c:\Program Files\7-Zip\7z.exe" a ..\ACTWebSocketOverlay_ffxiv_latest.zip *
 if %errorlevel% neq 0 exit /b %errorlevel%
 popd ffxiv
 
@@ -55,7 +55,7 @@ echo %dropBoxRoot%
 
 if not exist "%dropBoxRoot%\share" mkdir "%dropBoxRoot%\share"
 if %errorlevel% neq 0 exit /b %errorlevel%
-xcopy /hrkysd  "%CD%\ACTWebSocketOverlay_latest.7z" /exclude:exclude_files.txt "%dropBoxRoot%\share"
+xcopy /hrkysd  "%CD%\ACTWebSocketOverlay_latest.zip" /exclude:exclude_files.txt "%dropBoxRoot%\share"
 if %errorlevel% neq 0 exit /b %errorlevel%
-xcopy /hrkysd  "%CD%\ACTWebSocketOverlay_ffxiv_latest.7z" /exclude:exclude_files.txt "%dropBoxRoot%\share"
+xcopy /hrkysd  "%CD%\ACTWebSocketOverlay_ffxiv_latest.zip" /exclude:exclude_files.txt "%dropBoxRoot%\share"
 if %errorlevel% neq 0 exit /b %errorlevel%
