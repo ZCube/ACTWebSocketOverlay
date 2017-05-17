@@ -225,12 +225,12 @@ extern "C" int ModInit(ImGuiContext* context)
 		io.Fonts->AddFontFromFileTTF((p / "Fonts" / "gulim.ttc").string().c_str(), 13.0f, &config, ranges);
 	if (boost::filesystem::exists(p / "Fonts" / "ArialUni.ttf"))
 		io.Fonts->AddFontFromFileTTF((p / "Fonts" / "ArialUni.ttf").string().c_str(), 15.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
-	if (boost::filesystem::exists(p / "Fonts" / "gulim.ttc"))
-		io.Fonts->AddFontFromFileTTF((p / "Fonts" / "gulim.ttc").string().c_str(), 13.0f, &config, io.Fonts->GetGlyphRangesKorean());
+	if (boost::filesystem::exists(m.parent_path() / "NanumBarunGothic.ttf"))
+		io.Fonts->AddFontFromFileTTF((m.parent_path() / "NanumBarunGothic.ttf").string().c_str(), 15.0f, &config, io.Fonts->GetGlyphRangesKorean());
 	else if (boost::filesystem::exists(p / "Fonts" / "NanumBarunGothic.ttf"))
 		io.Fonts->AddFontFromFileTTF((p / "Fonts" / "NanumBarunGothic.ttf").string().c_str(), 15.0f, &config, io.Fonts->GetGlyphRangesKorean());
-	else if (boost::filesystem::exists(m.parent_path() / "NanumBarunGothic.ttf"))
-		io.Fonts->AddFontFromFileTTF((m.parent_path() / "NanumBarunGothic.ttf").string().c_str(), 15.0f, &config, io.Fonts->GetGlyphRangesKorean());
+	else if (boost::filesystem::exists(p / "Fonts" / "gulim.ttc"))
+		io.Fonts->AddFontFromFileTTF((p / "Fonts" / "gulim.ttc").string().c_str(), 13.0f, &config, io.Fonts->GetGlyphRangesKorean());
 
 	dealerTable.columns.push_back(Table::Column("Job", "Job", 30, 0, ImVec2(0.5f, 0.5f)));
 	dealerTable.columns.push_back(Table::Column("Name", "name", 0, 1, ImVec2(0.0f, 0.5f)));
