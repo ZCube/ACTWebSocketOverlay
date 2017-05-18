@@ -17,7 +17,8 @@
 
 static boost::mutex mutex;
 static bool show_name = true;
-static int column_max = 3;
+static bool unique_color = true;
+static int column_max = 9;
 static int global_opacity = 100;
 static char websocket_port[256] = { 0, };
 
@@ -80,6 +81,7 @@ std::map<std::string, std::string> iconMap;
 static std::string Title;
 static Table dealerTable;
 static Table healerTable;
+static std::string Time;
 
 ImVec4 htmlCodeToImVec4(const std::string hex)
 {
@@ -155,6 +157,7 @@ inline static void websocketThread()
 										Json::Value encounter = root["msg"]["Encounter"];
 
 										Title = encounter["CurrentZoneName"].asString();
+										Time = encounter["duration"].asString();
 
 										for (auto i = combatant.begin(); i != combatant.end(); ++i)
 										{
@@ -232,55 +235,56 @@ extern "C" int ModInit(ImGuiContext* context)
 	else if (boost::filesystem::exists(p / "Fonts" / "gulim.ttc"))
 		io.Fonts->AddFontFromFileTTF((p / "Fonts" / "gulim.ttc").string().c_str(), 13.0f, &config, io.Fonts->GetGlyphRangesKorean());
 
-	dealerTable.columns.push_back(Table::Column("Job", "Job", 30, 0, ImVec2(0.5f, 0.5f)));
-	dealerTable.columns.push_back(Table::Column("Name", "name", 0, 1, ImVec2(0.0f, 0.5f)));
-	dealerTable.columns.push_back(Table::Column("DPS", "encdps", 50, 0, ImVec2(1.0f, 0.5f)));
-	dealerTable.columns.push_back(Table::Column("D%%", "damage%", 40, 0, ImVec2(1.0f, 0.5f)));
-	dealerTable.columns.push_back(Table::Column("Damage", "damage", 50, 0, ImVec2(1.0f, 0.5f)));
-	dealerTable.columns.push_back(Table::Column("Swing", "swings", 40, 0, ImVec2(1.0f, 0.5f)));
-	dealerTable.columns.push_back(Table::Column("Miss", "misses", 40, 0, ImVec2(1.0f, 0.5f)));
-	dealerTable.columns.push_back(Table::Column("D.CRIT", "crithit%", 40, 0, ImVec2(1.0f, 0.5f)));
-	dealerTable.columns.push_back(Table::Column("Death", "deaths", 40, 0, ImVec2(1.0f, 0.5f)));
+	dealerTable.columns.push_back(Table::Column("Job", "Job", 30, 0, ImVec2(0.2f, 0.5f)));
+	dealerTable.columns.push_back(Table::Column("Name", "name", 0, 2, ImVec2(0.1f, 0.5f)));
+	dealerTable.columns.push_back(Table::Column("D%%", "damage%", 30, 1, ImVec2(0.2f, 0.5f)));
+	dealerTable.columns.push_back(Table::Column("DPS", "encdps", 60, 1, ImVec2(0.2f, 0.5f)));
+	dealerTable.columns.push_back(Table::Column("D.Tot", "damage", 60, 1, ImVec2(0.2f, 0.5f)));
+	dealerTable.columns.push_back(Table::Column("Crit", "crithit%", 60, 1, ImVec2(0.2f, 0.5f)));
+	dealerTable.columns.push_back(Table::Column("HPS", "enchps", 60, 1, ImVec2(0.2f, 0.5f)));
+	dealerTable.columns.push_back(Table::Column("H.Tot", "healed", 60, 1, ImVec2(0.2f, 0.5f)));
+	dealerTable.columns.push_back(Table::Column("Miss", "misses", 45, 0, ImVec2(0.2f, 0.5f)));
 
 	// default color map
-	colorMap["Pld"] = htmlCodeToImVec4("7B9AA2");
-	colorMap["Gld"] = htmlCodeToImVec4("7B9AA2");
+	colorMap["Pld"] = htmlCodeToImVec4("A8D2E6");
+	colorMap["Gld"] = htmlCodeToImVec4("A8D2E6");
 
-	colorMap["War"] = htmlCodeToImVec4("A91A16");
-	colorMap["Mrd"] = htmlCodeToImVec4("A91A16");
+	colorMap["War"] = htmlCodeToImVec4("cf2621");
+	colorMap["Mrd"] = htmlCodeToImVec4("cf2621");
 
-	colorMap["Drk"] = htmlCodeToImVec4("682531");
+	colorMap["Drk"] = htmlCodeToImVec4("d126cc");
 
-	colorMap["Mnk"] = htmlCodeToImVec4("B38915");
-	colorMap["Pgl"] = htmlCodeToImVec4("B38915");
+	colorMap["Mnk"] = htmlCodeToImVec4("d69c00");
+	colorMap["Pgl"] = htmlCodeToImVec4("d69c00");
 
-	colorMap["Drg"] = htmlCodeToImVec4("3752D8");
-	colorMap["Lnc"] = htmlCodeToImVec4("3752D8");
+	colorMap["Drg"] = htmlCodeToImVec4("4164CD");
+	colorMap["Lnc"] = htmlCodeToImVec4("4164CD");
 
-	colorMap["Nin"] = htmlCodeToImVec4("EE2E48");
-	colorMap["Rog"] = htmlCodeToImVec4("EE2E48");
+	colorMap["Nin"] = htmlCodeToImVec4("AF1964");
+	colorMap["Rog"] = htmlCodeToImVec4("AF1964");
 
-	colorMap["Brd"] = htmlCodeToImVec4("ADC551");
-	colorMap["Arc"] = htmlCodeToImVec4("ADC551");
+	colorMap["Brd"] = htmlCodeToImVec4("394925");
+	colorMap["Arc"] = htmlCodeToImVec4("394925");
 
-	colorMap["Mch"] = htmlCodeToImVec4("148AA9");
+	colorMap["Mch"] = htmlCodeToImVec4("6EE1D6");
 
-	colorMap["Blm"] = htmlCodeToImVec4("674598");
-	colorMap["Thm"] = htmlCodeToImVec4("674598");
+	colorMap["Blm"] = htmlCodeToImVec4("A579D6");
+	colorMap["Thm"] = htmlCodeToImVec4("A579D6");
 
 
-	colorMap["Whm"] = htmlCodeToImVec4("BDBDBD");
-	colorMap["Cnj"] = htmlCodeToImVec4("BDBDBD");
+	colorMap["Whm"] = htmlCodeToImVec4("FFF0DC");
+	colorMap["Cnj"] = htmlCodeToImVec4("FFF0DC");
 
-	colorMap["Smn"] = htmlCodeToImVec4("32670B");
-	colorMap["Acn"] = htmlCodeToImVec4("32670B");
+	colorMap["Smn"] = htmlCodeToImVec4("2D9B78");
+	colorMap["Acn"] = htmlCodeToImVec4("2D9B78");
 	
-	colorMap["Sch"] = htmlCodeToImVec4("32307B");
+	colorMap["Sch"] = htmlCodeToImVec4("8657FF");
 
-	colorMap["Ast"] = htmlCodeToImVec4("B1561C");
+	colorMap["Ast"] = htmlCodeToImVec4("FFE74A");
 	colorMap["Limit Break"] = htmlCodeToImVec4("FFBB00");
-	colorMap["YOU"] = htmlCodeToImVec4("FF5722");
-
+	if (unique_color){
+		colorMap["YOU"] = htmlCodeToImVec4("FF5722");
+	}
 	// default port
 	strcpy(websocket_port, "10501");
 
@@ -296,6 +300,7 @@ extern "C" int ModInit(ImGuiContext* context)
 			{
 				global_opacity = setting.get("opacity", Json::Int(100)).asInt();
 				show_name = setting.get("show_name", true).asBool();
+				unique_color = setting.get("unique_color", true).asBool();
 				column_max = setting.get("column_max", Json::Int(3)).asInt();
 				strcpy(websocket_port, setting.get("websocket_port", "10501").asCString());
 				Json::Value color = setting.get("color_map", Json::Value());
@@ -326,6 +331,7 @@ extern "C" int ModUnInit(ImGuiContext* context)
 	Json::Value setting;
 	setting["opacity"] = global_opacity;
 	setting["show_name"] = show_name;
+	setting["unique_color"] = unique_color;
 	setting["column_max"] = column_max;
 	setting["websocket_port"] = websocket_port;
 	Json::Value color;
@@ -344,7 +350,37 @@ extern "C" int ModUnInit(ImGuiContext* context)
 void RenderTable(Table& table)
 {
 	// hard coded....
-	const ImGuiStyle& style = ImGui::GetStyle();
+	ImGuiStyle& style = ImGui::GetStyle();
+	//__________________________________
+
+
+
+	style.Alpha = 1.0f;
+	style.FrameRounding = 2.0f;
+	style.Colors[ImGuiCol_TextDisabled] = ImVec4(0.60f, 0.60f, 0.60f, 1.00f);
+	style.Colors[ImGuiCol_WindowBg] = ImVec4(0.94f, 0.94f, 0.94f, 0.94f);
+	style.Colors[ImGuiCol_ChildWindowBg] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+	style.Colors[ImGuiCol_PopupBg] = ImVec4(1.00f, 1.00f, 1.00f, 0.94f);
+	style.Colors[ImGuiCol_Border] = ImVec4(0.00f, 0.00f, 0.00f, 0.39f);
+	style.Colors[ImGuiCol_BorderShadow] = ImVec4(1.00f, 1.00f, 1.00f, 0.10f);
+	style.Colors[ImGuiCol_FrameBg] = ImVec4(1.00f, 1.00f, 1.00f, 0.94f);
+	style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.26f, 0.59f, 0.98f, 0.40f);
+	style.Colors[ImGuiCol_FrameBgActive] = ImVec4(0.26f, 0.59f, 0.98f, 0.67f);
+	style.Colors[ImGuiCol_TitleBg] = htmlCodeToImVec4("727272");
+	style.Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.40f, 0.40f, 0.80f, 0.20f);
+	style.Colors[ImGuiCol_TitleBgActive] = htmlCodeToImVec4("727272");
+	style.Colors[ImGuiCol_Header] = ImVec4(0.26f, 0.59f, 0.98f, 0.31f);
+	style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.26f, 0.59f, 0.98f, 0.80f);
+	style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+	style.Colors[ImGuiCol_Column] = ImVec4(0.39f, 0.39f, 0.39f, 1.00f);
+	style.Colors[ImGuiCol_ColumnHovered] = ImVec4(0.26f, 0.59f, 0.98f, 0.78f);
+	style.Colors[ImGuiCol_ColumnActive] = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+	style.Colors[ImGuiCol_ModalWindowDarkening] = ImVec4(0.20f, 0.20f, 0.20f, 0.35f);
+
+
+
+
+	//_______________________________
 	int windowWidth = ImGui::GetWindowSize().x - style.ItemInnerSpacing.x * 2.0f;
 	dealerTable.UpdateColumnWidth(windowWidth, column_max);
 
@@ -466,11 +502,17 @@ extern "C" int ModRender(ImGuiContext* context)
 		{
 			int next_column_max = column_max;
 			ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.2, 0.2, 0.2, (float)global_opacity / 100.0f));
-			ImGui::Begin("AWIO (ActWebSocket ImGui Overlay)", nullptr, ImVec2(300, 500), -1,
+			ImGui::Begin("DPSMeter", nullptr, ImVec2(300, 500), -1,
 				ImGuiWindowFlags_ShowBorders);
 
 			mutex.lock();
 			ImGui::Text(Title.c_str());
+			ImGui::SameLine();
+			ImGui::Text(Time.c_str());
+
+
+		/*
+				Use config file to reduce clutter. Don't care about runtime editing.
 
 			if (ImGui::TreeNode("Preferences"))
 			{
@@ -479,10 +521,12 @@ extern "C" int ModRender(ImGuiContext* context)
 				ImGui::InputText("WebSocket Port", websocket_port, 50, ImGuiInputTextFlags_CharsDecimal);
 				ImGui::TreePop();
 			}
+			*/
 
 			ImGui::Separator();
 			RenderTable(dealerTable);
 			column_max = next_column_max;
+
 			mutex.unlock();
 
 			ImGui::Separator();
