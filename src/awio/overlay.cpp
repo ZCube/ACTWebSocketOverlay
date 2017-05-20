@@ -28,6 +28,7 @@ static int title_background_opacity = 255;
 static int background_opacity = 255;
 static int text_opacity = 255;
 static int graph_opacity = 255;
+static int toolbar_opacity = 255;
 
 static char websocket_port[256] = { 0, };
 static void* overlay_texture = nullptr;
@@ -368,6 +369,7 @@ extern "C" int ModInit(ImGuiContext* context)
 	color_category_map["UI"].push_back("TitleBackgroundCollapsed");
 	color_category_map["UI"].push_back("TitleText");
 	color_category_map["UI"].push_back("GraphText");
+	color_category_map["UI"].push_back("ToolbarBackground");
 
 	// name to job map
 	
@@ -426,7 +428,8 @@ extern "C" int ModInit(ImGuiContext* context)
 	// default color map
 	colorMap["TitleText"] = htmlCodeToImVec4("ffffff");
 	colorMap["GraphText"] = htmlCodeToImVec4("ffffff");
-
+	colorMap["ToolbarBackground"] = htmlCodeToImVec4("999999");
+	
 	colorMap["Attacker"] = htmlCodeToImVec4("ff0000");
 	colorMap["Healer"]   = htmlCodeToImVec4("00ff00");
 	colorMap["Tanker"]   = htmlCodeToImVec4("0000ff");
@@ -492,6 +495,7 @@ extern "C" int ModInit(ImGuiContext* context)
 				background_opacity = setting.get("background_opacity", Json::Int(128)).asInt();
 				text_opacity = setting.get("text_opacity", Json::Int(128)).asInt();
 				graph_opacity = setting.get("graph_opacity", Json::Int(128)).asInt();
+				toolbar_opacity = setting.get("toolbar_opacity", Json::Int(128)).asInt();
 				show_name = setting.get("show_name", true).asBool();
 				column_max = setting.get("column_max", Json::Int(3)).asInt();
 				strcpy(websocket_port, setting.get("websocket_port", "10501").asCString());
@@ -534,6 +538,7 @@ void SaveSettings()
 	setting["background_opacity"] = background_opacity;
 	setting["text_opacity"] = text_opacity;
 	setting["graph_opacity"] = graph_opacity;
+	setting["toolbar_opacity"] = toolbar_opacity;
 	setting["show_name"] = show_name;
 	setting["column_max"] = column_max;
 	setting["websocket_port"] = websocket_port;
@@ -591,6 +596,9 @@ ImVec4 ColorWithAlpha(ImVec4 col, float alpha)
 void RenderTable(Table& table)
 {
 	// hard coded....
+	const int height = 20;
+	ImGuiWindow* window = ImGui::GetCurrentWindow();
+	window->DC.CursorPos;
 	const ImGuiStyle& style = ImGui::GetStyle();
 	ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(colorMap["GraphText"], (float)text_opacity / 255.0f));
 
@@ -627,7 +635,6 @@ void RenderTable(Table& table)
 	ImGui::Separator();
 
 	int base = ImGui::GetCursorPosY();
-	const int height = 20;
 	for (int i = 0; i < table.values.size(); ++i)
 	{
 		std::string& jobStr =  table.values[i][0];
@@ -685,16 +692,16 @@ void RenderTable(Table& table)
 		}
 
 		progressColor.w = (float)graph_opacity / 255.0f;
-		ImGuiWindow* window = ImGui::GetCurrentWindow();
 		const ImGuiStyle& style = ImGui::GetStyle();
 		ImGui::SetCursorPos(ImVec2(0, base + i * height));
 		ImVec2 winpos = ImGui::GetWindowPos();
 		ImVec2 pos = ImGui::GetCursorPos();
 		pos = window->DC.CursorPos;
-		ImRect bb(pos, ImVec2(pos.x + windowWidth, pos.y + height));
+		ImRect bb(ImVec2(pos.x, pos.y), 
+			ImVec2(pos.x + ImGui::GetWindowSize().x, pos.y + height));
 		ImGui::RenderFrame(bb.Min, bb.Max, ImGui::GetColorU32(ImVec4(0.5, 0.5, 0.5, 0.0)), true, style.FrameRounding);
 
-		ImRect bb2(pos, ImVec2(pos.x + windowWidth * progress, pos.y + height));
+		ImRect bb2(pos, ImVec2(pos.x + ImGui::GetWindowSize().x * progress, pos.y + height));
 		ImGui::RenderFrame(bb2.Min, bb2.Max, ImGui::GetColorU32(progressColor), true, style.FrameRounding);
 		int basex = 0;
 		for (int j = 0; j < column_max; ++j)
@@ -704,7 +711,6 @@ void RenderTable(Table& table)
 			ImVec2 pos = ImGui::GetCursorPos();
 			pos = window->DC.CursorPos;
 			ImRect clip, align;
-			ImRect bb(pos, ImVec2(pos.x + windowWidth, pos.y + height));
 
 			std::string text = table.values[i][j];
 			if (j == 0 && overlay_texture)
@@ -774,31 +780,47 @@ extern "C" int ModRender(ImGuiContext* context)
 				NULL);
 
 			mutex.lock();
+
 			RenderTable(dealerTable);
 
+			ImGui::Separator();
 			{
-				// title
 				const ImGuiStyle& style = ImGui::GetStyle();
+				ImGuiWindow* window = ImGui::GetCurrentWindow();
+				ImVec2 winsize = ImGui::GetWindowSize();
+				//ImGui::SetCursorPos(ImVec2(0, base + i * height));
+				ImVec2 winpos = ImGui::GetWindowPos();
+				ImVec2 pos = ImGui::GetCursorPos();
+				pos = window->DC.CursorPos;
+				ImRect bb(ImVec2(pos.x-style.ItemInnerSpacing.x,pos.y), ImVec2(pos.x + winsize.x, pos.y + 40));
+				ImGui::RenderFrame(bb.Min, bb.Max, ImGui::GetColorU32(ColorWithAlpha(colorMap["ToolbarBackground"], (float)toolbar_opacity/255.0f)), true, 0);
+
+				// title
 				int windowWidth = ImGui::GetWindowSize().x - style.ItemInnerSpacing.x * 2.0f;
 
 				ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(colorMap["TitleText"], (float)text_opacity / 255.0f));
 				ImGui::Columns(3, "##TitleBar", false);
-				ImGui::PushFont(largeFont);
-				ImGui::Text(duration.c_str());
-				ImGui::PopFont();
-				ImGui::NextColumn();
-				ImGui::SetColumnOffset(1, 150);
-				ImGui::Text(zone.c_str());
-				ImGui::Text(("RD : " + rdps).c_str());
-				ImGui::SameLine();
-				ImGui::Text(("RH : " + rhps).c_str());
-				ImGui::NextColumn();
-				ImGui::SetColumnOffset(2, std::max(windowWidth - 60,150));
 				Image& cog = overlay_images["cog"];
 				if (ImGui::ImageButton(overlay_texture, ImVec2(65 / 2, 60 / 2), cog.uv0, cog.uv1, -1, ImVec4(0, 0, 0, 0), ColorWithAlpha(colorMap["TitleText"], (float)text_opacity / 255.0f)))
 				{
 					show_preferences = !show_preferences;
 				}
+				ImGui::PushFont(largeFont);
+				ImGui::NextColumn();
+				ImGui::SetColumnOffset(1, 50);
+				std::string duration_short = duration;
+				if (duration_short.size() > 5)
+				{
+					duration_short = duration.substr(duration_short.size() - 5);
+				}
+				ImGui::Text(duration_short.c_str());
+				ImGui::PopFont();
+				ImGui::NextColumn();
+				ImGui::SetColumnOffset(2, 150);
+				ImGui::Text(zone.c_str());
+				//ImGui::Text(("RD : " + rdps).c_str());
+				//ImGui::SameLine();
+				//ImGui::Text(("RH : " + rhps).c_str());
 				ImGui::NextColumn();
 				ImGui::Columns(1);
 				ImGui::PopStyleColor();
@@ -806,10 +828,8 @@ extern "C" int ModRender(ImGuiContext* context)
 
 
 			ImGui::Separator();
-			column_max = next_column_max;
 			mutex.unlock();
 
-			ImGui::Separator();
 
 			ImGui::End();
 			//ImGui::PopStyleVar();
@@ -850,6 +870,10 @@ extern "C" int ModRender(ImGuiContext* context)
 							SaveSettings();
 						}
 						if (ImGui::SliderInt("Graph Opacity", &graph_opacity, 0, 255))
+						{
+							SaveSettings();
+						}
+						if (ImGui::SliderInt("Toolbar Opacity", &toolbar_opacity, 0, 255))
 						{
 							SaveSettings();
 						}
@@ -921,7 +945,9 @@ extern "C" int ModRender(ImGuiContext* context)
 				}
 				ImGui::End();
 			}
+			column_max = next_column_max;
 		}
+
 	}
 	catch (std::exception& e)
 	{
