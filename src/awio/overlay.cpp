@@ -858,9 +858,9 @@ void RenderTableRow(Table& table, int row, int height)
 		//ImGui::RenderFrame(bb.Min, bb.Max, ImGui::GetColorU32(ImVec4(0.5, 0.5, 0.5, 0.0)), true, style.FrameRounding);
 		//ImRect bb2(pos, ImVec2(pos.x + ImGui::GetWindowSize().x * progress, pos.y + height));
 		//ImGui::RenderFrame(bb2.Min, bb2.Max, ImGui::GetColorU32(progressColor), true, style.FrameRounding);
-		for (int j = 0; j < column_max && j < table.values[i].size(); ++j)
+		for (int j = 0; j < table.columns.size() && j < table.values[i].size(); ++j)
 		{
-			ImGui::SetCursorPos(ImVec2(table.columns[j].offset + table.column_margin + style.ItemInnerSpacing.x, base));
+			ImGui::SetCursorPos(ImVec2(table.columns[j].offset + style.ItemInnerSpacing.x, base));
 			ImVec2 winpos = ImGui::GetWindowPos();
 			ImVec2 pos = ImGui::GetCursorPos();
 			pos = window->DC.CursorPos;
