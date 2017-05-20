@@ -423,7 +423,7 @@ extern "C" int ModInit(ImGuiContext* context)
 		nameToJobMap[u8"타이탄 에기"] =
 		"titan";
 
-	nameToJobMap[u8"Limit Break"] = "lmb";
+	nameToJobMap[u8"Limit Break"] = "limit break";
 
 	// default color map
 	colorMap["TitleText"] = htmlCodeToImVec4("ffffff");
@@ -651,7 +651,7 @@ void RenderTable(Table& table)
 			typedef std::vector< std::string > split_vector_type;
 			split_vector_type splitVec; // #2: Search for tokens
 			boost::split(splitVec, nameStr, boost::is_any_of("()"), boost::token_compress_on);
-			if (splitVec.size() >= 2)
+			if (splitVec.size() >= 1)
 			{
 				boost::trim(splitVec[0]);
 				auto i = nameToJobMap.find(splitVec[0]);
