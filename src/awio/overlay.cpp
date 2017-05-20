@@ -28,6 +28,7 @@ static char websocket_port[256] = { 0, };
 static void* overlay_texture = nullptr;
 static unsigned char *overlay_texture_filedata = nullptr;
 static int overlay_texture_width = 0, overlay_texture_height = 0, overlay_texture_channels = 0;
+static ImFont* largeFont;
 
 class Image
 {
@@ -42,6 +43,7 @@ public:
 	std::vector<int> heights;
 };
 static std::map<std::string, Image> overlay_images;
+static std::map<std::string, std::vector<std::string>> color_category_map;
 
 static Json::Value overlay_atlas;
 
@@ -102,6 +104,8 @@ typedef std::map<std::string, ImVec4> ColorMapType;
 static ColorMapType colorMap;
 std::map<std::string, std::string> iconMap;
 static std::string Title;
+static std::string zone;
+static std::string duration;
 static Table dealerTable;
 static Table healerTable;
 
@@ -178,7 +182,8 @@ inline static void websocketThread()
 										Json::Value combatant = root["msg"]["Combatant"];
 										Json::Value encounter = root["msg"]["Encounter"];
 
-										Title = encounter["CurrentZoneName"].asString();
+										zone = encounter["CurrentZoneName"].asString();
+										duration = encounter["duration"].asString();
 
 										for (auto i = combatant.begin(); i != combatant.end(); ++i)
 										{
@@ -279,7 +284,7 @@ extern "C" int ModInit(ImGuiContext* context)
 	ImGuiIO& io = ImGui::GetIO();
 	ImGui::GetIO().Fonts->AddFontDefault();
 	ImFontConfig config;
-	config.MergeMode = true;
+	config.MergeMode = false;
 	ImFontConfig configMerge;
 	configMerge.MergeMode = true;
 	struct stat buffer;
@@ -290,16 +295,20 @@ extern "C" int ModInit(ImGuiContext* context)
 		0,
 	};
 
+	// latin only [0-9a-zA-Z else]?
+	if (boost::filesystem::exists(p / "Fonts" / "consolab.ttf"))
+		largeFont = io.Fonts->AddFontFromFileTTF((p / "Fonts" / "consolab.ttf").string().c_str(), 25.0f, &config, io.Fonts->GetGlyphRangesDefault());
+	
 	if (boost::filesystem::exists(p / "Fonts" / "gulim.ttc"))
-		io.Fonts->AddFontFromFileTTF((p / "Fonts" / "gulim.ttc").string().c_str(), 13.0f, &config, ranges);
+		io.Fonts->AddFontFromFileTTF((p / "Fonts" / "gulim.ttc").string().c_str(), 13.0f, &configMerge, ranges);
 	if (boost::filesystem::exists(p / "Fonts" / "ArialUni.ttf"))
-		io.Fonts->AddFontFromFileTTF((p / "Fonts" / "ArialUni.ttf").string().c_str(), 15.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
+		io.Fonts->AddFontFromFileTTF((p / "Fonts" / "ArialUni.ttf").string().c_str(), 15.0f, &configMerge, io.Fonts->GetGlyphRangesJapanese());
 	if (boost::filesystem::exists(m.parent_path() / "NanumBarunGothic.ttf"))
-		io.Fonts->AddFontFromFileTTF((m.parent_path() / "NanumBarunGothic.ttf").string().c_str(), 15.0f, &config, io.Fonts->GetGlyphRangesKorean());
+		io.Fonts->AddFontFromFileTTF((m.parent_path() / "NanumBarunGothic.ttf").string().c_str(), 15.0f, &configMerge, io.Fonts->GetGlyphRangesKorean());
 	else if (boost::filesystem::exists(p / "Fonts" / "NanumBarunGothic.ttf"))
-		io.Fonts->AddFontFromFileTTF((p / "Fonts" / "NanumBarunGothic.ttf").string().c_str(), 15.0f, &config, io.Fonts->GetGlyphRangesKorean());
+		io.Fonts->AddFontFromFileTTF((p / "Fonts" / "NanumBarunGothic.ttf").string().c_str(), 15.0f, &configMerge, io.Fonts->GetGlyphRangesKorean());
 	else if (boost::filesystem::exists(p / "Fonts" / "gulim.ttc"))
-		io.Fonts->AddFontFromFileTTF((p / "Fonts" / "gulim.ttc").string().c_str(), 13.0f, &config, io.Fonts->GetGlyphRangesKorean());
+		io.Fonts->AddFontFromFileTTF((p / "Fonts" / "gulim.ttc").string().c_str(), 13.0f, &configMerge, io.Fonts->GetGlyphRangesKorean());
 
 	dealerTable.columns.push_back(Table::Column("", "Job", (overlay_texture != nullptr)? 30: 20, 0, ImVec2(0.5f, 0.5f)));
 	dealerTable.columns.push_back(Table::Column("Name", "name", 0, 1, ImVec2(0.0f, 0.5f)));
@@ -311,7 +320,41 @@ extern "C" int ModInit(ImGuiContext* context)
 	dealerTable.columns.push_back(Table::Column("D.CRIT", "crithit%", 40, 0, ImVec2(1.0f, 0.5f)));
 	dealerTable.columns.push_back(Table::Column("Death", "deaths", 40, 0, ImVec2(1.0f, 0.5f)));
 
+	// Color category
+	color_category_map["Tanker"].push_back("Pld");
+	color_category_map["Tanker"].push_back("Gld");
+	color_category_map["Tanker"].push_back("War");
+	color_category_map["Tanker"].push_back("Mrd");
+	color_category_map["Tanker"].push_back("Drk");
+
+	color_category_map["Attacker"].push_back("Mnk");
+	color_category_map["Attacker"].push_back("Pgl");
+	color_category_map["Attacker"].push_back("Drg");
+	color_category_map["Attacker"].push_back("Lnc");
+	color_category_map["Attacker"].push_back("Nin");
+	color_category_map["Attacker"].push_back("Rog");
+	color_category_map["Attacker"].push_back("Brd");
+	color_category_map["Attacker"].push_back("Arc");
+	color_category_map["Attacker"].push_back("Mch");
+	color_category_map["Attacker"].push_back("Blm");
+	color_category_map["Attacker"].push_back("Thm");
+	color_category_map["Attacker"].push_back("Smn");
+	color_category_map["Attacker"].push_back("Acn");
+
+	color_category_map["Healer"].push_back("Whm");
+	color_category_map["Healer"].push_back("Cnj");
+	color_category_map["Healer"].push_back("Sch");
+	color_category_map["Healer"].push_back("Ast");
+
+	color_category_map["Etc"].push_back("Limit Break");
+	color_category_map["Etc"].push_back("YOU");
+	color_category_map["Etc"].push_back("etc");
+
 	// default color map
+	colorMap["Attacker"] = htmlCodeToImVec4("ff0000");
+	colorMap["Healer"]   = htmlCodeToImVec4("00ff00");
+	colorMap["Tanker"]   = htmlCodeToImVec4("0000ff");
+
 	colorMap["Pld"] = htmlCodeToImVec4("7B9AA2");
 	colorMap["Gld"] = htmlCodeToImVec4("7B9AA2");
 
@@ -350,6 +393,9 @@ extern "C" int ModInit(ImGuiContext* context)
 	colorMap["Limit Break"] = htmlCodeToImVec4("FFBB00");
 	colorMap["YOU"] = htmlCodeToImVec4("FF5722");
 
+	colorMap["Background"] = htmlCodeToImVec4("000000");
+	colorMap["Background"].w = 0.5;
+
 	// default port
 	strcpy(websocket_port, "10501");
 
@@ -383,10 +429,8 @@ extern "C" int ModInit(ImGuiContext* context)
 	return 0;
 }
 
-extern "C" int ModUnInit(ImGuiContext* context)
+void SaveSettings()
 {
-	ImGui::SetCurrentContext(context);
-
 	WCHAR result[MAX_PATH] = {};
 	GetModuleFileNameW(NULL, result, MAX_PATH);
 	boost::filesystem::path m = result;
@@ -404,9 +448,15 @@ extern "C" int ModUnInit(ImGuiContext* context)
 	}
 	setting["color_map"] = color;
 
-	std::ofstream fout((m.parent_path() /"mod.json").wstring());
+	std::ofstream fout((m.parent_path() / "mod.json").wstring());
 	fout << w.write(setting);
 	fout.close();
+}
+
+extern "C" int ModUnInit(ImGuiContext* context)
+{
+	ImGui::SetCurrentContext(context);
+	SaveSettings();
 	return 0;
 }
 
@@ -432,7 +482,6 @@ void RenderTable(Table& table)
 	const ImGuiStyle& style = ImGui::GetStyle();
 	int windowWidth = ImGui::GetWindowSize().x - style.ItemInnerSpacing.x * 2.0f;
 	dealerTable.UpdateColumnWidth(windowWidth, column_max);
-
 	ImGui::Columns(table.columns.size(), "mixed");
 	int offset = 0;
 	for (int i = 0; i < column_max; ++i)
@@ -481,6 +530,10 @@ void RenderTable(Table& table)
 		{
 			progressColor = ji->second;
 		}
+		else
+		{
+			progressColor = colorMap["etc"];
+		}
 		if ((ji = colorMap.find(nameStr)) != colorMap.end())
 		{
 			progressColor = ji->second;
@@ -497,7 +550,6 @@ void RenderTable(Table& table)
 
 		ImRect bb2(pos, ImVec2(pos.x + windowWidth * progress, pos.y + height));
 		ImGui::RenderFrame(bb2.Min, bb2.Max, ImGui::GetColorU32(progressColor), true, style.FrameRounding);
-
 		int basex = 0;
 		for (int j = 0; j < column_max; ++j)
 		{
@@ -523,10 +575,7 @@ void RenderTable(Table& table)
 			}
 			else if (j != 1 || show_name)
 			{
-				if (iconMap.find(text) != iconMap.end())
-				{
-					text = iconMap[text];
-				}
+				//text = iconMap[text];
 				//ImGuiCol_Text
 				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0, 0.0, 0.0, 1.0));
 				ImGui::RenderTextClipped(ImVec2(pos.x + 1, pos.y + 1), ImVec2(pos.x + table.columns[j].size + 1, pos.y + height + 1),
@@ -556,26 +605,126 @@ void RenderTable(Table& table)
 
 extern "C" int ModRender(ImGuiContext* context)
 {
+	static bool show_preferences = false;
 	try {
 		ImGui::SetCurrentContext(context);
 
 		{
+			
 			int next_column_max = column_max;
-			ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.2, 0.2, 0.2, (float)global_opacity / 100.0f));
+			ImVec4 background = colorMap["Background"]; background.w = (float)global_opacity / 100.0f;
+			ImGui::PushStyleColor(ImGuiCol_WindowBg, background);
+			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5, 0.5, 0.5, (float)global_opacity / 100.0f));
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3, 0.3, 0.3, (float)global_opacity / 100.0f));
+			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0, 0.0, 0.0, 0.0f));
 			//ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0);
 			ImGui::Begin("AWIO (ActWebSocket ImGui Overlay)", nullptr, ImVec2(300, 500), -1,
 				//ImGuiWindowFlags_NoTitleBar);
 				NULL);
 
 			mutex.lock();
-			ImGui::Text(Title.c_str());
-
-			if (ImGui::TreeNode("Preferences"))
+			
 			{
-				if (ImGui::SmallButton("Mode")) next_column_max = column_max == 9 ? 3 : 9;
-				ImGui::SliderInt("Opacity", &global_opacity, 0, 100);
-				ImGui::InputText("WebSocket Port", websocket_port, 50, ImGuiInputTextFlags_CharsDecimal);
-				ImGui::TreePop();
+				// title
+				const ImGuiStyle& style = ImGui::GetStyle();
+				int windowWidth = ImGui::GetWindowSize().x - style.ItemInnerSpacing.x * 2.0f;
+
+				ImGui::Columns(3, "##TitleBar", false);
+				ImGui::PushFont(largeFont);
+				ImGui::Text(duration.c_str());
+				ImGui::PopFont();
+				ImGui::NextColumn();
+				ImGui::SetColumnOffset(1, 150);
+				ImGui::Text(zone.c_str());
+				ImGui::NextColumn();
+				ImGui::SetColumnOffset(2, std::max(windowWidth - 60,150));
+				Image& cog = overlay_images["cog"];
+				if (ImGui::ImageButton(overlay_texture, ImVec2(65 / 2, 60 / 2), cog.uv0, cog.uv1, -1, ImVec4(0, 0, 0, 0), ImVec4(0, 0, 0, 1.0f)))
+				{
+					show_preferences = !show_preferences;
+				}
+				ImGui::NextColumn();
+				ImGui::Columns(1);
+			}
+
+
+			if (show_preferences)
+			{
+				ImGui::Begin("Preferences", &show_preferences, ImVec2(300, 500), -1, ImGuiWindowFlags_NoCollapse);
+				{
+					if (ImGui::SmallButton("Mode")) next_column_max = column_max == 9 ? 3 : 9;
+					ImGui::SliderInt("Opacity", &global_opacity, 0, 100);
+					ImGui::InputText("WebSocket Port", websocket_port, 50, ImGuiInputTextFlags_CharsDecimal);
+
+					if (ImGui::TreeNode("Colors"))
+					{
+						if (ImGui::ColorEdit3("Background", (float*)&colorMap["Background"]))
+						{
+							SaveSettings();
+						}
+						if (ImGui::TreeNode("Group"))
+						{
+							for (auto j = color_category_map.begin(); j != color_category_map.end(); ++j)
+							{
+								if (ImGui::ColorEdit3(j->first.c_str(), (float*)&colorMap[j->first]))
+								{
+									for (auto k = color_category_map[j->first].begin();
+										k != color_category_map[j->first].end();
+										++k)
+									{
+										{
+											colorMap[*k] = colorMap[j->first];
+										}
+									}
+									SaveSettings();
+								}
+							}
+							ImGui::TreePop();
+						}
+
+						for (auto j = color_category_map.begin(); j != color_category_map.end(); ++j)
+						{
+							if (ImGui::TreeNode(j->first.c_str()))
+							{
+								for (auto k = j->second.begin(); k != j->second.end(); ++k)
+								{
+									std::string name = *k;
+									std::string name_lower = boost::to_lower_copy(*k);
+									{
+										ImVec4& color = colorMap[*k];
+										if (overlay_texture)
+										{
+											std::map<std::string, Image>::iterator im;
+											if ((im = overlay_images.find(name_lower)) != overlay_images.end())
+											{
+												ImGui::Image(overlay_texture, ImVec2(20, 20), im->second.uv0, im->second.uv1);
+												ImGui::SameLine();
+											}
+											else
+											{
+												if ((im = overlay_images.find("empty")) != overlay_images.end())
+												{
+													ImGui::Image(overlay_texture, ImVec2(20, 20), im->second.uv0, im->second.uv1);
+													ImGui::SameLine();
+												}
+												else
+												{
+												}
+											}
+										}
+										if (ImGui::ColorEdit3(name.c_str(), (float*)&color))
+										{
+											SaveSettings();
+										}
+									}
+								}
+								ImGui::TreePop();
+							}
+						}
+						ImGui::TreePop();
+					}
+				}
+				ImGui::End();
 			}
 
 			ImGui::Separator();
@@ -587,7 +736,7 @@ extern "C" int ModRender(ImGuiContext* context)
 
 			ImGui::End();
 			//ImGui::PopStyleVar();
-			ImGui::PopStyleColor();
+			ImGui::PopStyleColor(4);
 		}
 	}
 	catch (std::exception& e)
