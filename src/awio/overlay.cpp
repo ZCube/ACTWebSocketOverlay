@@ -1,12 +1,17 @@
 #include <imgui.h>
 #include "imgui_internal.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
+#include <json/json.h>
+
 #include <stdio.h>
 #include <Windows.h>
 #include <vector>
-#include <json/json.h>
 #include <fstream>
 #include <algorithm>
 #include <thread>
+
 #include <boost/bind.hpp>
 #include <boost/thread/mutex.hpp>
 #include <beast/core.hpp>
@@ -20,6 +25,25 @@ static bool show_name = true;
 static int column_max = 3;
 static int global_opacity = 100;
 static char websocket_port[256] = { 0, };
+static void* overlay_texture = nullptr;
+static unsigned char *overlay_texture_filedata = nullptr;
+static int overlay_texture_width = 0, overlay_texture_height = 0, overlay_texture_channels = 0;
+
+class Image
+{
+public:
+	int x;
+	int y;
+	int width;
+	int height;
+	ImVec2 uv0;
+	ImVec2 uv1;
+	std::vector<int> widths;
+	std::vector<int> heights;
+};
+static std::map<std::string, Image> overlay_images;
+
+static Json::Value overlay_atlas;
 
 class Table
 {
@@ -207,6 +231,51 @@ extern "C" int ModInit(ImGuiContext* context)
 	GetModuleFileNameW(NULL, result, MAX_PATH);
 	boost::filesystem::path m = result;
 
+	// texture
+	boost::filesystem::path texture_path = m.parent_path() / "overlay_atlas.png";
+	boost::filesystem::path atlas_json_path = m.parent_path() / "overlay_atlas.json";
+	if (boost::filesystem::exists(texture_path))
+	{
+		FILE *file;
+		bool success = false;
+
+		if (_wfopen_s(&file, texture_path.wstring().c_str(), L"rb") == 0)
+		{
+			overlay_texture_filedata = stbi_load_from_file(file, &overlay_texture_width, &overlay_texture_height, &overlay_texture_channels, STBI_rgb_alpha);
+			fclose(file);
+		}
+	}
+	if (boost::filesystem::exists(atlas_json_path) && overlay_texture_width > 0 && overlay_texture_height > 0)
+	{
+		FILE *file;
+		bool success = false;
+
+		std::ifstream fin(atlas_json_path.wstring().c_str());
+		if (fin.is_open())
+		{
+			Json::Reader r;
+			if (r.parse(fin, overlay_atlas))
+			{
+				for (auto i = overlay_atlas.begin(); i != overlay_atlas.end(); ++i)
+				{
+					std::string name = boost::to_lower_copy(i.key().asString());
+					boost::replace_all(name, ".png", "");
+					Image im;
+					im.x = (*i)["left"].asInt();
+					im.y = (*i)["top"].asInt();
+					im.width = (*i)["width"].asInt();
+					im.height = (*i)["height"].asInt();
+					im.uv0 = ImVec2((float)im.x / (float)overlay_texture_width,
+						(float)im.y / (float)overlay_texture_width);
+					im.uv1 = ImVec2((float)(im.x + im.width) / (float)overlay_texture_width,
+						(float)(im.y + im.height) / (float)overlay_texture_width);
+					overlay_images[name] = im;
+				}
+			}
+		}
+	}
+
+	// font
 	ImGuiIO& io = ImGui::GetIO();
 	ImGui::GetIO().Fonts->AddFontDefault();
 	ImFontConfig config;
@@ -232,7 +301,7 @@ extern "C" int ModInit(ImGuiContext* context)
 	else if (boost::filesystem::exists(p / "Fonts" / "gulim.ttc"))
 		io.Fonts->AddFontFromFileTTF((p / "Fonts" / "gulim.ttc").string().c_str(), 13.0f, &config, io.Fonts->GetGlyphRangesKorean());
 
-	dealerTable.columns.push_back(Table::Column("Job", "Job", 30, 0, ImVec2(0.5f, 0.5f)));
+	dealerTable.columns.push_back(Table::Column("", "Job", (overlay_texture != nullptr)? 30: 20, 0, ImVec2(0.5f, 0.5f)));
 	dealerTable.columns.push_back(Table::Column("Name", "name", 0, 1, ImVec2(0.0f, 0.5f)));
 	dealerTable.columns.push_back(Table::Column("DPS", "encdps", 50, 0, ImVec2(1.0f, 0.5f)));
 	dealerTable.columns.push_back(Table::Column("D%%", "damage%", 40, 0, ImVec2(1.0f, 0.5f)));
@@ -341,6 +410,22 @@ extern "C" int ModUnInit(ImGuiContext* context)
 	return 0;
 }
 
+extern "C" void ModTextureData(unsigned char** out_pixels, int* out_width, int* out_height, int* out_bytes_per_pixel)
+{
+	assert(out_pixels != nullptr && out_width != nullptr && out_height != nullptr);
+	//*out_pixels = nullptr;
+	*out_pixels = overlay_texture_filedata;
+	*out_width = overlay_texture_width;
+	*out_height = overlay_texture_height;
+	if (out_bytes_per_pixel)
+		*out_bytes_per_pixel = overlay_texture_channels;
+}
+
+extern "C" void ModSetTexture(void* texture)
+{
+	overlay_texture = texture;
+}
+
 void RenderTable(Table& table)
 {
 	// hard coded....
@@ -424,9 +509,20 @@ void RenderTable(Table& table)
 			ImRect clip, align;
 			ImRect bb(pos, ImVec2(pos.x + windowWidth, pos.y + height));
 
-			if (j != 1 || show_name)
+			std::string text = table.values[i][j];
+			if (j == 0 && overlay_texture)
 			{
-				std::string text = table.values[i][j];
+				std::string icon = boost::to_lower_copy(text);
+				std::map<std::string, Image>::iterator im;
+				if ((im = overlay_images.find(icon)) != overlay_images.end())
+				{
+					ImGuiWindow* window = ImGui::GetCurrentWindow();
+					window->DrawList->AddImage(overlay_texture, ImVec2(pos.x + 1, pos.y + 1), ImVec2(pos.x + table.columns[j].size + 1, pos.y + height + 1),
+						im->second.uv0, im->second.uv1);// , GetColorU32(tint_col));
+				}
+			}
+			else if (j != 1 || show_name)
+			{
 				if (iconMap.find(text) != iconMap.end())
 				{
 					text = iconMap[text];
@@ -466,8 +562,10 @@ extern "C" int ModRender(ImGuiContext* context)
 		{
 			int next_column_max = column_max;
 			ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.2, 0.2, 0.2, (float)global_opacity / 100.0f));
+			//ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0);
 			ImGui::Begin("AWIO (ActWebSocket ImGui Overlay)", nullptr, ImVec2(300, 500), -1,
-				ImGuiWindowFlags_ShowBorders);
+				//ImGuiWindowFlags_NoTitleBar);
+				NULL);
 
 			mutex.lock();
 			ImGui::Text(Title.c_str());
@@ -488,6 +586,7 @@ extern "C" int ModRender(ImGuiContext* context)
 			ImGui::Separator();
 
 			ImGui::End();
+			//ImGui::PopStyleVar();
 			ImGui::PopStyleColor();
 		}
 	}

@@ -13,10 +13,14 @@
 typedef int(*TModUnInit)(ImGuiContext* context);
 typedef int(*TModRender)(ImGuiContext* context);
 typedef int(*TModInit)(ImGuiContext* context);
+typedef void(*TModTextureData)(unsigned char** out_pixels, int* out_width, int* out_height, int* out_bytes_per_pixel);
+typedef void(*TModSetTexture)(void* texture);
 
 TModUnInit modUnInit = nullptr;
 TModRender modRender = nullptr;
 TModInit modInit = nullptr;
+TModTextureData modTextureData = nullptr;
+TModSetTexture modSetTexture = nullptr;
 HMODULE mod = nullptr;
 /////////////////////////////////////////////////////////////////////////////////
 
@@ -118,6 +122,71 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     return DefWindowProc(hWnd, msg, wParam, lParam);
 }
 
+static ID3D11ShaderResourceView*g_pModTextureView = NULL;
+static void ImGui_ImplDX11_CreateModTexture()
+{
+	if (!modTextureData)
+		return;
+	// Build texture atlas
+	ImGuiIO& io = ImGui::GetIO();
+	unsigned char* pixels;
+	int width, height;
+	int bpp;
+	modTextureData(&pixels, &width, &height, &bpp);
+	if (pixels == nullptr)
+		return;
+
+	// Upload texture to graphics system
+	{
+		D3D11_TEXTURE2D_DESC desc;
+		ZeroMemory(&desc, sizeof(desc));
+		desc.Width = width;
+		desc.Height = height;
+		desc.MipLevels = 1;
+		desc.ArraySize = 1;
+		desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		desc.SampleDesc.Count = 1;
+		desc.Usage = D3D11_USAGE_DEFAULT;
+		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+		desc.CPUAccessFlags = 0;
+
+		ID3D11Texture2D *pTexture = NULL;
+		D3D11_SUBRESOURCE_DATA subResource;
+		subResource.pSysMem = pixels;
+		subResource.SysMemPitch = desc.Width * 4;
+		subResource.SysMemSlicePitch = 0;
+		g_pd3dDevice->CreateTexture2D(&desc, &subResource, &pTexture);
+
+		// Create texture view
+		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+		ZeroMemory(&srvDesc, sizeof(srvDesc));
+		srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MipLevels = desc.MipLevels;
+		srvDesc.Texture2D.MostDetailedMip = 0;
+		g_pd3dDevice->CreateShaderResourceView(pTexture, &srvDesc, &g_pModTextureView);
+		pTexture->Release();
+	}
+
+	// Store our identifier
+	//io.Fonts->TexID = (void *)g_pFontTextureView;
+
+	//// Create texture sampler
+	//{
+	//	D3D11_SAMPLER_DESC desc;
+	//	ZeroMemory(&desc, sizeof(desc));
+	//	desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	//	desc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	//	desc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	//	desc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	//	desc.MipLODBias = 0.f;
+	//	desc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+	//	desc.MinLOD = 0.f;
+	//	desc.MaxLOD = 0.f;
+	//	g_pd3dDevice->CreateSamplerState(&desc, &g_pFontSampler);
+	//}
+}
+
 int main(int, char**)
 {
 
@@ -132,6 +201,8 @@ int main(int, char**)
 		modInit = (TModInit)GetProcAddress(mod, "ModInit");
 		modRender = (TModInit)GetProcAddress(mod, "ModRender");
 		modUnInit = (TModInit)GetProcAddress(mod, "ModUnInit");
+		modTextureData = (TModTextureData)GetProcAddress(mod, "ModTextureData");
+		modSetTexture = (TModSetTexture)GetProcAddress(mod, "ModSetTexture");
 	}
 	/////////////////////////////////////////////////////////////////////////////////
 
@@ -179,6 +250,7 @@ int main(int, char**)
 		modInit(ImGui::GetCurrentContext());
 	}
 	/////////////////////////////////////////////////////////////////////////////////
+	ImGui_ImplDX11_CreateModTexture();
     while (msg.message != WM_QUIT)
     {
         if (PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE))
@@ -187,6 +259,8 @@ int main(int, char**)
             DispatchMessage(&msg);
             continue;
         }
+		if(modSetTexture)
+			modSetTexture(g_pModTextureView);
         ImGui_ImplDX11_NewFrame();
 
 		/////////////////////////////////////////////////////////////////////////////////

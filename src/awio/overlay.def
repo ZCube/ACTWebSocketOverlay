@@ -1,5 +1,7 @@
 LIBRARY   ActWebSocketImguiOverlay  
 EXPORTS  
-   ModInit   @1
-   ModRender @2
-   ModUnInit @3
+   ModInit        @1
+   ModRender      @2
+   ModUnInit      @3
+   ModTextureData @4
+   ModSetTexture  @5
