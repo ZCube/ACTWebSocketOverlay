@@ -11,6 +11,7 @@
 #include <fstream>
 #include <algorithm>
 #include <thread>
+#include <unordered_map>
 
 #include <boost/bind.hpp>
 #include <boost/thread/mutex.hpp>
@@ -23,12 +24,6 @@
 static boost::mutex mutex;
 static bool show_name = true;
 static int column_max = 3;
-
-static int title_background_opacity = 255;
-static int background_opacity = 255;
-static int text_opacity = 255;
-static int graph_opacity = 255;
-static int toolbar_opacity = 255;
 
 static char websocket_port[256] = { 0, };
 static void* overlay_texture = nullptr;
@@ -50,7 +45,7 @@ public:
 	std::vector<int> widths;
 	std::vector<int> heights;
 };
-static std::map<std::string, Image> overlay_images;
+static std::unordered_map<std::string, Image> overlay_images;
 static std::map<std::string, std::vector<std::string>> color_category_map;
 
 static Json::Value overlay_atlas;
@@ -61,7 +56,7 @@ public:
 	class Column
 	{
 	public:
-		Column(std::string title_, std::string index_, int size_, int sizeWeight_, ImVec2 align_ = ImVec2(0.5f,0.5f), bool visible_ = true)
+		Column(std::string title_ = "", std::string index_ = "", int size_ = 0, int sizeWeight_ = 0, ImVec2 align_ = ImVec2(0.5f,0.5f), bool visible_ = true)
 			: Title(title_)
 			, index(index_)
 			, size(size_)
@@ -70,6 +65,20 @@ public:
 			, visible(visible_)
 		{
 
+		}
+		void ToJson(Json::Value& value) const
+		{
+			value["width"] = size;
+			value["title"] = Title;
+			value["index"] = index;
+			value["align"] = align.x;
+		}
+		void FromJson(Json::Value& value)
+		{
+			size = value["width"].asInt();
+			Title = value["title"].asString();
+			index = value["index"].asString();
+			align.x = value["align"].asFloat();
 		}
 		int size = 0;
 		int sizeWeight = 0;
@@ -90,7 +99,7 @@ public:
 			}
 			else
 			{
-				columnSizeFixed += columns[i].size;
+				columnSizeFixed += columns[i].size + 4;
 			}
 		}
 		for (int i = 0; i < column_max; ++i) {
@@ -109,9 +118,9 @@ public:
 };
 
 typedef std::map<std::string, ImVec4> ColorMapType;
-static ColorMapType colorMap;
-std::map<std::string, std::string> iconMap;
-std::map<std::string, std::string> nameToJobMap;
+static ColorMapType color_map;
+static std::map<std::string, float> opacity_map;
+std::map<std::string, std::string> name_to_job_map;
 static std::string Title;
 static std::string zone;
 static std::string duration;
@@ -119,6 +128,14 @@ static std::string rdps;
 static std::string rhps;
 static Table dealerTable;
 static Table healerTable;
+static std::vector<const char*> combatant_attribute_names;
+
+static float& global_opacity = opacity_map["Global"];
+static float& text_opacity = opacity_map["Text"];
+static float& background_opacity = opacity_map["Background"];
+static float& title_background_opacity = opacity_map["TitleBackground"];
+static float& toolbar_opacity = opacity_map["Toolbar"];
+static float& graph_opacity = opacity_map["Graph"];
 
 ImVec4 htmlCodeToImVec4(const std::string hex)
 {
@@ -326,6 +343,7 @@ extern "C" int ModInit(ImGuiContext* context)
 	dealerTable.columns.push_back(Table::Column("", "Job", (overlay_texture != nullptr)? 30: 20, 0, ImVec2(0.5f, 0.5f)));
 	dealerTable.columns.push_back(Table::Column("Name", "name", 0, 1, ImVec2(0.0f, 0.5f)));
 	dealerTable.columns.push_back(Table::Column("DPS", "encdps", 50, 0, ImVec2(1.0f, 0.5f)));
+	// modify
 	dealerTable.columns.push_back(Table::Column("D%%", "damage%", 40, 0, ImVec2(1.0f, 0.5f)));
 	dealerTable.columns.push_back(Table::Column("Damage", "damage", 50, 0, ImVec2(1.0f, 0.5f)));
 	dealerTable.columns.push_back(Table::Column("Swing", "swings", 40, 0, ImVec2(1.0f, 0.5f)));
@@ -374,110 +392,168 @@ extern "C" int ModInit(ImGuiContext* context)
 	// name to job map
 	
 	//rook
-	nameToJobMap[u8"auto-tourelle tour"] =
-		nameToJobMap[u8"selbstschuss-gyrocopter läufer"] =
-		nameToJobMap[u8"オートタレット・ルーク"] =
-		nameToJobMap[u8"자동포탑 룩"] =
-		nameToJobMap[u8"rook autoturret"] =
+	name_to_job_map[u8"auto-tourelle tour"] =
+		name_to_job_map[u8"selbstschuss-gyrocopter läufer"] =
+		name_to_job_map[u8"オートタレット・ルーク"] =
+		name_to_job_map[u8"자동포탑 룩"] =
+		name_to_job_map[u8"rook autoturret"] =
 		"rook";
 	//bishop
-	nameToJobMap[u8"auto-tourelle fou"] =
-		nameToJobMap[u8"selbstschuss-gyrocopter turm"] =
-		nameToJobMap[u8"オートタレット・ビショップ"] =
-		nameToJobMap[u8"자동포탑 비숍"] =
-		nameToJobMap[u8"bishop autoturret"] =
+	name_to_job_map[u8"auto-tourelle fou"] =
+		name_to_job_map[u8"selbstschuss-gyrocopter turm"] =
+		name_to_job_map[u8"オートタレット・ビショップ"] =
+		name_to_job_map[u8"자동포탑 비숍"] =
+		name_to_job_map[u8"bishop autoturret"] =
 		"bishop";
 	//emerald
-	nameToJobMap[u8"emerald carbuncle"] =
-		nameToJobMap[u8"카벙클 에메랄드"] =
-		nameToJobMap[u8"カーバンクル・エメラルド"] =
+	name_to_job_map[u8"emerald carbuncle"] =
+		name_to_job_map[u8"카벙클 에메랄드"] =
+		name_to_job_map[u8"カーバンクル・エメラルド"] =
 		"emerald";
 	//topaz
-	nameToJobMap[u8"topaz carbuncle"] =
-		nameToJobMap[u8"카벙클 토파즈"] =
-		nameToJobMap[u8"カーバンクル・トパーズ"] =
+	name_to_job_map[u8"topaz carbuncle"] =
+		name_to_job_map[u8"카벙클 토파즈"] =
+		name_to_job_map[u8"カーバンクル・トパーズ"] =
 		"topaz";
 	//eos
-	nameToJobMap[u8"eos"] =
-		nameToJobMap[u8"フェアリー・エオス"] =
-		nameToJobMap[u8"요정 에오스"] =
+	name_to_job_map[u8"eos"] =
+		name_to_job_map[u8"フェアリー・エオス"] =
+		name_to_job_map[u8"요정 에오스"] =
 		"eos";
 	//selene
-	nameToJobMap[u8"selene"] =
-		nameToJobMap[u8"フェアリー・セレネ"] =
-		nameToJobMap[u8"요정 셀레네"] =
+	name_to_job_map[u8"selene"] =
+		name_to_job_map[u8"フェアリー・セレネ"] =
+		name_to_job_map[u8"요정 셀레네"] =
 		"selene";
 	//garuda
-	nameToJobMap[u8"garuda-egi"] =
-		nameToJobMap[u8"ガルーダ・エギ"] =
-		nameToJobMap[u8"가루다 에기"] =
+	name_to_job_map[u8"garuda-egi"] =
+		name_to_job_map[u8"ガルーダ・エギ"] =
+		name_to_job_map[u8"가루다 에기"] =
 		"garuda";
 	//ifrit
-	nameToJobMap[u8"ifrit-egi"] =
-		nameToJobMap[u8"イフリート・エギ"] =
-		nameToJobMap[u8"이프리트 에기"] =
+	name_to_job_map[u8"ifrit-egi"] =
+		name_to_job_map[u8"イフリート・エギ"] =
+		name_to_job_map[u8"이프리트 에기"] =
 		"ifrit";
 	//titan
-	nameToJobMap[u8"titan-egi"] =
-		nameToJobMap[u8"タイタン・エギ"] =
-		nameToJobMap[u8"타이탄 에기"] =
+	name_to_job_map[u8"titan-egi"] =
+		name_to_job_map[u8"タイタン・エギ"] =
+		name_to_job_map[u8"타이탄 에기"] =
 		"titan";
 
-	nameToJobMap[u8"Limit Break"] = "limit break";
+	name_to_job_map[u8"Limit Break"] = "limit break";
 
 	// default color map
-	colorMap["TitleText"] = htmlCodeToImVec4("ffffff");
-	colorMap["GraphText"] = htmlCodeToImVec4("ffffff");
-	colorMap["ToolbarBackground"] = htmlCodeToImVec4("999999");
+	color_map["TitleText"] = htmlCodeToImVec4("ffffff");
+	color_map["GraphText"] = htmlCodeToImVec4("ffffff");
+	color_map["ToolbarBackground"] = htmlCodeToImVec4("999999");
 	
-	colorMap["Attacker"] = htmlCodeToImVec4("ff0000");
-	colorMap["Healer"]   = htmlCodeToImVec4("00ff00");
-	colorMap["Tanker"]   = htmlCodeToImVec4("0000ff");
+	color_map["Attacker"] = htmlCodeToImVec4("ff0000");
+	color_map["Healer"]   = htmlCodeToImVec4("00ff00");
+	color_map["Tanker"]   = htmlCodeToImVec4("0000ff");
 
-	colorMap["Pld"] = htmlCodeToImVec4("7B9AA2");
-	colorMap["Gld"] = htmlCodeToImVec4("7B9AA2");
+	color_map["Pld"] = htmlCodeToImVec4("7B9AA2");
+	color_map["Gld"] = htmlCodeToImVec4("7B9AA2");
 
-	colorMap["War"] = htmlCodeToImVec4("A91A16");
-	colorMap["Mrd"] = htmlCodeToImVec4("A91A16");
+	color_map["War"] = htmlCodeToImVec4("A91A16");
+	color_map["Mrd"] = htmlCodeToImVec4("A91A16");
 
-	colorMap["Drk"] = htmlCodeToImVec4("682531");
+	color_map["Drk"] = htmlCodeToImVec4("682531");
 
-	colorMap["Mnk"] = htmlCodeToImVec4("B38915");
-	colorMap["Pgl"] = htmlCodeToImVec4("B38915");
+	color_map["Mnk"] = htmlCodeToImVec4("B38915");
+	color_map["Pgl"] = htmlCodeToImVec4("B38915");
 
-	colorMap["Drg"] = htmlCodeToImVec4("3752D8");
-	colorMap["Lnc"] = htmlCodeToImVec4("3752D8");
+	color_map["Drg"] = htmlCodeToImVec4("3752D8");
+	color_map["Lnc"] = htmlCodeToImVec4("3752D8");
 
-	colorMap["Nin"] = htmlCodeToImVec4("EE2E48");
-	colorMap["Rog"] = htmlCodeToImVec4("EE2E48");
+	color_map["Nin"] = htmlCodeToImVec4("EE2E48");
+	color_map["Rog"] = htmlCodeToImVec4("EE2E48");
 
-	colorMap["Brd"] = htmlCodeToImVec4("ADC551");
-	colorMap["Arc"] = htmlCodeToImVec4("ADC551");
+	color_map["Brd"] = htmlCodeToImVec4("ADC551");
+	color_map["Arc"] = htmlCodeToImVec4("ADC551");
 
-	colorMap["Mch"] = htmlCodeToImVec4("148AA9");
+	color_map["Mch"] = htmlCodeToImVec4("148AA9");
 
-	colorMap["Blm"] = htmlCodeToImVec4("674598");
-	colorMap["Thm"] = htmlCodeToImVec4("674598");
+	color_map["Blm"] = htmlCodeToImVec4("674598");
+	color_map["Thm"] = htmlCodeToImVec4("674598");
 
 
-	colorMap["Whm"] = htmlCodeToImVec4("BDBDBD");
-	colorMap["Cnj"] = htmlCodeToImVec4("BDBDBD");
+	color_map["Whm"] = htmlCodeToImVec4("BDBDBD");
+	color_map["Cnj"] = htmlCodeToImVec4("BDBDBD");
 
-	colorMap["Smn"] = htmlCodeToImVec4("32670B");
-	colorMap["Acn"] = htmlCodeToImVec4("32670B");
+	color_map["Smn"] = htmlCodeToImVec4("32670B");
+	color_map["Acn"] = htmlCodeToImVec4("32670B");
 	
-	colorMap["Sch"] = htmlCodeToImVec4("32307B");
+	color_map["Sch"] = htmlCodeToImVec4("32307B");
 
-	colorMap["Ast"] = htmlCodeToImVec4("B1561C");
-	colorMap["Limit Break"] = htmlCodeToImVec4("FFBB00");
-	colorMap["YOU"] = htmlCodeToImVec4("FF5722");
+	color_map["Ast"] = htmlCodeToImVec4("B1561C");
+	color_map["Limit Break"] = htmlCodeToImVec4("FFBB00");
+	color_map["YOU"] = htmlCodeToImVec4("FF5722");
 
-	colorMap["Background"] = htmlCodeToImVec4("000000");
-	colorMap["Background"].w = 0.5;
+	color_map["Background"] = htmlCodeToImVec4("000000");
+	color_map["Background"].w = 0.5;
 
-	colorMap["TitleBackground"] = ImGui::GetStyle().Colors[ImGuiCol_TitleBg];
-	colorMap["TitleBackgroundActive"] = ImGui::GetStyle().Colors[ImGuiCol_TitleBgActive];
-	colorMap["TitleBackgroundCollapsed"] = ImGui::GetStyle().Colors[ImGuiCol_TitleBgCollapsed];
+	color_map["TitleBackground"] = ImGui::GetStyle().Colors[ImGuiCol_TitleBg];
+	color_map["TitleBackgroundActive"] = ImGui::GetStyle().Colors[ImGuiCol_TitleBgActive];
+	color_map["TitleBackgroundCollapsed"] = ImGui::GetStyle().Colors[ImGuiCol_TitleBgCollapsed];
+
+	//opacity
+	global_opacity = 1.0f;
+	title_background_opacity = 1.0f;
+	background_opacity = 1.0f;
+	text_opacity = 1.0f;
+	graph_opacity = 1.0f;
+	toolbar_opacity = 1.0f;
+
+	//combatant attributes
+	combatant_attribute_names = {
+		"absorbHeal",
+		"BlockPct",
+		"critheal%",
+		"critheals",
+		"crithit%",
+		"crithits",
+		"cures",
+		"damage",
+		"damage%",
+		"DAMAGE-k",
+		"DAMAGE-m",
+		"damageShield",
+		"damagetaken",
+		"deaths",
+		"dps",
+		"DPS-k",
+		"duration",
+		"encdps",
+		"ENCDPS-k",
+		"enchps",
+		"ENCHPS-k",
+		"healed",
+		"healed%",
+		"heals",
+		"healstaken",
+		"hitfailed",
+		"hits",
+		"IncToHit",
+		"Job",
+		"kills",
+		"Last10DPS",
+		"Last180DPS",
+		"Last30DPS",
+		"Last60DPS",
+		"MAXHEAL",
+		"MAXHEALWARD",
+		"MAXHIT",
+		"misses",
+		"overHeal",
+		"OverHealPct",
+		"ParryPct",
+		"powerdrain",
+		"powerheal",
+		"swings",
+		"threatdelta",
+		"threatstr",
+		"TOHIT" };
 
 	// default port
 	strcpy(websocket_port, "10501");
@@ -492,28 +568,43 @@ extern "C" int ModInit(ImGuiContext* context)
 			std::ifstream fin((m.parent_path() / "mod.json").wstring());
 			if (r.parse(fin, setting))
 			{
-				background_opacity = setting.get("background_opacity", Json::Int(128)).asInt();
-				text_opacity = setting.get("text_opacity", Json::Int(128)).asInt();
-				graph_opacity = setting.get("graph_opacity", Json::Int(128)).asInt();
-				toolbar_opacity = setting.get("toolbar_opacity", Json::Int(128)).asInt();
 				show_name = setting.get("show_name", true).asBool();
 				column_max = setting.get("column_max", Json::Int(3)).asInt();
 				strcpy(websocket_port, setting.get("websocket_port", "10501").asCString());
 				Json::Value color = setting.get("color_map", Json::Value());
 				for (auto i = color.begin(); i != color.end(); ++i)
 				{
-					colorMap[i.key().asString()] = htmlCodeToImVec4(i->asString());
+					color_map[i.key().asString()] = htmlCodeToImVec4(i->asString());
 				}
-
-				Json::Value nameToJob = setting.get("name_to_job", Json::nullValue);
-				if (nameToJob.size() > 0)
+				Json::Value opacity = setting.get("opacity_map", Json::Value());
+				for (auto i = opacity.begin(); i != opacity.end(); ++i)
 				{
-					nameToJobMap.clear();
+					opacity_map[i.key().asString()] = i->asFloat();
+				}
+				Json::Value nameToJob = setting.get("name_to_job", Json::nullValue);
+				std::string name_to_job_str = "name_to_job";
+				if (nameToJob.find(&*name_to_job_str.begin(), &*name_to_job_str.begin() + name_to_job_str.size()) != nullptr)
+				{
+					name_to_job_map.clear();
 					for (auto i = nameToJob.begin();
 						i != nameToJob.end();
 						++i)
 					{
-						nameToJobMap[i.key().asString()] = i->asString();
+						name_to_job_map[i.key().asString()] = i->asString();
+					}
+				}
+				Json::Value dealer_columns = setting.get("dealer_columns", Json::nullValue);
+				std::string dealer_columns_str = "dealer_columns";
+				if (setting.find(&*dealer_columns_str.begin(), &*dealer_columns_str.begin()+ dealer_columns_str.size()) != nullptr)
+				{
+					dealerTable.columns.resize(3);
+					for (auto i = dealer_columns.begin();
+						i != dealer_columns.end();
+						++i)
+					{
+						Table::Column col;
+						col.FromJson(*i);
+						dealerTable.columns.push_back(col);
 					}
 				}
 			}
@@ -535,17 +626,13 @@ void SaveSettings()
 
 	Json::StyledWriter w;
 	Json::Value setting;
-	setting["background_opacity"] = background_opacity;
-	setting["text_opacity"] = text_opacity;
-	setting["graph_opacity"] = graph_opacity;
-	setting["toolbar_opacity"] = toolbar_opacity;
 	setting["show_name"] = show_name;
 	setting["column_max"] = column_max;
 	setting["websocket_port"] = websocket_port;
 
 	Json::Value nameToJob;
-	for (auto i = nameToJobMap.begin();
-		i != nameToJobMap.end();
+	for (auto i = name_to_job_map.begin();
+		i != name_to_job_map.end();
 		++i)
 	{
 		nameToJob[i->first] = i->second;
@@ -553,11 +640,27 @@ void SaveSettings()
 	setting["name_to_job"] = nameToJob;
 
 	Json::Value color;
-	for (auto i = colorMap.begin(); i != colorMap.end(); ++i)
+	for (auto i = color_map.begin(); i != color_map.end(); ++i)
 	{
 		color[i->first] = ImVec4TohtmlCode(i->second);
 	}
 	setting["color_map"] = color;
+
+	Json::Value opacity;
+	for (auto i = opacity_map.begin(); i != opacity_map.end(); ++i)
+	{
+		opacity[i->first] = i->second;
+	}
+	setting["opacity_map"] = opacity;
+
+	Json::Value dealer_columns;
+	for (int i = 3; i < dealerTable.columns.size(); ++i)
+	{
+		Json::Value col;
+		dealerTable.columns[i].ToJson(col);
+		dealer_columns.append(col);
+	}
+	setting["dealer_columns"] = dealer_columns;
 
 	std::ofstream fout((m.parent_path() / "mod.json").wstring());
 	fout << w.write(setting);
@@ -595,46 +698,72 @@ ImVec4 ColorWithAlpha(ImVec4 col, float alpha)
 
 void RenderTable(Table& table)
 {
+	int column_max = table.columns.size();
 	// hard coded....
 	const int height = 20;
+	const int column_margin = 2;
 	ImGuiWindow* window = ImGui::GetCurrentWindow();
 	window->DC.CursorPos;
 	const ImGuiStyle& style = ImGui::GetStyle();
-	ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(colorMap["GraphText"], (float)text_opacity / 255.0f));
+	ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(color_map["GraphText"], text_opacity * global_opacity));
 
-	int windowWidth = ImGui::GetWindowSize().x - style.ItemInnerSpacing.x * 2.0f;
-	dealerTable.UpdateColumnWidth(windowWidth, column_max);
-	ImGui::Columns(table.columns.size(), "mixed");
+	int windowWidth = ImGui::GetWindowSize().x - style.ItemInnerSpacing.x * 2.0f - 10;
+	table.UpdateColumnWidth(windowWidth, column_max);
 	int offset = 0;
-	for (int i = 0; i < column_max; ++i)
-	{
-		ImGui::SetColumnOffset(i, offset);
-		offset += table.columns[i].size;
-	}
-	for (int i = column_max; i < table.columns.size(); ++i)
-	{
-		ImGui::SetColumnOffset(i, offset);
-	}
-	for (int i = 0; i < column_max; ++i)
-	{
-		if (i == 1)
-		{
-			if (ImGui::SmallButton("Name")) show_name = !show_name;
-		}
-		else
-		{
-			ImGui::Text(table.columns[i].Title.c_str());
-		}
-		ImGui::NextColumn();
-	}
-	for (int i = column_max; i < table.columns.size(); ++i)
-	{
-		ImGui::NextColumn();
-	}
-	ImGui::Columns(1);
-	ImGui::Separator();
 
 	int base = ImGui::GetCursorPosY();
+	int basex = 0;
+	ImGui::SetCursorPos(ImVec2(0, base));
+	for (int i = 0; i < table.columns.size(); ++i)
+	{
+		const ImGuiStyle& style = ImGui::GetStyle();
+		ImVec2 winpos = ImGui::GetWindowPos();
+		ImVec2 pos = ImGui::GetCursorPos();
+		pos = window->DC.CursorPos;
+
+		{
+			ImGui::SetCursorPos(ImVec2(basex + column_margin + style.ItemInnerSpacing.x, base));
+			ImVec2 winpos = ImGui::GetWindowPos();
+			ImVec2 pos = ImGui::GetCursorPos();
+			pos = window->DC.CursorPos;
+			ImRect clip, align;
+
+			std::string text = table.columns[i].Title;
+			if (i == 1)
+			{
+				if (ImGui::SmallButton("Name")) show_name = !show_name;
+			}
+			else
+			{
+				ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(ImVec4(0, 0, 0, 1), text_opacity * global_opacity));
+				ImGui::RenderTextClipped(ImVec2(pos.x + 1, pos.y + 1), ImVec2(pos.x + table.columns[i].size + 1, pos.y + height + 1),
+					text.c_str(),
+					text.c_str() + text.size(),
+					nullptr,
+					ImVec2(0.5f,0.5f),
+					//table.columns[i].align,
+					nullptr);
+				ImGui::PopStyleColor();
+				ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(color_map["GraphText"], text_opacity * global_opacity));
+				ImGui::RenderTextClipped(pos, ImVec2(pos.x + table.columns[i].size, pos.y + height),
+					text.c_str(),
+					text.c_str() + text.size(),
+					nullptr,
+					ImVec2(0.5f, 0.5f),
+					//table.columns[i].align,
+					nullptr);
+				ImGui::PopStyleColor();
+			}
+
+			basex += table.columns[i].size + column_margin * 2;
+		}
+		ImGui::NewLine();
+	}
+	ImGui::SetCursorPos(ImVec2(0, base + height));
+
+	ImGui::Separator();
+
+	base = ImGui::GetCursorPosY();
 	for (int i = 0; i < table.values.size(); ++i)
 	{
 		std::string& jobStr =  table.values[i][0];
@@ -654,8 +783,8 @@ void RenderTable(Table& table)
 			if (splitVec.size() >= 1)
 			{
 				boost::trim(splitVec[0]);
-				auto i = nameToJobMap.find(splitVec[0]);
-				if (i != nameToJobMap.end())
+				auto i = name_to_job_map.find(splitVec[0]);
+				if (i != name_to_job_map.end())
 				{
 					jobStr = i->second;
 				}
@@ -666,32 +795,28 @@ void RenderTable(Table& table)
 		{
 			ImVec4 progressColor = ImVec4(0, 0, 0, 1);
 			ColorMapType::iterator ji;
-			if ((ji = colorMap.find(jobStr)) != colorMap.end())
+			if ((ji = color_map.find(jobStr)) != color_map.end())
 			{
 				progressColor = ji->second;
 			}
 			else
 			{
-				progressColor = colorMap["etc"];
+				progressColor = color_map["etc"];
 			}
 		}
 
 		ImVec4 progressColor = ImVec4(0, 0, 0, 1);
 		ColorMapType::iterator ji;
-		if ((ji = colorMap.find(jobStr)) != colorMap.end())
+		if ((ji = color_map.find(jobStr)) != color_map.end())
 		{
 			progressColor = ji->second;
 		}
 		else
 		{
-			progressColor = colorMap["etc"];
-		}
-		if ((ji = colorMap.find(nameStr)) != colorMap.end())
-		{
-			progressColor = ji->second;
+			progressColor = color_map["etc"];
 		}
 
-		progressColor.w = (float)graph_opacity / 255.0f;
+		progressColor.w = graph_opacity * global_opacity;
 		const ImGuiStyle& style = ImGui::GetStyle();
 		ImGui::SetCursorPos(ImVec2(0, base + i * height));
 		ImVec2 winpos = ImGui::GetWindowPos();
@@ -699,14 +824,14 @@ void RenderTable(Table& table)
 		pos = window->DC.CursorPos;
 		ImRect bb(ImVec2(pos.x, pos.y), 
 			ImVec2(pos.x + ImGui::GetWindowSize().x, pos.y + height));
-		ImGui::RenderFrame(bb.Min, bb.Max, ImGui::GetColorU32(ImVec4(0.5, 0.5, 0.5, 0.0)), true, style.FrameRounding);
 
+		ImGui::RenderFrame(bb.Min, bb.Max, ImGui::GetColorU32(ImVec4(0.5, 0.5, 0.5, 0.0)), true, style.FrameRounding);
 		ImRect bb2(pos, ImVec2(pos.x + ImGui::GetWindowSize().x * progress, pos.y + height));
 		ImGui::RenderFrame(bb2.Min, bb2.Max, ImGui::GetColorU32(progressColor), true, style.FrameRounding);
 		int basex = 0;
-		for (int j = 0; j < column_max; ++j)
+		for (int j = 0; j < column_max && j < table.values[i].size(); ++j)
 		{
-			ImGui::SetCursorPos(ImVec2(basex + style.ItemInnerSpacing.x, base + i * height));
+			ImGui::SetCursorPos(ImVec2(basex + column_margin + style.ItemInnerSpacing.x, base + i * height));
 			ImVec2 winpos = ImGui::GetWindowPos();
 			ImVec2 pos = ImGui::GetCursorPos();
 			pos = window->DC.CursorPos;
@@ -716,7 +841,7 @@ void RenderTable(Table& table)
 			if (j == 0 && overlay_texture)
 			{
 				std::string icon = boost::to_lower_copy(text);
-				std::map<std::string, Image>::iterator im;
+				std::unordered_map<std::string, Image>::iterator im;
 				if ((im = overlay_images.find(icon)) != overlay_images.end())
 				{
 					ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -726,9 +851,7 @@ void RenderTable(Table& table)
 			}
 			else if (j != 1 || show_name)
 			{
-				//text = iconMap[text];
-				//ImGuiCol_Text
-				ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(ImVec4(0, 0, 0, 1), (float)text_opacity / 255.0f));
+				ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(ImVec4(0, 0, 0, 1), text_opacity * global_opacity));
 				ImGui::RenderTextClipped(ImVec2(pos.x + 1, pos.y + 1), ImVec2(pos.x + table.columns[j].size + 1, pos.y + height + 1),
 					text.c_str(),
 					text.c_str() + text.size(),
@@ -736,7 +859,7 @@ void RenderTable(Table& table)
 					table.columns[j].align,
 					nullptr);
 				ImGui::PopStyleColor();
-				ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(colorMap["GraphText"], (float)text_opacity / 255.0f));
+				ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(color_map["GraphText"], text_opacity * global_opacity));
 				ImGui::RenderTextClipped(pos, ImVec2(pos.x + table.columns[j].size, pos.y + height),
 					text.c_str(),
 					text.c_str() + text.size(),
@@ -746,7 +869,7 @@ void RenderTable(Table& table)
 				ImGui::PopStyleColor();
 			}
 
-			basex += table.columns[j].size;
+			basex += table.columns[j].size + column_margin*2;
 		}
 		ImGui::NewLine();
 		ImGui::SetCursorPos(ImVec2(0, base + (i + 1) * height));
@@ -755,6 +878,318 @@ void RenderTable(Table& table)
 	ImGui::Separator();
 
 	ImGui::PopStyleColor(1);
+}
+
+void Preference(ImGuiContext* context, bool* show_preferences)
+{
+	ImGui::Begin("Preferences", show_preferences, ImVec2(300, 500), -1, ImGuiWindowFlags_NoCollapse);
+	{
+		if (ImGui::TreeNode("Table"))
+		{
+			if (ImGui::TreeNode("Dealer Table"))
+			{
+				std::vector<const char*> columns;
+				Table& table = dealerTable;
+				columns.reserve(table.columns.size() - 3);
+				for (int i = 3; i < table.columns.size(); ++i)
+				{
+					columns.push_back(table.columns[i].Title.c_str());
+				}
+
+				static int index_ = -1;
+				static char buf[100] = { 0, };
+				static int current_item = -1;
+				static int width = 50.5f;
+				static float align = 0.5f;
+				static int index = -1;
+				bool decIndex = false;
+				bool incIndex = false;
+				if (ImGui::Combo("Dest Column", &index_, columns.data(), columns.size()))
+				{
+					index = index_ >= 0 ? index_ + 3 : index_;
+					strcpy(buf, table.columns[index].Title.c_str());
+					width = table.columns[index].size;
+					align = table.columns[index].align.x;
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Up"))
+				{
+					if (index > 3)
+					{
+						std::swap(table.columns[index], table.columns[index - 1]);
+						for (int j = 0; j < table.values.size(); ++j)
+						{
+							if (table.values[j].size() > index)
+							{
+								std::swap(table.values[j][index], table.values[j][index - 1]);
+							}
+						}
+						SaveSettings();
+						decIndex = true;
+					}
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Down"))
+				{
+					if (index + 1 < table.columns.size())
+					{
+						std::swap(table.columns[index], table.columns[index + 1]);
+						for (int j = 0; j < table.values.size(); ++j)
+						{
+							if (table.values[j].size() > index + 1)
+							{
+								std::swap(table.values[j][index], table.values[j][index + 1]);
+							}
+						}
+						SaveSettings();
+						incIndex = true;
+					}
+				}
+				if (ImGui::Button("Edit Column"))
+				{
+					ImGui::OpenPopup("Edit Column");
+				}
+				if (ImGui::BeginPopup("Edit Column"))
+				{
+					if (ImGui::InputText("Title", buf, 99))
+					{
+						table.columns[index].Title = buf;
+						SaveSettings();
+					}
+					if (ImGui::Combo("Attribute", &current_item, combatant_attribute_names.data(), combatant_attribute_names.size()))
+					{
+						if (strlen(buf) == 0 && current_item >= 0)
+						{
+							table.columns[index].index = combatant_attribute_names[current_item];
+							SaveSettings();
+						}
+						if (current_item >= 0)
+						{
+							for (int j = 0; j < table.values.size(); ++j)
+							{
+								if (table.values[j].size() > index)
+								{
+									table.values[j][index].clear();
+								}
+							}
+							SaveSettings();
+						}
+					}
+					if (ImGui::SliderInt("Width", &width, 10, 100))
+					{
+						table.columns[index].size = width;
+						SaveSettings();
+					}
+					if (ImGui::SliderFloat("Align", &align, 0.0f, 1.0f))
+					{
+						table.columns[index].align.x = align;
+						SaveSettings();
+					}
+					ImGui::EndPopup();
+				}
+				ImGui::SameLine();
+
+				if (ImGui::Button("Remove Column"))
+				{
+					if (index > 0)
+					{
+						table.columns.erase(table.columns.begin() + index);
+						for (int j = 0; j < table.values.size(); ++j)
+						{
+							if (table.values[j].size() > index)
+							{
+								table.values[j].erase(table.values[j].begin() + index);
+							}
+						}
+						SaveSettings();
+					}
+					if (index >= table.columns.size())
+					{
+						decIndex = true;
+					}
+				}
+				if (decIndex)
+				{
+					--index_;
+					index = index_ >= 0 ? index_ + 3 : index_;
+					if (index >= 0)
+					{
+						strcpy(buf, table.columns[index].Title.c_str());
+						width = table.columns[index].size;
+						align = table.columns[index].align.x;
+					}
+					else
+					{
+						strcpy(buf, "");
+						width = 50;
+						align = 0.5f;
+					}
+				}
+				if (incIndex)
+				{
+					++index_;
+					index = index_ >= 0 ? index_ + 3 : index_;
+					if (index < table.columns.size())
+					{
+						strcpy(buf, table.columns[index].Title.c_str());
+						width = table.columns[index].size;
+						align = table.columns[index].align.x;
+					}
+					else
+					{
+						strcpy(buf, "");
+						width = 50;
+						align = 0.5f;
+					}
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Append Column"))
+				{
+					ImGui::OpenPopup("Append Column");
+				}
+				if (ImGui::BeginPopup("Append Column"))
+				{
+					static char buf[100] = { 0, };
+					static int current_item = -1;
+					static int width = 50.5f;
+					static float align = 0.5f;
+					if (ImGui::InputText("Title", buf, 99))
+					{
+
+					}
+					if (ImGui::Combo("Attribute", &current_item, combatant_attribute_names.data(), combatant_attribute_names.size()))
+					{
+						if (strlen(buf) == 0 && current_item >= 0)
+						{
+							strcpy(buf, combatant_attribute_names[current_item]);
+						}
+
+					}
+					if (ImGui::SliderInt("Width", &width, 10, 100))
+					{
+
+					}
+					if (ImGui::SliderFloat("Align", &align, 0.0f, 1.0f))
+					{
+
+					}
+					if (ImGui::Button("Append"))
+					{
+						if (current_item >= 0)
+						{
+							Table::Column col(buf, combatant_attribute_names[current_item],
+								width, 0.0f, ImVec2(align, 0.5f), true);
+							table.columns.push_back(col);
+
+							ImGui::CloseCurrentPopup();
+							current_item = -1;
+							width = 50;
+							align = 0.5f;
+							SaveSettings();
+						}
+					}
+					ImGui::EndPopup();
+				}
+				ImGui::TreePop();
+			}
+			//ImGui::Edit
+			//dealerTable
+			ImGui::TreePop();
+		}
+		if (ImGui::TreeNode("WebSocket"))
+		{
+			if (ImGui::InputText("WebSocket Port", websocket_port, 50, ImGuiInputTextFlags_CharsDecimal))
+			{
+				SaveSettings();
+			}
+			ImGui::TreePop();
+		}
+		if (ImGui::TreeNode("Opacity"))
+		{
+			static int group_opacity = 255;
+
+			for (auto j = opacity_map.begin(); j != opacity_map.end(); ++j)
+			{
+				if (ImGui::SliderFloat(j->first.c_str(), &j->second, 0.0f, 1.0f))
+				{
+					for (auto k = color_category_map[j->first].begin();
+						k != color_category_map[j->first].end();
+						++k)
+					{
+						{
+							color_map[*k] = color_map[j->first];
+						}
+					}
+					SaveSettings();
+				}
+			}
+			ImGui::TreePop();
+		}
+		if (ImGui::TreeNode("Colors"))
+		{
+			if (ImGui::TreeNode("Group"))
+			{
+				for (auto j = color_category_map.begin(); j != color_category_map.end(); ++j)
+				{
+					if (ImGui::ColorEdit3(j->first.c_str(), (float*)&color_map[j->first]))
+					{
+						for (auto k = color_category_map[j->first].begin();
+							k != color_category_map[j->first].end();
+							++k)
+						{
+							{
+								color_map[*k] = color_map[j->first];
+							}
+						}
+						SaveSettings();
+					}
+				}
+				ImGui::TreePop();
+			}
+
+			for (auto j = color_category_map.begin(); j != color_category_map.end(); ++j)
+			{
+				if (ImGui::TreeNode(j->first.c_str()))
+				{
+					for (auto k = j->second.begin(); k != j->second.end(); ++k)
+					{
+						std::string name = *k;
+						std::string name_lower = boost::to_lower_copy(*k);
+						{
+							ImVec4& color = color_map[*k];
+							if (overlay_texture)
+							{
+								std::unordered_map<std::string, Image>::iterator im;
+								if ((im = overlay_images.find(name_lower)) != overlay_images.end())
+								{
+									ImGui::Image(overlay_texture, ImVec2(20, 20), im->second.uv0, im->second.uv1);
+									ImGui::SameLine();
+								}
+								else
+								{
+									if ((im = overlay_images.find("empty")) != overlay_images.end())
+									{
+										ImGui::Image(overlay_texture, ImVec2(20, 20), im->second.uv0, im->second.uv1);
+										ImGui::SameLine();
+									}
+									else
+									{
+									}
+								}
+							}
+							if (ImGui::ColorEdit3(name.c_str(), (float*)&color))
+							{
+								SaveSettings();
+							}
+						}
+					}
+					ImGui::TreePop();
+				}
+			}
+			ImGui::TreePop();
+		}
+	}
+	ImGui::End();
 }
 
 extern "C" int ModRender(ImGuiContext* context)
@@ -766,14 +1201,14 @@ extern "C" int ModRender(ImGuiContext* context)
 		{
 			
 			int next_column_max = column_max;
-			ImGui::PushStyleColor(ImGuiCol_WindowBg, ColorWithAlpha(colorMap["Background"], (float)background_opacity / 255.0f));
-			ImGui::PushStyleColor(ImGuiCol_TitleBg, ColorWithAlpha(colorMap["TitleBackground"], (float)title_background_opacity / 255.0f));
-			ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ColorWithAlpha(colorMap["TitleBackgroundActive"], (float)title_background_opacity / 255.0f));
-			ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, ColorWithAlpha(colorMap["TitleBackgroundCollapsed"], (float)title_background_opacity / 255.0f));
-			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5, 0.5, 0.5, (float)background_opacity / 255.0f));
-			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3, 0.3, 0.3, (float)background_opacity / 255.0f));
+			ImGui::PushStyleColor(ImGuiCol_WindowBg, ColorWithAlpha(color_map["Background"], background_opacity * global_opacity));
+			ImGui::PushStyleColor(ImGuiCol_TitleBg, ColorWithAlpha(color_map["TitleBackground"], title_background_opacity * global_opacity));
+			ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ColorWithAlpha(color_map["TitleBackgroundActive"], title_background_opacity * global_opacity));
+			ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, ColorWithAlpha(color_map["TitleBackgroundCollapsed"], title_background_opacity * global_opacity));
+			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5, 0.5, 0.5, background_opacity * global_opacity));
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3, 0.3, 0.3, background_opacity * global_opacity));
 			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0, 0.0, 0.0, 0.0f));
-			ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(colorMap["TitleText"], (float)text_opacity / 255.0f));
+			ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(color_map["TitleText"], text_opacity * global_opacity));
 			//ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0);
 			ImGui::Begin("AWIO (ActWebSocket ImGui Overlay)", nullptr, ImVec2(300, 500), -1,
 				//ImGuiWindowFlags_NoTitleBar);
@@ -793,15 +1228,15 @@ extern "C" int ModRender(ImGuiContext* context)
 				ImVec2 pos = ImGui::GetCursorPos();
 				pos = window->DC.CursorPos;
 				ImRect bb(ImVec2(pos.x-style.ItemInnerSpacing.x,pos.y), ImVec2(pos.x + winsize.x, pos.y + 40));
-				ImGui::RenderFrame(bb.Min, bb.Max, ImGui::GetColorU32(ColorWithAlpha(colorMap["ToolbarBackground"], (float)toolbar_opacity/255.0f)), true, 0);
+				ImGui::RenderFrame(bb.Min, bb.Max, ImGui::GetColorU32(ColorWithAlpha(color_map["ToolbarBackground"], toolbar_opacity * global_opacity)), true, 0);
 
 				// title
 				int windowWidth = ImGui::GetWindowSize().x - style.ItemInnerSpacing.x * 2.0f;
 
-				ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(colorMap["TitleText"], (float)text_opacity / 255.0f));
+				ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(color_map["TitleText"], text_opacity * global_opacity));
 				ImGui::Columns(3, "##TitleBar", false);
 				Image& cog = overlay_images["cog"];
-				if (ImGui::ImageButton(overlay_texture, ImVec2(65 / 2, 60 / 2), cog.uv0, cog.uv1, -1, ImVec4(0, 0, 0, 0), ColorWithAlpha(colorMap["TitleText"], (float)text_opacity / 255.0f)))
+				if (ImGui::ImageButton(overlay_texture, ImVec2(65 / 2, 60 / 2), cog.uv0, cog.uv1, -1, ImVec4(0, 0, 0, 0), ColorWithAlpha(color_map["TitleText"], text_opacity * global_opacity)))
 				{
 					show_preferences = !show_preferences;
 				}
@@ -828,7 +1263,6 @@ extern "C" int ModRender(ImGuiContext* context)
 
 
 			ImGui::Separator();
-			mutex.unlock();
 
 
 			ImGui::End();
@@ -838,113 +1272,9 @@ extern "C" int ModRender(ImGuiContext* context)
 
 			if (show_preferences)
 			{
-				ImGui::Begin("Preferences", &show_preferences, ImVec2(300, 500), -1, ImGuiWindowFlags_NoCollapse);
-				{
-					if (ImGui::SmallButton("Mode")) {
-						next_column_max = column_max == 9 ? 3 : 9;
-						SaveSettings();
-					}
-					if (ImGui::InputText("WebSocket Port", websocket_port, 50, ImGuiInputTextFlags_CharsDecimal))
-					{
-						SaveSettings();
-					}
-					if (ImGui::TreeNode("Opacity"))
-					{
-						static int group_opacity = 255;
-
-						if (ImGui::SliderInt("Group Opacity(Bg+Text+Graph)", &group_opacity, 10, 255))
-						{
-							graph_opacity = text_opacity = background_opacity = group_opacity;
-							SaveSettings();
-						}
-						if (ImGui::SliderInt("Title Background Opacity", &title_background_opacity, 0, 255))
-						{
-							SaveSettings();
-						}
-						if (ImGui::SliderInt("Background Opacity", &background_opacity, 0, 255))
-						{
-							SaveSettings();
-						}
-						if (ImGui::SliderInt("Text Opacity", &text_opacity, 10, 255))
-						{
-							SaveSettings();
-						}
-						if (ImGui::SliderInt("Graph Opacity", &graph_opacity, 0, 255))
-						{
-							SaveSettings();
-						}
-						if (ImGui::SliderInt("Toolbar Opacity", &toolbar_opacity, 0, 255))
-						{
-							SaveSettings();
-						}
-						ImGui::TreePop();
-					}
-					if (ImGui::TreeNode("Colors"))
-					{
-						if (ImGui::TreeNode("Group"))
-						{
-							for (auto j = color_category_map.begin(); j != color_category_map.end(); ++j)
-							{
-								if (ImGui::ColorEdit3(j->first.c_str(), (float*)&colorMap[j->first]))
-								{
-									for (auto k = color_category_map[j->first].begin();
-										k != color_category_map[j->first].end();
-										++k)
-									{
-										{
-											colorMap[*k] = colorMap[j->first];
-										}
-									}
-									SaveSettings();
-								}
-							}
-							ImGui::TreePop();
-						}
-
-						for (auto j = color_category_map.begin(); j != color_category_map.end(); ++j)
-						{
-							if (ImGui::TreeNode(j->first.c_str()))
-							{
-								for (auto k = j->second.begin(); k != j->second.end(); ++k)
-								{
-									std::string name = *k;
-									std::string name_lower = boost::to_lower_copy(*k);
-									{
-										ImVec4& color = colorMap[*k];
-										if (overlay_texture)
-										{
-											std::map<std::string, Image>::iterator im;
-											if ((im = overlay_images.find(name_lower)) != overlay_images.end())
-											{
-												ImGui::Image(overlay_texture, ImVec2(20, 20), im->second.uv0, im->second.uv1);
-												ImGui::SameLine();
-											}
-											else
-											{
-												if ((im = overlay_images.find("empty")) != overlay_images.end())
-												{
-													ImGui::Image(overlay_texture, ImVec2(20, 20), im->second.uv0, im->second.uv1);
-													ImGui::SameLine();
-												}
-												else
-												{
-												}
-											}
-										}
-										if (ImGui::ColorEdit3(name.c_str(), (float*)&color))
-										{
-											SaveSettings();
-										}
-									}
-								}
-								ImGui::TreePop();
-							}
-						}
-						ImGui::TreePop();
-					}
-				}
-				ImGui::End();
+				Preference(context, &show_preferences);
 			}
+			mutex.unlock();
 			column_max = next_column_max;
 		}
 
