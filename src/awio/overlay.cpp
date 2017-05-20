@@ -23,7 +23,11 @@
 static boost::mutex mutex;
 static bool show_name = true;
 static int column_max = 3;
-static int global_opacity = 100;
+
+static int background_opacity = 255;
+static int text_opacity = 255;
+static int graph_opacity = 255;
+
 static char websocket_port[256] = { 0, };
 static void* overlay_texture = nullptr;
 static unsigned char *overlay_texture_filedata = nullptr;
@@ -396,6 +400,10 @@ extern "C" int ModInit(ImGuiContext* context)
 	colorMap["Background"] = htmlCodeToImVec4("000000");
 	colorMap["Background"].w = 0.5;
 
+	colorMap["TitleBackground"] = ImGui::GetStyle().Colors[ImGuiCol_TitleBg];
+	colorMap["TitleBackgroundActive"] = ImGui::GetStyle().Colors[ImGuiCol_TitleBgActive];
+	colorMap["TitleBackgroundCollapsed"] = ImGui::GetStyle().Colors[ImGuiCol_TitleBgCollapsed];
+
 	// default port
 	strcpy(websocket_port, "10501");
 
@@ -409,7 +417,9 @@ extern "C" int ModInit(ImGuiContext* context)
 			std::ifstream fin((m.parent_path() / "mod.json").wstring());
 			if (r.parse(fin, setting))
 			{
-				global_opacity = setting.get("opacity", Json::Int(100)).asInt();
+				background_opacity = setting.get("background_opacity", Json::Int(128)).asInt();
+				text_opacity = setting.get("text_opacity", Json::Int(128)).asInt();
+				graph_opacity = setting.get("graph_opacity", Json::Int(128)).asInt();
 				show_name = setting.get("show_name", true).asBool();
 				column_max = setting.get("column_max", Json::Int(3)).asInt();
 				strcpy(websocket_port, setting.get("websocket_port", "10501").asCString());
@@ -437,7 +447,9 @@ void SaveSettings()
 
 	Json::StyledWriter w;
 	Json::Value setting;
-	setting["opacity"] = global_opacity;
+	setting["background_opacity"] = background_opacity;
+	setting["text_opacity"] = text_opacity;
+	setting["graph_opacity"] = graph_opacity;
 	setting["show_name"] = show_name;
 	setting["column_max"] = column_max;
 	setting["websocket_port"] = websocket_port;
@@ -538,7 +550,7 @@ void RenderTable(Table& table)
 		{
 			progressColor = ji->second;
 		}
-		progressColor.w = (float)global_opacity / 100.0f;
+		progressColor.w = (float)graph_opacity / 255.0f;
 		const ImGuiStyle& style = ImGui::GetStyle();
 		ImGui::SetCursorPos(ImVec2(0, base + i * height));
 		ImVec2 winpos = ImGui::GetWindowPos();
@@ -603,6 +615,12 @@ void RenderTable(Table& table)
 
 }
 
+ImVec4 ColorWithAlpha(ImVec4 col, float alpha)
+{
+	col.w = alpha;
+	return col;
+}
+
 extern "C" int ModRender(ImGuiContext* context)
 {
 	static bool show_preferences = false;
@@ -612,10 +630,12 @@ extern "C" int ModRender(ImGuiContext* context)
 		{
 			
 			int next_column_max = column_max;
-			ImVec4 background = colorMap["Background"]; background.w = (float)global_opacity / 100.0f;
-			ImGui::PushStyleColor(ImGuiCol_WindowBg, background);
-			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5, 0.5, 0.5, (float)global_opacity / 100.0f));
-			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3, 0.3, 0.3, (float)global_opacity / 100.0f));
+			ImGui::PushStyleColor(ImGuiCol_WindowBg, ColorWithAlpha(colorMap["Background"], (float)background_opacity / 255.0f));
+			ImGui::PushStyleColor(ImGuiCol_TitleBg, ColorWithAlpha(colorMap["TitleBackground"], (float)background_opacity / 255.0f));
+			ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ColorWithAlpha(colorMap["TitleBackgroundActive"], (float)background_opacity / 255.0f));
+			ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, ColorWithAlpha(colorMap["TitleBackgroundCollapsed"], (float)background_opacity / 255.0f));
+			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5, 0.5, 0.5, (float)background_opacity / 255.0f));
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3, 0.3, 0.3, (float)background_opacity / 255.0f));
 			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0, 0.0, 0.0, 0.0f));
 			//ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0);
 			ImGui::Begin("AWIO (ActWebSocket ImGui Overlay)", nullptr, ImVec2(300, 500), -1,
@@ -623,7 +643,6 @@ extern "C" int ModRender(ImGuiContext* context)
 				NULL);
 
 			mutex.lock();
-			
 			{
 				// title
 				const ImGuiStyle& style = ImGui::GetStyle();
@@ -639,7 +658,7 @@ extern "C" int ModRender(ImGuiContext* context)
 				ImGui::NextColumn();
 				ImGui::SetColumnOffset(2, std::max(windowWidth - 60,150));
 				Image& cog = overlay_images["cog"];
-				if (ImGui::ImageButton(overlay_texture, ImVec2(65 / 2, 60 / 2), cog.uv0, cog.uv1, -1, ImVec4(0, 0, 0, 0), ImVec4(0, 0, 0, 1.0f)))
+				if (ImGui::ImageButton(overlay_texture, ImVec2(65 / 2, 60 / 2), cog.uv0, cog.uv1, -1, ImVec4(0, 0, 0, 0), ImVec4(1.0f, 1.0f, 1.0f, 1.0f)))
 				{
 					show_preferences = !show_preferences;
 				}
@@ -652,16 +671,53 @@ extern "C" int ModRender(ImGuiContext* context)
 			{
 				ImGui::Begin("Preferences", &show_preferences, ImVec2(300, 500), -1, ImGuiWindowFlags_NoCollapse);
 				{
-					if (ImGui::SmallButton("Mode")) next_column_max = column_max == 9 ? 3 : 9;
-					ImGui::SliderInt("Opacity", &global_opacity, 0, 100);
-					ImGui::InputText("WebSocket Port", websocket_port, 50, ImGuiInputTextFlags_CharsDecimal);
-
-					if (ImGui::TreeNode("Colors"))
+					if (ImGui::SmallButton("Mode")) {
+						next_column_max = column_max == 9 ? 3 : 9;
+						SaveSettings();
+					}
+					if (ImGui::InputText("WebSocket Port", websocket_port, 50, ImGuiInputTextFlags_CharsDecimal))
 					{
-						if (ImGui::ColorEdit3("Background", (float*)&colorMap["Background"]))
+						SaveSettings();
+					}
+					if (ImGui::TreeNode("Opacity"))
+					{
+						if (ImGui::SliderInt("Background Opacity", &background_opacity, 0, 255))
 						{
 							SaveSettings();
 						}
+						if (ImGui::SliderInt("Text Opacity", &text_opacity, 0, 255))
+						{
+							SaveSettings();
+						}
+						if (ImGui::SliderInt("Graph Opacity", &graph_opacity, 0, 255))
+						{
+							SaveSettings();
+						}
+						ImGui::TreePop();
+					}
+					if (ImGui::TreeNode("Colors"))
+					{
+						if (ImGui::TreeNode("UI"))
+						{
+							if (ImGui::ColorEdit3("Background", (float*)&colorMap["Background"]))
+							{
+								SaveSettings();
+							}
+							if (ImGui::ColorEdit3("TitleBackground", (float*)&colorMap["TitleBackground"]))
+							{
+								SaveSettings();
+							}
+							if (ImGui::ColorEdit3("TitleBackgroundActive", (float*)&colorMap["TitleBackgroundActive"]))
+							{
+								SaveSettings();
+							}
+							if (ImGui::ColorEdit3("TitleBackgroundCollapsed", (float*)&colorMap["TitleBackgroundCollapsed"]))
+							{
+								SaveSettings();
+							}
+							ImGui::TreePop();
+						}
+
 						if (ImGui::TreeNode("Group"))
 						{
 							for (auto j = color_category_map.begin(); j != color_category_map.end(); ++j)
@@ -736,7 +792,7 @@ extern "C" int ModRender(ImGuiContext* context)
 
 			ImGui::End();
 			//ImGui::PopStyleVar();
-			ImGui::PopStyleColor(4);
+			ImGui::PopStyleColor(7);
 		}
 	}
 	catch (std::exception& e)
