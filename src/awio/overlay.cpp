@@ -488,10 +488,18 @@ extern "C" void ModSetTexture(void* texture)
 	overlay_texture = texture;
 }
 
+ImVec4 ColorWithAlpha(ImVec4 col, float alpha)
+{
+	col.w = alpha;
+	return col;
+}
+
 void RenderTable(Table& table)
 {
 	// hard coded....
 	const ImGuiStyle& style = ImGui::GetStyle();
+	ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(ImVec4(1.0f, 1.0f, 1.0f, 1), (float)text_opacity / 255.0f));
+
 	int windowWidth = ImGui::GetWindowSize().x - style.ItemInnerSpacing.x * 2.0f;
 	dealerTable.UpdateColumnWidth(windowWidth, column_max);
 	ImGui::Columns(table.columns.size(), "mixed");
@@ -546,10 +554,7 @@ void RenderTable(Table& table)
 		{
 			progressColor = colorMap["etc"];
 		}
-		if ((ji = colorMap.find(nameStr)) != colorMap.end())
-		{
-			progressColor = ji->second;
-		}
+
 		progressColor.w = (float)graph_opacity / 255.0f;
 		const ImGuiStyle& style = ImGui::GetStyle();
 		ImGui::SetCursorPos(ImVec2(0, base + i * height));
@@ -589,7 +594,7 @@ void RenderTable(Table& table)
 			{
 				//text = iconMap[text];
 				//ImGuiCol_Text
-				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0, 0.0, 0.0, 1.0));
+				ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(ImVec4(0, 0, 0, 1), (float)text_opacity / 255.0f));
 				ImGui::RenderTextClipped(ImVec2(pos.x + 1, pos.y + 1), ImVec2(pos.x + table.columns[j].size + 1, pos.y + height + 1),
 					text.c_str(),
 					text.c_str() + text.size(),
@@ -597,12 +602,14 @@ void RenderTable(Table& table)
 					table.columns[j].align,
 					nullptr);
 				ImGui::PopStyleColor();
+				ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(ImVec4(1.0f, 1.0f, 1.0f, 1), (float)text_opacity / 255.0f));
 				ImGui::RenderTextClipped(pos, ImVec2(pos.x + table.columns[j].size, pos.y + height),
 					text.c_str(),
 					text.c_str() + text.size(),
 					nullptr,
 					table.columns[j].align,
 					nullptr);
+				ImGui::PopStyleColor();
 			}
 
 			basex += table.columns[j].size;
@@ -613,12 +620,7 @@ void RenderTable(Table& table)
 
 	ImGui::Separator();
 
-}
-
-ImVec4 ColorWithAlpha(ImVec4 col, float alpha)
-{
-	col.w = alpha;
-	return col;
+	ImGui::PopStyleColor(1);
 }
 
 extern "C" int ModRender(ImGuiContext* context)
@@ -637,6 +639,7 @@ extern "C" int ModRender(ImGuiContext* context)
 			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5, 0.5, 0.5, (float)background_opacity / 255.0f));
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3, 0.3, 0.3, (float)background_opacity / 255.0f));
 			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0, 0.0, 0.0, 0.0f));
+			ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(ImVec4(1.0f, 1.0f, 1.0f, 1), (float)text_opacity / 255.0f));
 			//ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0);
 			ImGui::Begin("AWIO (ActWebSocket ImGui Overlay)", nullptr, ImVec2(300, 500), -1,
 				//ImGuiWindowFlags_NoTitleBar);
@@ -648,6 +651,7 @@ extern "C" int ModRender(ImGuiContext* context)
 				const ImGuiStyle& style = ImGui::GetStyle();
 				int windowWidth = ImGui::GetWindowSize().x - style.ItemInnerSpacing.x * 2.0f;
 
+				ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(ImVec4(1.0f, 1.0f, 1.0f, 1), (float)text_opacity / 255.0f));
 				ImGui::Columns(3, "##TitleBar", false);
 				ImGui::PushFont(largeFont);
 				ImGui::Text(duration.c_str());
@@ -658,12 +662,13 @@ extern "C" int ModRender(ImGuiContext* context)
 				ImGui::NextColumn();
 				ImGui::SetColumnOffset(2, std::max(windowWidth - 60,150));
 				Image& cog = overlay_images["cog"];
-				if (ImGui::ImageButton(overlay_texture, ImVec2(65 / 2, 60 / 2), cog.uv0, cog.uv1, -1, ImVec4(0, 0, 0, 0), ImVec4(1.0f, 1.0f, 1.0f, 1.0f)))
+				if (ImGui::ImageButton(overlay_texture, ImVec2(65 / 2, 60 / 2), cog.uv0, cog.uv1, -1, ImVec4(0, 0, 0, 0), ImVec4(1.0f, 1.0f, 1.0f, (float)text_opacity / 255.0f)))
 				{
 					show_preferences = !show_preferences;
 				}
 				ImGui::NextColumn();
 				ImGui::Columns(1);
+				ImGui::PopStyleColor();
 			}
 
 
@@ -681,11 +686,17 @@ extern "C" int ModRender(ImGuiContext* context)
 					}
 					if (ImGui::TreeNode("Opacity"))
 					{
+						static int group_opacity = 255;
+						if (ImGui::SliderInt("Group Opacity(Bg+Text+Graph)", &group_opacity, 10, 255))
+						{
+							graph_opacity = text_opacity = background_opacity = group_opacity;
+							SaveSettings();
+						}
 						if (ImGui::SliderInt("Background Opacity", &background_opacity, 0, 255))
 						{
 							SaveSettings();
 						}
-						if (ImGui::SliderInt("Text Opacity", &text_opacity, 0, 255))
+						if (ImGui::SliderInt("Text Opacity", &text_opacity, 10, 255))
 						{
 							SaveSettings();
 						}
@@ -792,7 +803,7 @@ extern "C" int ModRender(ImGuiContext* context)
 
 			ImGui::End();
 			//ImGui::PopStyleVar();
-			ImGui::PopStyleColor(7);
+			ImGui::PopStyleColor(8);
 		}
 	}
 	catch (std::exception& e)
