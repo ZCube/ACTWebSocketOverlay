@@ -22,6 +22,8 @@
 #include <boost/algorithm/hex.hpp>
 
 static boost::mutex mutex;
+static bool initialized = false;
+
 static bool show_name = true;
 
 static char websocket_port[256] = { 0, };
@@ -52,6 +54,11 @@ static Json::Value overlay_atlas;
 class Table
 {
 public:
+	class Row
+	{
+	public:
+		ImVec4* color = nullptr;
+	};
 	class Column
 	{
 	public:
@@ -90,8 +97,10 @@ public:
 
 	int column_margin = 2;
 
-	void UpdateColumnWidth(int width, int column_max)
+	void UpdateColumnWidth(int width, int height, int column_max)
 	{
+		if (columns.size() > 0)
+			columns[0].size = height;
 		int columnSizeWeightSum = 0;
 		int columnSizeFixed = 0;
 		for (int i = 0; i < column_max; ++i) {
@@ -124,6 +133,7 @@ public:
 
 	std::vector<int> offsets;
 	std::vector<Column> columns;
+	std::vector<Row> rows;
 	std::vector<std::vector<std::string> > values;
 
 	int progressColumn = 2;
@@ -214,6 +224,7 @@ inline static void websocketThread()
 
 							if (r.parse(message_str, root))
 							{
+								std::vector<Table::Row> _rows;
 								std::vector<std::vector<std::string> > _values;
 								if (root["type"].asString() == "broadcast" && root["msgtype"].asString() == "CombatData")
 								{
@@ -239,15 +250,68 @@ inline static void websocketThread()
 												vals.push_back((*i)[table.columns[j].index].asString());
 											}
 											_maxValue = std::max<float>(atof(vals[table.progressColumn].c_str()), _maxValue);
-
+											
 											_values.push_back(vals);
 										}
 
+										// sort first
 										std::sort(_values.begin(), _values.end(), [](const std::vector<std::string>& vals0, const std::vector<std::string>& vals1)
 										{
 											return atof(vals0[2].c_str()) > atof(vals1[2].c_str());
 										});
+
+										for (auto i = 0; i < _values.size(); ++i)
+										{
+											auto vals = _values[i];
+											Table::Row row;
+											{
+												std::string& jobStr = vals[0];
+												const std::string& progressStr = vals[2];
+												std::string& nameStr = vals[1];
+												if (jobStr.empty())
+												{
+													std::string jobStrAlter;
+													typedef std::vector< std::string > split_vector_type;
+													split_vector_type splitVec; // #2: Search for tokens
+													boost::split(splitVec, nameStr, boost::is_any_of("()"), boost::token_compress_on);
+													if (splitVec.size() >= 1)
+													{
+														boost::trim(splitVec[0]);
+														auto i = name_to_job_map.find(splitVec[0]);
+														if (i != name_to_job_map.end())
+														{
+															jobStr = i->second;
+														}
+														else if (splitVec.size() > 1)
+														{
+															jobStr = default_pet_job;
+														}
+													}
+												}
+
+												ColorMapType::iterator ji;
+
+												// name and job
+												if ((ji = color_map.find(nameStr)) != color_map.end())
+												{
+													row.color = &ji->second;
+												}
+												else
+												{
+													if ((ji = color_map.find(jobStr)) != color_map.end())
+													{
+														row.color = &ji->second;
+													}
+													else
+													{
+														row.color = &color_map["etc"];
+													}
+												}
+												_rows.push_back(row);
+											}
+										}
 									}
+									dealerTable.rows = _rows;
 									dealerTable.values = _values;
 									dealerTable.maxValue = _maxValue;
 									mutex.unlock();
@@ -351,8 +415,12 @@ extern "C" int ModInit(ImGuiContext* context)
 	else if (boost::filesystem::exists(p / "Fonts" / "gulim.ttc"))
 		korFont = io.Fonts->AddFontFromFileTTF((p / "Fonts" / "gulim.ttc").string().c_str(), 13.0f, &configMerge, io.Fonts->GetGlyphRangesKorean());
 
-	if (boost::filesystem::exists(p / "Fonts" / "consolab.ttf"))
-		largeFont = io.Fonts->AddFontFromFileTTF((p / "Fonts" / "consolab.ttf").string().c_str(), 25.0f, &config, io.Fonts->GetGlyphRangesDefault());
+	// DX9 error problem..
+	//if (boost::filesystem::exists(p / "Fonts" / "consolab.ttf"))
+	//	largeFont = io.Fonts->AddFontFromFileTTF((p / "Fonts" / "consolab.ttf").string().c_str(), 25.0f, &config, io.Fonts->GetGlyphRangesDefault());
+
+	if (initialized)
+		return true;
 
 	dealerTable.columns.push_back(Table::Column("", "Job", (overlay_texture != nullptr)? 30: 20, 0, ImVec2(0.5f, 0.5f)));
 	dealerTable.columns.push_back(Table::Column("Name", "name", 0, 1, ImVec2(0.0f, 0.5f)));
@@ -366,25 +434,25 @@ extern "C" int ModInit(ImGuiContext* context)
 	dealerTable.columns.push_back(Table::Column("Death", "deaths", 40, 0, ImVec2(1.0f, 0.5f)));
 
 	// Color category
-	color_category_map["Tanker"].push_back("Pld");
-	color_category_map["Tanker"].push_back("Gld");
-	color_category_map["Tanker"].push_back("War");
-	color_category_map["Tanker"].push_back("Mrd");
-	color_category_map["Tanker"].push_back("Drk");
+	color_category_map["Tank"].push_back("Pld");
+	color_category_map["Tank"].push_back("Gld");
+	color_category_map["Tank"].push_back("War");
+	color_category_map["Tank"].push_back("Mrd");
+	color_category_map["Tank"].push_back("Drk");
 
-	color_category_map["Attacker"].push_back("Mnk");
-	color_category_map["Attacker"].push_back("Pgl");
-	color_category_map["Attacker"].push_back("Drg");
-	color_category_map["Attacker"].push_back("Lnc");
-	color_category_map["Attacker"].push_back("Nin");
-	color_category_map["Attacker"].push_back("Rog");
-	color_category_map["Attacker"].push_back("Brd");
-	color_category_map["Attacker"].push_back("Arc");
-	color_category_map["Attacker"].push_back("Mch");
-	color_category_map["Attacker"].push_back("Blm");
-	color_category_map["Attacker"].push_back("Thm");
-	color_category_map["Attacker"].push_back("Smn");
-	color_category_map["Attacker"].push_back("Acn");
+	color_category_map["DPS"].push_back("Mnk");
+	color_category_map["DPS"].push_back("Pgl");
+	color_category_map["DPS"].push_back("Drg");
+	color_category_map["DPS"].push_back("Lnc");
+	color_category_map["DPS"].push_back("Nin");
+	color_category_map["DPS"].push_back("Rog");
+	color_category_map["DPS"].push_back("Brd");
+	color_category_map["DPS"].push_back("Arc");
+	color_category_map["DPS"].push_back("Mch");
+	color_category_map["DPS"].push_back("Blm");
+	color_category_map["DPS"].push_back("Thm");
+	color_category_map["DPS"].push_back("Smn");
+	color_category_map["DPS"].push_back("Acn");
 
 	color_category_map["Healer"].push_back("Whm");
 	color_category_map["Healer"].push_back("Cnj");
@@ -462,9 +530,9 @@ extern "C" int ModInit(ImGuiContext* context)
 	color_map["GraphText"] = htmlCodeToImVec4("ffffff");
 	color_map["ToolbarBackground"] = htmlCodeToImVec4("999999");
 	
-	color_map["Attacker"] = htmlCodeToImVec4("ff0000");
+	color_map["DPS"] = htmlCodeToImVec4("ff0000");
 	color_map["Healer"]   = htmlCodeToImVec4("00ff00");
-	color_map["Tanker"]   = htmlCodeToImVec4("0000ff");
+	color_map["Tank"]   = htmlCodeToImVec4("0000ff");
 
 	color_map["Pld"] = htmlCodeToImVec4("7B9AA2");
 	color_map["Gld"] = htmlCodeToImVec4("7B9AA2");
@@ -630,6 +698,8 @@ extern "C" int ModInit(ImGuiContext* context)
 		{
 		}
 	}
+	initialized = true;
+ 
 	websocketThread();
 	return 0;
 }
@@ -782,80 +852,22 @@ void RenderTableRow(Table& table, int row, int height)
 		if (table.maxValue == 0.0)
 			table.maxValue = 1.0;
 		float progress = atof(progressStr.c_str()) / table.maxValue;
-
-		ImVec4 progressColor = ImVec4(0, 0, 0, 1);
-		if (jobStr.empty())
-		{
-			std::string jobStrAlter;
-			typedef std::vector< std::string > split_vector_type;
-			split_vector_type splitVec; // #2: Search for tokens
-			boost::split(splitVec, nameStr, boost::is_any_of("()"), boost::token_compress_on);
-			if (splitVec.size() >= 1)
-			{
-				boost::trim(splitVec[0]);
-				auto i = name_to_job_map.find(splitVec[0]);
-				if (i != name_to_job_map.end())
-				{
-					jobStr = i->second;
-				}
-				else if(splitVec.size() > 1)
-				{
-					jobStr = default_pet_job;
-				}
-			}
-		}
-
-		ColorMapType::iterator ji;
-		if ((ji = color_map.find(jobStr)) != color_map.end())
-		{
-			progressColor = ji->second;
-		}
-		else
-		{
-			progressColor = color_map["etc"];
-		}
-
-		// Like YOU or else
-		if ((ji = color_map.find(nameStr)) != color_map.end())
-		{
-			progressColor = ji->second;
-		}
-		else
-		{
-			progressColor = color_map["etc"];
-		}
+		ImVec4 progressColor = table.rows[i].color != nullptr ? *table.rows[i].color : color_map["etc"];
 
 		progressColor.w = graph_opacity * global_opacity;
 		const ImGuiStyle& style = ImGui::GetStyle();
 		ImVec2 winpos = ImGui::GetWindowPos();
 		ImVec2 pos = ImGui::GetCursorPos();
 		pos = window->DC.CursorPos;
-		ImRect bb(ImVec2(pos.x, pos.y),
-			ImVec2(pos.x + ImGui::GetWindowSize().x, pos.y + height));
 
-		//ImGui::RenderFrame(bb.Min, bb.Max, ImGui::GetColorU32(ImVec4(0.5, 0.5, 0.5, 0.0)), true, style.FrameRounding);
-		ImRect bb2(pos, ImVec2(pos.x + ImGui::GetWindowSize().x * progress, pos.y + height));
-		//ImGui::RenderFrame(bb2.Min, bb2.Max, ImGui::GetColorU32(progressColor), true, style.FrameRounding);
-
-		Image& left = overlay_images["left"];
 		Image& center = overlay_images["center"];
-		Image& right = overlay_images["right"];
 
 		{
-			ImVec2 p = pos;
-			p.x += table.columns[1].offset;
-			ImRect bb(ImVec2(p.x, pos.y), ImVec2(p.x + left.width, pos.y + height));
-			int length = (ImGui::GetWindowSize().x - left.width - right.width) * progress;
-
-			ImRect bb2(ImVec2(bb.Min.x + left.width, pos.y), ImVec2(bb.Min.x + left.width + length, pos.y + height));
-			ImRect bb3(ImVec2(bb.Min.x + left.width + length, pos.y), ImVec2(bb.Min.x + left.width + length + right.width, pos.y + height));
-
+			int length = (ImGui::GetWindowSize().x) * progress;
+			ImRect bb(ImVec2(pos.x, pos.y),
+				ImVec2(pos.x + length, pos.y + height));
 			window->DrawList->AddImage(overlay_texture, bb.Min, ImVec2(bb.Max.x, pos.y + height),
-				left.uv0, left.uv1, ImGui::GetColorU32(progressColor));
-			window->DrawList->AddImage(overlay_texture, bb2.Min, ImVec2(bb2.Max.x, pos.y + height),
 				center.uv0, center.uv1, ImGui::GetColorU32(progressColor));
-			window->DrawList->AddImage(overlay_texture, bb3.Min, ImVec2(bb3.Max.x, pos.y + height),
-				right.uv0, right.uv1, ImGui::GetColorU32(progressColor));
 		}
 		//ImGui::RenderFrame(bb.Min, bb.Max, ImGui::GetColorU32(ImVec4(0.5, 0.5, 0.5, 0.0)), true, style.FrameRounding);
 		//ImRect bb2(pos, ImVec2(pos.x + ImGui::GetWindowSize().x * progress, pos.y + height));
@@ -900,7 +912,11 @@ void RenderTableRow(Table& table, int row, int height)
 				ImGui::PopStyleColor();
 			}
 		}
-		ImGui::NewLine();
+		{
+			ImVec2 pos = ImGui::GetCursorPos();
+			ImGui::SetCursorPos(ImVec2(pos.x, pos.y + height));
+			ImGui::NewLine();
+		}
 	}
 	ImGui::SetCursorPos(ImVec2(0, base + height));
 }
@@ -910,10 +926,10 @@ void RenderTable(Table& table)
 	const ImGuiStyle& style = ImGui::GetStyle();
 	int windowWidth = ImGui::GetWindowSize().x - style.ItemInnerSpacing.x * 2.0f - 10;
 	int column_max = table.columns.size();
-	table.UpdateColumnWidth(windowWidth, column_max);
+	const int height = 20 * ImGui::GetCurrentWindow()->FontWindowScale;
+	table.UpdateColumnWidth(windowWidth, height, column_max);
 
 	ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(color_map["GraphText"], text_opacity * global_opacity));
-	const int height = 20 * ImGui::GetCurrentWindow()->FontWindowScale;
 	RenderTableColumnHeader(table, height);
 
 	ImGui::Separator();
@@ -956,8 +972,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 					width = table.columns[index].size;
 					align = table.columns[index].align.x;
 				}
-				ImGui::SameLine();
-				if (ImGui::Button("Up"))
+				if (ImGui::Button("<-"))
 				{
 					if (index > 3)
 					{
@@ -974,7 +989,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 					}
 				}
 				ImGui::SameLine();
-				if (ImGui::Button("Down"))
+				if (ImGui::Button("->"))
 				{
 					if (index + 1 < table.columns.size())
 					{
@@ -1262,37 +1277,23 @@ extern "C" int ModRender(ImGuiContext* context)
 				ImVec2 winpos = ImGui::GetWindowPos();
 				ImVec2 pos = ImGui::GetCursorPos();
 				pos = window->DC.CursorPos;
-				ImRect bb(ImVec2(pos.x-style.ItemInnerSpacing.x,pos.y), ImVec2(pos.x + winsize.x, pos.y + 40));
+				ImRect bb(ImVec2(pos.x-style.ItemInnerSpacing.x,pos.y), ImVec2(pos.x + winsize.x, pos.y + 20));
 				ImGui::RenderFrame(bb.Min, bb.Max, ImGui::GetColorU32(ColorWithAlpha(color_map["ToolbarBackground"], toolbar_opacity * global_opacity)), true, 0);
 
 				// title
 				int windowWidth = ImGui::GetWindowSize().x - style.ItemInnerSpacing.x * 2.0f;
 
+				// refer Falgern. because largeFont problem...
 				ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(color_map["TitleText"], text_opacity * global_opacity));
-				ImGui::Columns(3, "##TitleBar", false);
+				std::string duration_short = "- " + duration;
+				ImGui::Text("%s - %s | Total DPS : %s Total HPS : %s", zone.c_str(), duration.c_str(), rdps.c_str(), rhps.c_str());
+
+				ImGui::SameLine(ImGui::GetWindowWidth() - 25);
 				Image& cog = overlay_images["cog"];
-				if (ImGui::ImageButton(overlay_texture, ImVec2(65 / 2, 60 / 2), cog.uv0, cog.uv1, -1, ImVec4(0, 0, 0, 0), ColorWithAlpha(color_map["TitleText"], text_opacity * global_opacity)))
+				if (ImGui::ImageButton(overlay_texture, ImVec2(27 / 2, 25 / 2), cog.uv0, cog.uv1, -1, ImVec4(0, 0, 0, 0), ColorWithAlpha(color_map["TitleText"], text_opacity * global_opacity)))
 				{
 					show_preferences = !show_preferences;
-				}
-				ImGui::PushFont(largeFont);
-				ImGui::NextColumn();
-				ImGui::SetColumnOffset(1, 50);
-				std::string duration_short = duration;
-				if (duration_short.size() > 5)
-				{
-					duration_short = duration.substr(duration_short.size() - 5);
-				}
-				ImGui::Text(duration_short.c_str());
-				ImGui::PopFont();
-				ImGui::NextColumn();
-				ImGui::SetColumnOffset(2, 150);
-				ImGui::Text(zone.c_str());
-				//ImGui::Text(("RD : " + rdps).c_str());
-				//ImGui::SameLine();
-				//ImGui::Text(("RH : " + rhps).c_str());
-				ImGui::NextColumn();
-				ImGui::Columns(1);
+				} 
 				ImGui::PopStyleColor();
 			}
 

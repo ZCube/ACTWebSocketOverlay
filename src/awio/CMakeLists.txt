@@ -31,6 +31,7 @@ TARGET_LINK_LIBRARIES(ActWebSocketImguiOverlay
 
 include_directories(
 	${IMGUI_DIRECTORY}/examples/directx11_example
+	${IMGUI_DIRECTORY}/examples/directx9_example
 )
 
 ADD_EXECUTABLE(test_main
