@@ -1309,7 +1309,15 @@ extern "C" int ModRender(ImGuiContext* context)
 
 			if (show_preferences)
 			{
+				auto &io = ImGui::GetIO();
 				Preference(context, &show_preferences);
+			}
+			else
+			{
+				auto &io = ImGui::GetIO();
+				// ignore Keyboard without preferences.
+				// TODO: reshade menu check.
+				io.WantCaptureKeyboard = false;
 			}
 			mutex.unlock();
 		}
