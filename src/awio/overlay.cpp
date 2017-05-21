@@ -23,7 +23,6 @@
 
 static boost::mutex mutex;
 static bool show_name = true;
-static int column_max = 3;
 
 static char websocket_port[256] = { 0, };
 static void* overlay_texture = nullptr;
@@ -150,6 +149,7 @@ static float& background_opacity = opacity_map["Background"];
 static float& title_background_opacity = opacity_map["TitleBackground"];
 static float& toolbar_opacity = opacity_map["Toolbar"];
 static float& graph_opacity = opacity_map["Graph"];
+static std::string default_pet_job;
 
 ImVec4 htmlCodeToImVec4(const std::string hex)
 {
@@ -511,6 +511,8 @@ extern "C" int ModInit(ImGuiContext* context)
 	color_map["TitleBackgroundActive"] = ImGui::GetStyle().Colors[ImGuiCol_TitleBgActive];
 	color_map["TitleBackgroundCollapsed"] = ImGui::GetStyle().Colors[ImGuiCol_TitleBgCollapsed];
 
+	default_pet_job = "chocobo";
+
 	//opacity
 	global_opacity = 1.0f;
 	title_background_opacity = 1.0f;
@@ -583,7 +585,7 @@ extern "C" int ModInit(ImGuiContext* context)
 			if (r.parse(fin, setting))
 			{
 				show_name = setting.get("show_name", true).asBool();
-				column_max = setting.get("column_max", Json::Int(3)).asInt();
+				default_pet_job = setting.get("default_pet_job", default_pet_job).asString();
 				strcpy(websocket_port, setting.get("websocket_port", "10501").asCString());
 				Json::Value color = setting.get("color_map", Json::Value());
 				for (auto i = color.begin(); i != color.end(); ++i)
@@ -641,8 +643,8 @@ void SaveSettings()
 	Json::StyledWriter w;
 	Json::Value setting;
 	setting["show_name"] = show_name;
-	setting["column_max"] = column_max;
 	setting["websocket_port"] = websocket_port;
+	setting["default_pet_job"] = default_pet_job;
 
 	Json::Value nameToJob;
 	for (auto i = name_to_job_map.begin();
@@ -795,6 +797,10 @@ void RenderTableRow(Table& table, int row, int height)
 				if (i != name_to_job_map.end())
 				{
 					jobStr = i->second;
+				}
+				else if(splitVec.size() > 1)
+				{
+					jobStr = default_pet_job;
 				}
 			}
 		}
@@ -1230,8 +1236,6 @@ extern "C" int ModRender(ImGuiContext* context)
 		ImGui::SetCurrentContext(context);
 
 		{
-			
-			int next_column_max = column_max;
 			ImGui::PushStyleColor(ImGuiCol_WindowBg, ColorWithAlpha(color_map["Background"], background_opacity * global_opacity));
 			ImGui::PushStyleColor(ImGuiCol_TitleBg, ColorWithAlpha(color_map["TitleBackground"], title_background_opacity * global_opacity));
 			ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ColorWithAlpha(color_map["TitleBackgroundActive"], title_background_opacity * global_opacity));
@@ -1306,7 +1310,6 @@ extern "C" int ModRender(ImGuiContext* context)
 				Preference(context, &show_preferences);
 			}
 			mutex.unlock();
-			column_max = next_column_max;
 		}
 
 	}
