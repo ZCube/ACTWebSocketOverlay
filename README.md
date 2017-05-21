@@ -11,10 +11,11 @@ A Modified version of ActWebSocket overlay utility based on ImGui
 
 
 
-## Additional Features
-Minimalistic styling.
-Clickthrough
-Custom fonts
+## Additional Features  
+
+* Minimalistic styling.  
+* Clickthrough  
+* Custom fonts  
 
 
 ## Font
