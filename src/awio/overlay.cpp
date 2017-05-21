@@ -793,6 +793,7 @@ void RenderTableRow(Table& table, int row, int height)
 	int base = ImGui::GetCursorPosY();
 	ImGui::SetCursorPos(ImVec2(0, base));
 
+
 	int i = row;
 	{
 		std::string& jobStr = table.values[i][0];
@@ -1287,9 +1288,21 @@ extern "C" int ModRender(ImGuiContext* context)
 			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0);
 			ImGui::Begin("DPSMeter", nullptr, ImVec2(630, 300), -1,
 				//ImGuiWindowFlags_NoTitleBar);
-				NULL);
-			mutex.lock();
+				ImGuiWindowFlags_NoInputs);
+			ImGuiWindow* window = ImGui::GetCurrentWindow();
+			if (!show_preferences)
+			{
+				window->Flags = ImGuiWindowFlags_NoInputs;
+			}
+			else
+			{
+				window->Flags = ImGuiWindowFlags_ShowBorders;
+			}
+			//window->Flags = ImGuiWindowFlags_MenuBar;
 
+
+			mutex.lock();
+			
 
 			std::string duration_short = "- " + duration;
 			ImGui::Text(zone.c_str());
@@ -1304,10 +1317,14 @@ extern "C" int ModRender(ImGuiContext* context)
 
 			ImGui::SameLine(ImGui::GetWindowWidth() - 25);
 			Image& cog = overlay_images["cog"];
+			ImGui::BeginChild("cogbutton", ImVec2(27, 25), false, ImGuiWindowFlags_NoTitleBar);
+
 			if (ImGui::ImageButton(overlay_texture, ImVec2(27 / 2, 25 / 2), cog.uv0, cog.uv1, -1, ImVec4(0, 0, 0, 0), ColorWithAlpha(color_map["TitleText"], text_opacity * global_opacity)))
 			{
 				show_preferences = !show_preferences;
 			}
+
+			ImGui::EndChild();
 
 			RenderTable(dealerTable);
 
