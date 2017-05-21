@@ -842,10 +842,6 @@ void RenderTableRow(Table& table, int row, int height)
 		{	
 			progressColor = ji->second;
 		}
-		else
-		{
-			progressColor = color_map["etc"];
-		}
 
 		progressColor.w = graph_opacity * global_opacity;
 		const ImGuiStyle& style = ImGui::GetStyle();
