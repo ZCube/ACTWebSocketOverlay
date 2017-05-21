@@ -32,6 +32,7 @@ static int overlay_texture_width = 0, overlay_texture_height = 0, overlay_textur
 static ImFont* largeFont;
 static ImFont* korFont = nullptr;
 static ImFont* japFont = nullptr;
+static ImGuiWindowFlags window_flags = 0;
 
 class Image
 {
@@ -1288,15 +1289,19 @@ extern "C" int ModRender(ImGuiContext* context)
 			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0);
 			ImGui::Begin("DPSMeter", nullptr, ImVec2(630, 300), -1,
 				//ImGuiWindowFlags_NoTitleBar);
-				ImGuiWindowFlags_NoInputs);
+				NULL);
 			ImGuiWindow* window = ImGui::GetCurrentWindow();
-			if (!show_preferences)
+			if (!show_preferences && !window->Collapsed)
 			{
-				window->Flags = ImGuiWindowFlags_NoInputs;
+				window_flags = 0;
+				window_flags |= ImGuiWindowFlags_NoInputs;
+				window->Flags = window_flags;
 			}
 			else
 			{
-				window->Flags = ImGuiWindowFlags_ShowBorders;
+				window_flags = 0;
+				window_flags |= ImGuiWindowFlags_ShowBorders;
+				window->Flags = window_flags;
 			}
 			//window->Flags = ImGuiWindowFlags_MenuBar;
 
