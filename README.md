@@ -1,19 +1,15 @@
-# Important
-This is going to be a mess, you're better off grabbing the original by ZCube
-[ZCube/ACTWebSocketOverlay](https://github.com/ZCube/ACTWebSocketOverlay)
-
-
-
-
-# ActWebSocketOverlay
-ActWebSocket overlay utility based on ImGui
+# DPSMeter
+A Modified version of ActWebSocket overlay utility based on ImGui
 
 
 
 *ActWebSocket needed.
 
-## Screenshot
-![N|Solid](https://raw.githubusercontent.com/ZCube/ACTWebSocketOverlay/master/screenshot.png)
+## Screenshots
+![N|Solid](https://raw.githubusercontent.com/Falgern/ACTWebSocketOverlay/master/screenshot2.png)
+![N|Solid](https://raw.githubusercontent.com/Falgern/ACTWebSocketOverlay/master/screenshot3.png)
+
+
 
 ## Font
 * Windows/Fonts Check.
@@ -41,6 +37,8 @@ Library | Description
 [Manual Google Presentation](https://docs.google.com/presentation/d/19uWnxraScX6bXAaX3My4YcTMnHZPDmXxNpg8QXjCeDY/pub?start=false&loop=false&delayms=3000)
 
 ## Release
-[Latest](https://www.dropbox.com/s/rcypgitu9icz7kp/ACTWebSocketOverlay_latest.zip?dl=1)
-[Release](https://github.com/ZCube/ActWebSocketOverlay/releases)
+[Release](https://github.com/Falgern/ActWebSocketOverlay/releases)
 
+
+
+[ZCube/ACTWebSocketOverlay](https://github.com/ZCube/ACTWebSocketOverlay)
