@@ -31,6 +31,7 @@ TARGET_LINK_LIBRARIES(ActWebSocketImguiOverlay
 
 include_directories(
 	${IMGUI_DIRECTORY}/examples/directx11_example
+	${IMGUI_DIRECTORY}/examples/directx9_example
 )
 
 ADD_EXECUTABLE(test_main
@@ -57,4 +58,29 @@ TARGET_LINK_LIBRARIES(test_main
 	d3d11.lib
 	d3dcompiler.lib
 	dxgi.lib
+)
+
+ADD_EXECUTABLE(test_main_dx9
+	${IMGUI_DIRECTORY}/imconfig.h
+	${IMGUI_DIRECTORY}/imgui.cpp
+	${IMGUI_DIRECTORY}/imgui.h
+	${IMGUI_DIRECTORY}/imgui_demo.cpp
+	${IMGUI_DIRECTORY}/imgui_draw.cpp
+	${IMGUI_DIRECTORY}/examples/directx9_example/imgui_impl_dx9.h
+	${IMGUI_DIRECTORY}/examples/directx9_example/imgui_impl_dx9.cpp
+	${IMGUI_DIRECTORY}/imgui_internal.h
+	main_dx9.cpp
+	Resource.rc
+	resource.h
+	${IMGUI_DIRECTORY}/stb_rect_pack.h
+	${IMGUI_DIRECTORY}/stb_textedit.h
+	${IMGUI_DIRECTORY}/stb_truetype.h
+)
+
+TARGET_LINK_LIBRARIES(test_main_dx9
+	jsoncpp_lib_static
+	${Boost_LIBRARIES}
+	ActWebSocketImguiOverlay
+	d3d9.lib
+	d3dcompiler.lib
 )

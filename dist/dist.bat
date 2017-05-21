@@ -20,7 +20,8 @@ xcopy /hrkysd "external\reshade\bin\x64\Release\ReShade64.dll" "dist\temp\ReShad
 if %errorlevel% neq 0 exit /b %errorlevel%
 xcopy /hrkysd "external\reshade\bin\Win32\Release\ReShade32.dll" "dist\temp\ReShade32.*"
 if %errorlevel% neq 0 exit /b %errorlevel%
-
+xcopy /hrkysd "resource\overlay_atlas.*" "dist\temp\overlay_atlas.*"
+if %errorlevel% neq 0 exit /b %errorlevel%
 
 xcopy /hrkysd "bin\64\Release\ActWebSocketImguiOverlay.dll" "dist\ffxiv\ffxiv_dx11_mod.*"
 if %errorlevel% neq 0 exit /b %errorlevel%
@@ -59,4 +60,6 @@ if %errorlevel% neq 0 exit /b %errorlevel%
 xcopy /hrkysd  "%CD%\ACTWebSocketOverlay_latest.zip" /exclude:exclude_files.txt "%dropBoxRoot%\share"
 if %errorlevel% neq 0 exit /b %errorlevel%
 xcopy /hrkysd  "%CD%\ACTWebSocketOverlay_ffxiv_latest.zip" /exclude:exclude_files.txt "%dropBoxRoot%\share"
+if %errorlevel% neq 0 exit /b %errorlevel%
+copy /y "%CD%\..\src\version" "%dropBoxRoot%\share\ACTWebSocketOverlay_version"
 if %errorlevel% neq 0 exit /b %errorlevel%

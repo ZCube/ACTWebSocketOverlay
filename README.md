@@ -49,4 +49,10 @@ Library | Description
 
 
 
+
 [ZCube/ACTWebSocketOverlay](https://github.com/ZCube/ACTWebSocketOverlay)
+
+##
+
+NO WARRANTY. ANY USE OF THE SOFTWARE IS ENTIRELY AT YOUR OWN RISK.
+
