@@ -1320,9 +1320,6 @@ extern "C" int ModRender(ImGuiContext* context)
 			ImGuiWindow* window = ImGui::GetCurrentWindow();
 			if (!show_preferences && !window->Collapsed)
 			{
-				ImGui::PushStyleColor(ImGuiCol_ResizeGrip, ColorWithAlpha(ImVec4(0.0, 0.0, 0.0, 0.0f), 0.0f));
-				ImGui::PushStyleColor(ImGuiCol_ResizeGripHovered, ColorWithAlpha(ImVec4(0.0, 0.0, 0.0, 0.0f), 0.0f));
-				ImGui::PushStyleColor(ImGuiCol_ResizeGripActive, ColorWithAlpha(ImVec4(0.0, 0.0, 0.0, 0.0f), 0.0f));
 				window_flags = 0;
 				window_flags |= ImGuiWindowFlags_NoInputs;
 				window->Flags = window_flags;
@@ -1391,12 +1388,14 @@ extern "C" int ModRender(ImGuiContext* context)
 				{
 					show_preferences = !show_preferences;
 				}
-
+				
 				ImGui::PopStyleColor();
 				*/
+				
 			}
 
 			ImGui::EndChild();
+			ImGui::PopStyleColor();
 
 			RenderTable(dealerTable);
 
@@ -1410,15 +1409,15 @@ extern "C" int ModRender(ImGuiContext* context)
 
 			if (show_preferences)
 			{
-				auto &io = ImGui::GetIO();
+				//auto &io = ImGui::GetIO();
 				Preference(context, &show_preferences);
 			}
 			else
 			{
-				auto &io = ImGui::GetIO();
+				//auto &io = ImGui::GetIO();
 				// ignore Keyboard without preferences.
 				// TODO: reshade menu check.
-				io.WantCaptureKeyboard = false;
+				//io.WantCaptureKeyboard = false;
 			}
 			mutex.unlock();
 		}
