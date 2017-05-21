@@ -30,7 +30,8 @@ xcopy /hrkysd "external\reshade\bin\x64\Release\ReShade64.dll" "dist\ffxiv\dxgi.
 if %errorlevel% neq 0 exit /b %errorlevel%
 xcopy /hrkysd "external\reshade\bin\Win32\Release\ReShade32.dll" "dist\ffxiv\d3d9.*"
 if %errorlevel% neq 0 exit /b %errorlevel%
-
+xcopy /hrkysd "resource\overlay_atlas.*" "dist\ffxiv\overlay_atlas.*"
+if %errorlevel% neq 0 exit /b %errorlevel%
 popd
 
 if exist ACTWebSocketOverlay_latest.zip del ACTWebSocketOverlay_latest.zip

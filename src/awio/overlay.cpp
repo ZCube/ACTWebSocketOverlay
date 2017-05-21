@@ -57,7 +57,7 @@ public:
 	class Column
 	{
 	public:
-		Column(std::string title_ = "", std::string index_ = "", int size_ = 0, int sizeWeight_ = 0, ImVec2 align_ = ImVec2(0.5f,0.5f), bool visible_ = true)
+		Column(std::string title_ = "", std::string index_ = "", int size_ = 0, int sizeWeight_ = 0, ImVec2 align_ = ImVec2(0.5f, 0.5f), bool visible_ = true)
 			: Title(title_)
 			, index(index_)
 			, size(size_)
@@ -103,14 +103,14 @@ public:
 			}
 			else
 			{
-				columnSizeFixed += columns[i].size + column_margin*2;
+				columnSizeFixed += columns[i].size + column_margin * 2;
 			}
 		}
 		int offset = 0;
 		for (int i = 0; i < column_max; ++i) {
 			if (columns[i].sizeWeight != 0)
 			{
-				columns[i].size = std::max(0,((width - columnSizeFixed) * columns[i].sizeWeight) / columnSizeWeightSum);
+				columns[i].size = std::max(0, ((width - columnSizeFixed) * columns[i].sizeWeight) / columnSizeWeightSum);
 			}
 			columns[i].offset = offset + column_margin;
 			offset += columns[i].size + column_margin;
@@ -167,7 +167,7 @@ const std::string ImVec4TohtmlCode(ImVec4 val)
 	dat[1] = (unsigned char)std::min(255, std::max(0, (int)(val.y * 255.0f)));
 	dat[2] = (unsigned char)std::min(255, std::max(0, (int)(val.z * 255.0f)));
 	std::string ret;
-	boost::algorithm::hex(dat, dat+3, std::back_inserter(ret));
+	boost::algorithm::hex(dat, dat + 3, std::back_inserter(ret));
 	return ret;
 }
 
@@ -317,10 +317,10 @@ extern "C" int ModInit(ImGuiContext* context)
 					im.y = (*i)["top"].asInt();
 					im.width = (*i)["width"].asInt();
 					im.height = (*i)["height"].asInt();
-					im.uv0 = ImVec2(((float)im.x+0.5f) / (float)overlay_texture_width,
-						((float)im.y+0.5f) / (float)overlay_texture_width);
-					im.uv1 = ImVec2((float)(im.x + im.width-1 + 0.5f) / (float)overlay_texture_width,
-						(float)(im.y + im.height-1 + 0.5f) / (float)overlay_texture_width);
+					im.uv0 = ImVec2(((float)im.x + 0.5f) / (float)overlay_texture_width,
+						((float)im.y + 0.5f) / (float)overlay_texture_width);
+					im.uv1 = ImVec2((float)(im.x + im.width - 1 + 0.5f) / (float)overlay_texture_width,
+						(float)(im.y + im.height - 1 + 0.5f) / (float)overlay_texture_width);
 					overlay_images[name] = im;
 				}
 			}
@@ -367,7 +367,7 @@ extern "C" int ModInit(ImGuiContext* context)
 
 
 
-	dealerTable.columns.push_back(Table::Column("", "Job", (overlay_texture != nullptr)? 30: 20, 0, ImVec2(0.5f, 0.5f)));
+	dealerTable.columns.push_back(Table::Column("", "Job", (overlay_texture != nullptr) ? 30 : 20, 0, ImVec2(0.5f, 0.5f)));
 	dealerTable.columns.push_back(Table::Column("Name", "name", 0, 2, ImVec2(0.1f, 0.5f)));
 	dealerTable.columns.push_back(Table::Column("D%", "damage%", 30, 0, ImVec2(0.2f, 0.5f)));
 	// modify
@@ -419,7 +419,7 @@ extern "C" int ModInit(ImGuiContext* context)
 	//color_category_map["UI"].push_back("ToolbarBackground");
 
 	// name to job map
-	
+
 	//rook
 	name_to_job_map[u8"auto-tourelle tour"] =
 		name_to_job_map[u8"selbstschuss-gyrocopter läufer"] =
@@ -476,10 +476,10 @@ extern "C" int ModInit(ImGuiContext* context)
 	color_map["TitleText"] = htmlCodeToImVec4("ffffff");
 	color_map["GraphText"] = htmlCodeToImVec4("ffffff");
 	//color_map["ToolbarBackground"] = htmlCodeToImVec4("999999");
-	
+
 	color_map["Attacker"] = htmlCodeToImVec4("ff0000");
-	color_map["Healer"]   = htmlCodeToImVec4("00ff00");
-	color_map["Tank"]   = htmlCodeToImVec4("0000ff");
+	color_map["Healer"] = htmlCodeToImVec4("00ff00");
+	color_map["Tank"] = htmlCodeToImVec4("0000ff");
 
 	color_map["Pld"] = htmlCodeToImVec4("A8D2E6");
 	color_map["Gld"] = htmlCodeToImVec4("A8D2E6");
@@ -631,7 +631,7 @@ extern "C" int ModInit(ImGuiContext* context)
 				}
 				Json::Value dealer_columns = setting.get("dealer_columns", Json::nullValue);
 				std::string dealer_columns_str = "dealer_columns";
-				if (setting.find(&*dealer_columns_str.begin(), &*dealer_columns_str.begin()+ dealer_columns_str.size()) != nullptr)
+				if (setting.find(&*dealer_columns_str.begin(), &*dealer_columns_str.begin() + dealer_columns_str.size()) != nullptr)
 				{
 					dealerTable.columns.resize(3);
 					for (auto i = dealer_columns.begin();
@@ -839,7 +839,7 @@ void RenderTableRow(Table& table, int row, int height)
 
 		// Like YOU or else
 		if ((ji = color_map.find(nameStr)) != color_map.end())
-		{	
+		{
 			progressColor = ji->second;
 		}
 
@@ -926,12 +926,14 @@ void RenderTableRow(Table& table, int row, int height)
 void RenderTable(Table& table)
 {
 	const ImGuiStyle& style = ImGui::GetStyle();
+	const ImGuiIO& io = ImGui::GetIO();
 	int windowWidth = ImGui::GetWindowSize().x - style.ItemInnerSpacing.x * 2.0f - 10;
 	int column_max = table.columns.size();
 	table.UpdateColumnWidth(windowWidth, column_max);
 
 	ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(color_map["GraphText"], text_opacity * global_opacity));
-	const int height = 20 * ImGui::GetCurrentWindow()->FontWindowScale;
+	//Global font scaling.
+	const int height = 20 * io.FontGlobalScale;
 	RenderTableColumnHeader(table, height);
 
 	ImGui::Separator();
@@ -1272,7 +1274,7 @@ extern "C" int ModRender(ImGuiContext* context)
 		ImGui::SetCurrentContext(context);
 
 		{
-			
+
 			int next_column_max = column_max;
 			ImGui::PushStyleColor(ImGuiCol_WindowBg, ColorWithAlpha(color_map["Background"], background_opacity * global_opacity));
 			ImGui::PushStyleColor(ImGuiCol_TitleBg, ColorWithAlpha(color_map["TitleBackground"], title_background_opacity * global_opacity));
@@ -1289,9 +1291,13 @@ extern "C" int ModRender(ImGuiContext* context)
 			ImGuiWindow* window = ImGui::GetCurrentWindow();
 			if (!show_preferences && !window->Collapsed)
 			{
+				ImGui::PushStyleColor(ImGuiCol_ResizeGrip, ColorWithAlpha(ImVec4(0.0, 0.0, 0.0, 0.0f), 0.0f));
+				ImGui::PushStyleColor(ImGuiCol_ResizeGripHovered, ColorWithAlpha(ImVec4(0.0, 0.0, 0.0, 0.0f), 0.0f));
+				ImGui::PushStyleColor(ImGuiCol_ResizeGripActive, ColorWithAlpha(ImVec4(0.0, 0.0, 0.0, 0.0f), 0.0f));
 				window_flags = 0;
 				window_flags |= ImGuiWindowFlags_NoInputs;
 				window->Flags = window_flags;
+
 			}
 			else
 			{
@@ -1303,8 +1309,8 @@ extern "C" int ModRender(ImGuiContext* context)
 
 
 			mutex.lock();
-			
 
+			// Moved to top line
 			std::string duration_short = "- " + duration;
 			ImGui::Text(zone.c_str());
 			ImGui::SameLine();
@@ -1319,7 +1325,7 @@ extern "C" int ModRender(ImGuiContext* context)
 			ImGui::SameLine(ImGui::GetWindowWidth() - 25);
 			Image& cog = overlay_images["cog"];
 			ImGui::BeginChild("cogbutton", ImVec2(27, 25), false, ImGuiWindowFlags_NoTitleBar);
-
+			
 			if (ImGui::ImageButton(overlay_texture, ImVec2(27 / 2, 25 / 2), cog.uv0, cog.uv1, -1, ImVec4(0, 0, 0, 0), ColorWithAlpha(color_map["TitleText"], text_opacity * global_opacity)))
 			{
 				show_preferences = !show_preferences;
@@ -1330,69 +1336,11 @@ extern "C" int ModRender(ImGuiContext* context)
 			RenderTable(dealerTable);
 
 
-			/*
-			ImGui::Separator();
-			{
-				const ImGuiStyle& style = ImGui::GetStyle();
-				ImGuiWindow* window = ImGui::GetCurrentWindow();
-				ImVec2 winsize = ImGui::GetWindowSize();
-				//ImGui::SetCursorPos(ImVec2(0, base + i * height));
-				ImVec2 winpos = ImGui::GetWindowPos();
-				ImVec2 pos = ImGui::GetCursorPos();
-				pos = window->DC.CursorPos;
-				//ImRect bb(ImVec2(pos.x-style.ItemInnerSpacing.x,pos.y), ImVec2(pos.x + winsize.x, pos.y + 40));
-				//ImGui::RenderFrame(bb.Min, bb.Max, ImGui::GetColorU32(ColorWithAlpha(color_map["ToolbarBackground"], toolbar_opacity * global_opacity)), true, 0);
-
-				// title
-				/*
-				int windowWidth = ImGui::GetWindowSize().x - style.ItemInnerSpacing.x * 2.0f;
-
-				ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(color_map["TitleText"], text_opacity * global_opacity));
-				ImGui::Columns(3, "##TitleBar", false);
-				*/
-				/*
-				Image& cog = overlay_images["cog"];
-				if (ImGui::ImageButton(overlay_texture, ImVec2(65 / 2, 60 / 2), cog.uv0, cog.uv1, -1, ImVec4(0, 0, 0, 0), ColorWithAlpha(color_map["TitleText"], text_opacity * global_opacity)))
-				{
-					show_preferences = !show_preferences;
-				}
-				ImGui::PushFont(largeFont);
-				ImGui::NextColumn();
-				*/
-				/*
-				
-				ImGui::SetColumnOffset(1, 50);
-				std::string duration_short = duration;
-				if (duration_short.size() > 5)
-				{
-					duration_short = duration.substr(duration_short.size() - 5);
-				}
-				ImGui::Text(duration_short.c_str());
-				ImGui::PopFont();
-				ImGui::NextColumn();
-				ImGui::SetColumnOffset(2, 150);
-				ImGui::Text(zone.c_str());
-				
-				
-				
-				
-				
-				//ImGui::Text(("RD : " + rdps).c_str());
-				//ImGui::SameLine();
-				//ImGui::Text(("RH : " + rhps).c_str());
-				
-				ImGui::NextColumn();
-				ImGui::Columns(1);
-				ImGui::PopStyleColor();
-				
-			}
-		*/
 
 
 
 
 			ImGui::End();
-			//ImGui::PopStyleVar();
 			ImGui::PopStyleColor(8);
 
 
