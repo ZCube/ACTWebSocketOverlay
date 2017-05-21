@@ -1004,7 +1004,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 				}
 				if (ImGui::Button("<-"))
 				{
-					if (index > 3)
+					if (index > 3 && index != NULL)
 					{
 						std::swap(table.columns[index], table.columns[index - 1]);
 						for (int j = 0; j < table.values.size(); ++j)
@@ -1021,7 +1021,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 				ImGui::SameLine();
 				if (ImGui::Button("->"))
 				{
-					if (index + 1 < table.columns.size())
+					if (index + 1 < table.columns.size() && index != NULL)
 					{
 						std::swap(table.columns[index], table.columns[index + 1]);
 						for (int j = 0; j < table.values.size(); ++j)
