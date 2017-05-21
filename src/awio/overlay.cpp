@@ -781,6 +781,7 @@ void RenderTableRow(Table& table, int row, int height)
 			table.maxValue = 1.0;
 		float progress = atof(progressStr.c_str()) / table.maxValue;
 
+		ImVec4 progressColor = ImVec4(0, 0, 0, 1);
 		if (jobStr.empty())
 		{
 			std::string jobStrAlter;
@@ -798,23 +799,18 @@ void RenderTableRow(Table& table, int row, int height)
 			}
 		}
 
-		if (!jobStr.empty())
-		{
-			ImVec4 progressColor = ImVec4(0, 0, 0, 1);
-			ColorMapType::iterator ji;
-			if ((ji = color_map.find(jobStr)) != color_map.end())
-			{
-				progressColor = ji->second;
-			}
-			else
-			{
-				progressColor = color_map["etc"];
-			}
-		}
-
-		ImVec4 progressColor = ImVec4(0, 0, 0, 1);
 		ColorMapType::iterator ji;
 		if ((ji = color_map.find(jobStr)) != color_map.end())
+		{
+			progressColor = ji->second;
+		}
+		else
+		{
+			progressColor = color_map["etc"];
+		}
+
+		// Like YOU or else
+		if ((ji = color_map.find(nameStr)) != color_map.end())
 		{
 			progressColor = ji->second;
 		}
