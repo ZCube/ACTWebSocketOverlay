@@ -774,6 +774,10 @@ extern "C" void ModTextureData(unsigned char** out_pixels, int* out_width, int* 
 extern "C" void ModSetTexture(void* texture)
 {
 	overlay_texture = texture;
+	if (texture == nullptr)
+	{
+		// TODO: deinit texture;
+	}
 }
 
 ImVec4 ColorWithAlpha(ImVec4 col, float alpha)
@@ -1271,36 +1275,43 @@ extern "C" int ModRender(ImGuiContext* context)
 
 			ImGui::Separator();
 			{
+				auto &io = ImGui::GetIO();
+				int height = 40 * io.FontGlobalScale;
 				const ImGuiStyle& style = ImGui::GetStyle();
 				ImGuiWindow* window = ImGui::GetCurrentWindow();
 				ImVec2 winsize = ImGui::GetWindowSize();
 				//ImGui::SetCursorPos(ImVec2(0, base + i * height));
 				ImVec2 winpos = ImGui::GetWindowPos();
 				ImVec2 pos = ImGui::GetCursorPos();
-				pos = window->DC.CursorPos;
-				ImRect bb(ImVec2(pos.x-style.ItemInnerSpacing.x,pos.y), ImVec2(pos.x + winsize.x, pos.y + 20));
-				ImGui::RenderFrame(bb.Min, bb.Max, ImGui::GetColorU32(ColorWithAlpha(color_map["ToolbarBackground"], toolbar_opacity * global_opacity)), true, 0);
+				pos = ImVec2(pos.x + winpos.x, pos.y + winpos.y - height);
+				//pos = window->DC.CursorPos;
+				int windowWidth = ImGui::GetWindowSize().x - style.ItemInnerSpacing.x * 2.0f;// -style.ScrollbarSize;
+				int windowHeight= ImGui::GetWindowSize().y - style.ItemInnerSpacing.y * 2.0f;// -style.ScrollbarSize;
+				ImRect bb(ImVec2(winpos.x, winpos.y + windowHeight - height), ImVec2(pos.x + windowWidth, winpos.y+ windowHeight));
+				ImGui::GetWindowDrawList()->AddRectFilled(bb.Min, bb.Max, ImGui::GetColorU32(ColorWithAlpha(color_map["ToolbarBackground"], toolbar_opacity * global_opacity)));
+				//ImGui::RenderFrame(bb.Min, bb.Max, , true, 0);
 
 				// title
-				int windowWidth = ImGui::GetWindowSize().x - style.ItemInnerSpacing.x * 2.0f;
 
-				// refer Falgern. because largeFont problem...
 				ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(color_map["TitleText"], text_opacity * global_opacity));
 				std::string duration_short = "- " + duration;
-				ImGui::Text("%s - %s | Total DPS : %s Total HPS : %s", zone.c_str(), duration.c_str(), rdps.c_str(), rhps.c_str());
 
-				ImGui::SameLine(ImGui::GetWindowWidth() - 25);
+				ImGui::SetCursorPos(ImVec2(style.ItemInnerSpacing.x, windowHeight - height+3*io.FontGlobalScale));
+				pos = ImGui::GetCursorPos();
+				ImGui::Text("%s - %s", zone.c_str(), duration.c_str(), rdps.c_str(), rhps.c_str());
+				ImGui::Text("RDPS : %s RHPS : %s", rdps.c_str(), rhps.c_str());
+				ImGui::SetCursorPos(ImVec2(windowWidth - 65 * io.FontGlobalScale / 2, pos.y));
 				Image& cog = overlay_images["cog"];
-				if (ImGui::ImageButton(overlay_texture, ImVec2(27 / 2, 25 / 2), cog.uv0, cog.uv1, -1, ImVec4(0, 0, 0, 0), ColorWithAlpha(color_map["TitleText"], text_opacity * global_opacity)))
+				if (ImGui::ImageButton(overlay_texture, ImVec2(65* io.FontGlobalScale / 2, 60 * io.FontGlobalScale / 2), cog.uv0, cog.uv1, -1, ImVec4(0, 0, 0, 0), ColorWithAlpha(color_map["TitleText"], text_opacity * global_opacity)))
 				{
 					show_preferences = !show_preferences;
-				} 
+				}
+
 				ImGui::PopStyleColor();
 			}
 
 
 			ImGui::Separator();
-
 
 			ImGui::End();
 			//ImGui::PopStyleVar();
