@@ -37,3 +37,6 @@ Library | Description
 [Latest](https://www.dropbox.com/s/rcypgitu9icz7kp/ACTWebSocketOverlay_latest.zip?dl=1)
 [Release](https://github.com/ZCube/ActWebSocketOverlay/releases)
 
+##
+
+NO WARRANTY. ANY USE OF THE SOFTWARE IS ENTIRELY AT YOUR OWN RISK.
