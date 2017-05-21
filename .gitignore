@@ -10,3 +10,4 @@ lib/*
 *.user
 dist/*
 *.7z
+textures/out/*
