@@ -164,6 +164,7 @@ static float& text_opacity = opacity_map["Text"];
 static float& background_opacity = opacity_map["Background"];
 static float& title_background_opacity = opacity_map["TitleBackground"];
 static float& toolbar_opacity = opacity_map["Toolbar"];
+static float& resizegrip_opacity = opacity_map["ResizeGrip"];
 static float& graph_opacity = opacity_map["Graph"];
 static std::string default_pet_job;
 
@@ -475,6 +476,7 @@ extern "C" int ModInit(ImGuiContext* context)
 	color_category_map["UI"].push_back("TitleBackground");
 	color_category_map["UI"].push_back("TitleBackgroundActive");
 	color_category_map["UI"].push_back("TitleBackgroundCollapsed");
+	color_category_map["UI"].push_back("ResizeGrip");
 	color_category_map["UI"].push_back("TitleText");
 	color_category_map["UI"].push_back("GraphText");
 	color_category_map["UI"].push_back("ToolbarBackground");
@@ -587,11 +589,15 @@ extern "C" int ModInit(ImGuiContext* context)
 	color_map["TitleBackgroundActive"] = ImGui::GetStyle().Colors[ImGuiCol_TitleBgActive];
 	color_map["TitleBackgroundCollapsed"] = ImGui::GetStyle().Colors[ImGuiCol_TitleBgCollapsed];
 
+	color_map["ResizeGrip"] = ImGui::GetStyle().Colors[ImGuiCol_ResizeGrip];
+
+
 	default_pet_job = "chocobo";
 
 	//opacity
 	global_opacity = 1.0f;
 	title_background_opacity = 1.0f;
+	resizegrip_opacity = 1.0f;
 	background_opacity = 1.0f;
 	text_opacity = 1.0f;
 	graph_opacity = 1.0f;
@@ -991,7 +997,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 				}
 				if (ImGui::Button("<-"))
 				{
-					if (index > 3 && index != NULL)
+					if (index > 3 && index != NULL && index >= 0)
 					{
 						std::swap(table.columns[index], table.columns[index - 1]);
 						for (int j = 0; j < table.values.size(); ++j)
@@ -1008,7 +1014,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 				ImGui::SameLine();
 				if (ImGui::Button("->"))
 				{
-					if (index + 1 < table.columns.size() && index != NULL)
+					if (index + 1 < table.columns.size() && index != NULL && index >= 0)
 					{
 						std::swap(table.columns[index], table.columns[index + 1]);
 						for (int j = 0; j < table.values.size(); ++j)
@@ -1272,6 +1278,7 @@ extern "C" int ModRender(ImGuiContext* context)
 			ImGui::PushStyleColor(ImGuiCol_TitleBg, ColorWithAlpha(color_map["TitleBackground"], title_background_opacity * global_opacity));
 			ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ColorWithAlpha(color_map["TitleBackgroundActive"], title_background_opacity * global_opacity));
 			ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, ColorWithAlpha(color_map["TitleBackgroundCollapsed"], title_background_opacity * global_opacity));
+			ImGui::PushStyleColor(ImGuiCol_ResizeGrip, ColorWithAlpha(color_map["ResizeGrip"], resizegrip_opacity));
 			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5, 0.5, 0.5, background_opacity * global_opacity));
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3, 0.3, 0.3, background_opacity * global_opacity));
 			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0, 0.0, 0.0, 0.0f));
@@ -1327,7 +1334,7 @@ extern "C" int ModRender(ImGuiContext* context)
 
 			ImGui::End();
 			//ImGui::PopStyleVar();
-			ImGui::PopStyleColor(8);
+			ImGui::PopStyleColor(9);
 
 
 			if (show_preferences)
