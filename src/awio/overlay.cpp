@@ -924,9 +924,10 @@ void RenderTableRow(Table& table, int row, int height)
 void RenderTable(Table& table)
 {
 	const ImGuiStyle& style = ImGui::GetStyle();
+	const ImGuiIO& io = ImGui::GetIO();
 	int windowWidth = ImGui::GetWindowSize().x - style.ItemInnerSpacing.x * 2.0f - 10;
 	int column_max = table.columns.size();
-	const int height = 20 * ImGui::GetCurrentWindow()->FontWindowScale;
+	const int height = 20 * io.FontGlobalScale;
 	table.UpdateColumnWidth(windowWidth, height, column_max);
 
 	ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(color_map["GraphText"], text_opacity * global_opacity));
