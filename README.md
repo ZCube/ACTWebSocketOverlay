@@ -37,8 +37,10 @@ Library | Description
 [Latest](https://www.dropbox.com/s/rcypgitu9icz7kp/ACTWebSocketOverlay_latest.zip?dl=1)
 [Release](https://github.com/ZCube/ActWebSocketOverlay/releases)
 
-## Build Instruction
+## Build Tool
+Microsoft Visual Studio Community 2015
 
+## Build Instruction
 * boost build step
     1. download https://dl.bintray.com/boostorg/release/1.64.0/source/:boost_1_64_0.7z
     2. unzip
