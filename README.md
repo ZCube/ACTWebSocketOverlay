@@ -46,6 +46,10 @@ Library | Description
     4. b2 --stagedir=stage   variant=debug,release address-model=32 threading=multi link=static runtime-link=shared --prefix=c:/boost32 install
     5. b2 --stagedir=stage64 variant=debug,release address-model=64 threading=multi link=static runtime-link=shared --prefix=c:/boost64 install
 
+* Texture build step
+    1. cd textures
+    2. gen_atlas.bat
+    
 * ACTWebSocketOverlay build step
     1. configure.bat
     2. build.bat
