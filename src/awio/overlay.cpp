@@ -477,6 +477,8 @@ extern "C" int ModInit(ImGuiContext* context)
 	color_category_map["UI"].push_back("TitleBackgroundActive");
 	color_category_map["UI"].push_back("TitleBackgroundCollapsed");
 	color_category_map["UI"].push_back("ResizeGrip");
+	color_category_map["UI"].push_back("ResizeGripActive");
+	color_category_map["UI"].push_back("ResizeGripHovered");
 	color_category_map["UI"].push_back("TitleText");
 	color_category_map["UI"].push_back("GraphText");
 	color_category_map["UI"].push_back("ToolbarBackground");
@@ -1280,6 +1282,8 @@ extern "C" int ModRender(ImGuiContext* context)
 			ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ColorWithAlpha(color_map["TitleBackgroundActive"], title_background_opacity * global_opacity));
 			ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, ColorWithAlpha(color_map["TitleBackgroundCollapsed"], title_background_opacity * global_opacity));
 			ImGui::PushStyleColor(ImGuiCol_ResizeGrip, ColorWithAlpha(color_map["ResizeGrip"], resizegrip_opacity));
+			ImGui::PushStyleColor(ImGuiCol_ResizeGripActive, ColorWithAlpha(color_map["ResizeGripActive"], resizegrip_opacity));
+			ImGui::PushStyleColor(ImGuiCol_ResizeGripHovered, ColorWithAlpha(color_map["ResizeGripHovered"], resizegrip_opacity));
 			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5, 0.5, 0.5, background_opacity * global_opacity));
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3, 0.3, 0.3, background_opacity * global_opacity));
 			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0, 0.0, 0.0, 0.0f));
@@ -1335,7 +1339,7 @@ extern "C" int ModRender(ImGuiContext* context)
 
 			ImGui::End();
 			//ImGui::PopStyleVar();
-			ImGui::PopStyleColor(9);
+			ImGui::PopStyleColor(11);
 
 
 			if (show_preferences)
