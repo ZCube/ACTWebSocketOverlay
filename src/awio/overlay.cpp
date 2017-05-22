@@ -97,10 +97,10 @@ public:
 
 	int column_margin = 2;
 
-	void UpdateColumnWidth(int width, int height, int column_max)
+	void UpdateColumnWidth(int width, int height, int column_max, float scale)
 	{
-		if (columns.size() > 0)
-			columns[0].size = height;
+		//if (columns.size() > 0)
+		//	columns[0].size = height / scale;
 		int columnSizeWeightSum = 0;
 		int columnSizeFixed = 0;
 		for (int i = 0; i < column_max; ++i) {
@@ -112,7 +112,8 @@ public:
 			}
 			else
 			{
-				columnSizeFixed += columns[i].size + column_margin*2;
+				// icon size must be fixed.
+				columnSizeFixed += (columns[i].size + column_margin * 2) * scale;
 			}
 		}
 		int offset = 0;
@@ -121,18 +122,18 @@ public:
 				continue;
 			if (columns[i].sizeWeight != 0)
 			{
-				columns[i].size = std::max(0,((width - columnSizeFixed) * columns[i].sizeWeight) / columnSizeWeightSum);
+				columns[i].size = std::max(0,((width - columnSizeFixed) * columns[i].sizeWeight) / columnSizeWeightSum) / scale;
 			}
-			columns[i].offset = offset + column_margin;
-			offset += columns[i].size + column_margin;
+			columns[i].offset = offset + (column_margin) * scale;
+			offset += (columns[i].size + column_margin) * scale;
 		}
 
 		for (int i = 2; i < column_max; ++i) {
 			if (!columns[i].visible)
 				continue;
-			if (columns[i - 1].offset + columns[i - 1].size > columns[i].offset)
+			if (columns[i - 1].offset + columns[i - 1].size * scale > columns[i].offset)
 			{
-				columns[i].offset = columns[i - 1].offset + columns[i - 1].size;
+				columns[i].offset = columns[i - 1].offset + (columns[i - 1].size) * scale;
 			}
 		}
 	}
@@ -807,6 +808,7 @@ void RenderTableColumnHeader(Table& table, int height)
 	const ImGuiStyle& style = ImGui::GetStyle();
 	ImGuiWindow* window = ImGui::GetCurrentWindow();
 
+	const ImGuiIO& io = ImGui::GetIO();
 	int base = ImGui::GetCursorPosY();
 	for (int i = 0; i < table.columns.size(); ++i)
 	{
@@ -832,7 +834,7 @@ void RenderTableColumnHeader(Table& table, int height)
 			else
 			{
 				ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(ImVec4(0, 0, 0, 1), text_opacity * global_opacity));
-				ImGui::RenderTextClipped(ImVec2(pos.x + 1, pos.y + 1), ImVec2(pos.x + table.columns[i].size + 1, pos.y + height + 1),
+				ImGui::RenderTextClipped(ImVec2(pos.x + 1, pos.y + 1), ImVec2(pos.x + (table.columns[i].size + 1) * io.FontGlobalScale, pos.y + height + 1),
 					text.c_str(),
 					text.c_str() + text.size(),
 					nullptr,
@@ -841,7 +843,7 @@ void RenderTableColumnHeader(Table& table, int height)
 					nullptr);
 				ImGui::PopStyleColor();
 				ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(color_map["GraphText"], text_opacity * global_opacity));
-				ImGui::RenderTextClipped(pos, ImVec2(pos.x + table.columns[i].size, pos.y + height),
+				ImGui::RenderTextClipped(pos, ImVec2(pos.x + (table.columns[i].size) * io.FontGlobalScale, pos.y + height),
 					text.c_str(),
 					text.c_str() + text.size(),
 					nullptr,
@@ -861,6 +863,7 @@ void RenderTableRow(Table& table, int row, int height)
 	const ImGuiStyle& style = ImGui::GetStyle();
 	ImGuiWindow* window = ImGui::GetCurrentWindow();
 
+	const ImGuiIO& io = ImGui::GetIO();
 	int offset = 0;
 	int base = ImGui::GetCursorPosY();
 	ImGui::SetCursorPos(ImVec2(0, base));
@@ -912,14 +915,14 @@ void RenderTableRow(Table& table, int row, int height)
 				if ((im = overlay_images.find(icon)) != overlay_images.end())
 				{
 					ImGuiWindow* window = ImGui::GetCurrentWindow();
-					window->DrawList->AddImage(overlay_texture, ImVec2(pos.x + 1, pos.y + 1), ImVec2(pos.x + table.columns[j].size + 1, pos.y + height + 1),
+					window->DrawList->AddImage(overlay_texture, ImVec2(pos.x + 1, pos.y + 1), ImVec2(pos.x + (table.columns[j].size + 1)*io.FontGlobalScale, pos.y + height + 1),
 						im->second.uv0, im->second.uv1);// , GetColorU32(tint_col));
 				}
 			}
 			else if (j != 1 || show_name)
 			{
 				ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(ImVec4(0, 0, 0, 1), text_opacity * global_opacity));
-				ImGui::RenderTextClipped(ImVec2(pos.x + 1, pos.y + 1), ImVec2(pos.x + table.columns[j].size + 1, pos.y + height + 1),
+				ImGui::RenderTextClipped(ImVec2(pos.x + 1, pos.y + 1), ImVec2(pos.x + (table.columns[j].size + 1) * io.FontGlobalScale, pos.y + height + 1),
 					text.c_str(),
 					text.c_str() + text.size(),
 					nullptr,
@@ -927,7 +930,7 @@ void RenderTableRow(Table& table, int row, int height)
 					nullptr);
 				ImGui::PopStyleColor();
 				ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(color_map["GraphText"], text_opacity * global_opacity));
-				ImGui::RenderTextClipped(pos, ImVec2(pos.x + table.columns[j].size, pos.y + height),
+				ImGui::RenderTextClipped(pos, ImVec2(pos.x + table.columns[j].size * io.FontGlobalScale, pos.y + height),
 					text.c_str(),
 					text.c_str() + text.size(),
 					nullptr,
@@ -952,7 +955,7 @@ void RenderTable(Table& table)
 	int windowWidth = ImGui::GetWindowSize().x - style.ItemInnerSpacing.x * 2.0f - 10;
 	int column_max = table.columns.size();
 	const int height = 20 * io.FontGlobalScale;
-	table.UpdateColumnWidth(windowWidth, height, column_max);
+	table.UpdateColumnWidth(windowWidth, height, column_max, io.FontGlobalScale);
 
 	ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(color_map["GraphText"], text_opacity * global_opacity));
 	RenderTableColumnHeader(table, height);
@@ -1168,6 +1171,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 							table.columns.push_back(col);
 
 							ImGui::CloseCurrentPopup();
+							strcpy(buf, "");
 							current_item = -1;
 							width = 50;
 							align = 0.5f;
