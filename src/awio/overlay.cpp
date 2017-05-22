@@ -970,7 +970,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 	{
 		if (ImGui::TreeNode("Table"))
 		{
-			if (ImGui::TreeNode("Dealer Table"))
+			if (ImGui::TreeNode("DPS Table"))
 			{
 				std::vector<const char*> columns;
 				Table& table = dealerTable;
@@ -988,14 +988,14 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 				static int index = -1;
 				bool decIndex = false;
 				bool incIndex = false;
-				if (ImGui::Combo("Dest Column", &index_, columns.data(), columns.size()))
+				if (ImGui::ListBox("Column", &index_, columns.data(), columns.size()))
 				{
 					index = index_ >= 0 ? index_ + 3 : index_;
 					strcpy(buf, table.columns[index].Title.c_str());
 					width = table.columns[index].size;
 					align = table.columns[index].align.x;
 				}
-				if (ImGui::Button("<-"))
+				if (ImGui::Button("Up"))
 				{
 					if (index > 3 && index != NULL && index >= 0)
 					{
@@ -1012,7 +1012,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 					}
 				}
 				ImGui::SameLine();
-				if (ImGui::Button("->"))
+				if (ImGui::Button("Down"))
 				{
 					if (index + 1 < table.columns.size() && index != NULL && index >= 0)
 					{
@@ -1028,7 +1028,8 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 						incIndex = true;
 					}
 				}
-				if (ImGui::Button("Edit Column"))
+				ImGui::SameLine();
+				if (ImGui::Button("Edit"))
 				{
 					ImGui::OpenPopup("Edit Column");
 				}
@@ -1072,7 +1073,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 				}
 				ImGui::SameLine();
 
-				if (ImGui::Button("Remove Column"))
+				if (ImGui::Button("Remove"))
 				{
 					if (index > 0)
 					{
@@ -1126,7 +1127,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 					}
 				}
 				ImGui::SameLine();
-				if (ImGui::Button("Append Column"))
+				if (ImGui::Button("Append"))
 				{
 					ImGui::OpenPopup("Append Column");
 				}
