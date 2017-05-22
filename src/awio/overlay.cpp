@@ -104,6 +104,8 @@ public:
 		int columnSizeWeightSum = 0;
 		int columnSizeFixed = 0;
 		for (int i = 0; i < column_max; ++i) {
+			if (!columns[i].visible)
+				continue;
 			if (columns[i].sizeWeight != 0)
 			{
 				columnSizeWeightSum += columns[i].sizeWeight;
@@ -115,6 +117,8 @@ public:
 		}
 		int offset = 0;
 		for (int i = 0; i < column_max; ++i) {
+			if (!columns[i].visible)
+				continue;
 			if (columns[i].sizeWeight != 0)
 			{
 				columns[i].size = std::max(0,((width - columnSizeFixed) * columns[i].sizeWeight) / columnSizeWeightSum);
@@ -124,6 +128,8 @@ public:
 		}
 
 		for (int i = 2; i < column_max; ++i) {
+			if (!columns[i].visible)
+				continue;
 			if (columns[i - 1].offset + columns[i - 1].size > columns[i].offset)
 			{
 				columns[i].offset = columns[i - 1].offset + columns[i - 1].size;
@@ -425,7 +431,9 @@ extern "C" int ModInit(ImGuiContext* context)
 	dealerTable.columns.push_back(Table::Column("", "Job", (overlay_texture != nullptr)? 30: 20, 0, ImVec2(0.5f, 0.5f)));
 	dealerTable.columns.push_back(Table::Column("Name", "name", 0, 1, ImVec2(0.0f, 0.5f)));
 	dealerTable.columns.push_back(Table::Column("DPS", "encdps", 50, 0, ImVec2(1.0f, 0.5f)));
+	dealerTable.columns.back().visible = false;
 	// modify
+	dealerTable.columns.push_back(Table::Column("DPS", "encdps", 50, 0, ImVec2(1.0f, 0.5f)));
 	dealerTable.columns.push_back(Table::Column("D%%", "damage%", 40, 0, ImVec2(1.0f, 0.5f)));
 	dealerTable.columns.push_back(Table::Column("Damage", "damage", 50, 0, ImVec2(1.0f, 0.5f)));
 	dealerTable.columns.push_back(Table::Column("Swing", "swings", 40, 0, ImVec2(1.0f, 0.5f)));
@@ -794,6 +802,8 @@ void RenderTableColumnHeader(Table& table, int height)
 	int base = ImGui::GetCursorPosY();
 	for (int i = 0; i < table.columns.size(); ++i)
 	{
+		if (!table.columns[i].visible)
+			continue;
 		const ImGuiStyle& style = ImGui::GetStyle();
 		ImVec2 winpos = ImGui::GetWindowPos();
 		ImVec2 pos = ImGui::GetCursorPos();
@@ -878,6 +888,8 @@ void RenderTableRow(Table& table, int row, int height)
 		//ImGui::RenderFrame(bb2.Min, bb2.Max, ImGui::GetColorU32(progressColor), true, style.FrameRounding);
 		for (int j = 0; j < table.columns.size() && j < table.values[i].size(); ++j)
 		{
+			if (!table.columns[j].visible)
+				continue;
 			ImGui::SetCursorPos(ImVec2(table.columns[j].offset + style.ItemInnerSpacing.x, base));
 			ImVec2 winpos = ImGui::GetWindowPos();
 			ImVec2 pos = ImGui::GetCursorPos();
