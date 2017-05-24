@@ -1694,7 +1694,6 @@ extern "C" int ModRender(ImGuiContext* context)
 			mutex.lock();
 
 			auto &io = ImGui::GetIO();
-			io.FontGlobalScale = 1.0;
 			Image& cog = overlay_images["cog"];
 			Image& resize = overlay_images["resize"];
 			float icon_color_change = (cosf(GetTickCount() / 500.0f) + 1.0f) / 2.0f;
