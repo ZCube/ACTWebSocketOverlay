@@ -24,6 +24,7 @@ Control + Scroll | Zoom.
 2. Windows/Fonts
 
 Default Setting
+
 Language | File
 -------- | ----
 Default | Default (Embedded)
