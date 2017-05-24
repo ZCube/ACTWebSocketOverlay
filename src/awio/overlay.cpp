@@ -1181,6 +1181,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 	{
 		ImGui::Text("Version : %s", VERSION_LONG_STRING);
 		ImGui::Text("Github : https://github.com/ZCube/ACTWebSocket");
+		ImGui::Text("Github : https://github.com/ZCube/ACTWebSocketOverlay");
 		ImGui::Text("");
 		if (ImGui::TreeNode("Windows"))
 		{
