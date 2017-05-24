@@ -3,6 +3,7 @@
 
 #include <imgui.h>
 #include "imgui_impl_dx9.h"
+#include "imgui_impl_dx9.cpp"
 #include <d3d9.h>
 #define DIRECTINPUT_VERSION 0x0800
 #include <dinput.h>
@@ -27,8 +28,42 @@ HMODULE mod = nullptr;
 /////////////////////////////////////////////////////////////////////////////////
 
 // Data
-static LPDIRECT3DDEVICE9        g_pd3dDevice = NULL;
+//static LPDIRECT3DDEVICE9        g_pd3dDevice = NULL;
 static D3DPRESENT_PARAMETERS    g_d3dpp;
+static LPDIRECT3DTEXTURE9       g_ModTexture = NULL;
+
+static bool ImGui_ImplDX9_CreateModTexture()
+{
+	if (!modTextureData)
+		return true;
+
+	if (LPDIRECT3DTEXTURE9 tex = g_ModTexture)
+	{
+		tex->Release();
+		if (modSetTexture)
+			modSetTexture(nullptr);
+		g_ModTexture = nullptr;
+	}
+	// Build texture atlas
+	ImGuiIO& io = ImGui::GetIO();
+	unsigned char* pixels;
+	int width, height, bytes_per_pixel;
+	modTextureData(&pixels, &width, &height, &bytes_per_pixel);
+
+	// Upload texture to graphics system
+	if (g_pd3dDevice->CreateTexture(width, height, 1, D3DUSAGE_DYNAMIC, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &g_ModTexture, NULL) < 0)
+		return false;
+	D3DLOCKED_RECT tex_locked_rect;
+	if (g_ModTexture->LockRect(0, &tex_locked_rect, NULL, 0) != D3D_OK)
+		return false;
+	for (int y = 0; y < height; y++)
+		memcpy((unsigned char *)tex_locked_rect.pBits + tex_locked_rect.Pitch * y, pixels + (width * bytes_per_pixel) * y, (width * bytes_per_pixel));
+	g_ModTexture->UnlockRect(0);
+
+	if (modSetTexture)
+		modSetTexture(g_ModTexture);
+	return true;
+}
 
 extern LRESULT ImGui_ImplDX9_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -42,12 +77,20 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         if (g_pd3dDevice != NULL && wParam != SIZE_MINIMIZED)
         {
             ImGui_ImplDX9_InvalidateDeviceObjects();
-            g_d3dpp.BackBufferWidth  = LOWORD(lParam);
-            g_d3dpp.BackBufferHeight = HIWORD(lParam);
-            HRESULT hr = g_pd3dDevice->Reset(&g_d3dpp);
+
+			if (LPDIRECT3DTEXTURE9 tex = g_ModTexture)
+			{
+				tex->Release();
+				modSetTexture(nullptr);
+				g_ModTexture = nullptr;
+			}
+			g_d3dpp.BackBufferWidth = LOWORD(lParam);
+			g_d3dpp.BackBufferHeight = HIWORD(lParam);
+			HRESULT hr = g_pd3dDevice->Reset(&g_d3dpp);
             if (hr == D3DERR_INVALIDCALL)
                 IM_ASSERT(0);
-            ImGui_ImplDX9_CreateDeviceObjects();
+			ImGui_ImplDX9_CreateDeviceObjects();
+			ImGui_ImplDX9_CreateModTexture();
         }
         return 0;
     case WM_SYSCOMMAND:
@@ -61,31 +104,6 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     return DefWindowProc(hWnd, msg, wParam, lParam);
 }
 
-static LPDIRECT3DTEXTURE9       g_ModTexture = NULL;
-
-static bool ImGui_ImplDX9_CreateModTexture()
-{
-	if (!modTextureData)
-		return true;
-	// Build texture atlas
-	ImGuiIO& io = ImGui::GetIO();
-	unsigned char* pixels;
-	int width, height, bytes_per_pixel;
-	modTextureData(&pixels, &width, &height, &bytes_per_pixel);
-
-	// Upload texture to graphics system
-	g_ModTexture = NULL;
-	if (g_pd3dDevice->CreateTexture(width, height, 1, D3DUSAGE_DYNAMIC, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &g_ModTexture, NULL) < 0)
-		return false;
-	D3DLOCKED_RECT tex_locked_rect;
-	if (g_ModTexture->LockRect(0, &tex_locked_rect, NULL, 0) != D3D_OK)
-		return false;
-	for (int y = 0; y < height; y++)
-		memcpy((unsigned char *)tex_locked_rect.pBits + tex_locked_rect.Pitch * y, pixels + (width * bytes_per_pixel) * y, (width * bytes_per_pixel));
-	g_ModTexture->UnlockRect(0);
-
-	return true;
-}
 
 int main(int, char**)
 {
@@ -98,8 +116,8 @@ int main(int, char**)
 	if (mod)
 	{
 		modInit = (TModInit)GetProcAddress(mod, "ModInit");
-		modRender = (TModInit)GetProcAddress(mod, "ModRender");
-		modUnInit = (TModInit)GetProcAddress(mod, "ModUnInit");
+		modRender = (TModRender)GetProcAddress(mod, "ModRender");
+		modUnInit = (TModUnInit)GetProcAddress(mod, "ModUnInit");
 		modTextureData = (TModTextureData)GetProcAddress(mod, "ModTextureData");
 		modSetTexture = (TModSetTexture)GetProcAddress(mod, "ModSetTexture");
 	}
@@ -125,6 +143,12 @@ int main(int, char**)
     g_d3dpp.AutoDepthStencilFormat = D3DFMT_D16;
     g_d3dpp.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
 
+	/////////////////////////////////////////////////////////////////////////////////
+	if (modInit)
+	{
+		modInit(ImGui::GetCurrentContext());
+	}
+	/////////////////////////////////////////////////////////////////////////////////
     // Create the D3DDevice
     if (pD3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hwnd, D3DCREATE_HARDWARE_VERTEXPROCESSING, &g_d3dpp, &g_pd3dDevice) < 0)
     {
@@ -155,12 +179,6 @@ int main(int, char**)
     ZeroMemory(&msg, sizeof(msg));
     ShowWindow(hwnd, SW_SHOWDEFAULT);
     UpdateWindow(hwnd);
-	/////////////////////////////////////////////////////////////////////////////////
-	if (modInit)
-	{
-		modInit(ImGui::GetCurrentContext());
-	}
-	/////////////////////////////////////////////////////////////////////////////////
 	ImGui_ImplDX9_CreateModTexture();
     while (msg.message != WM_QUIT)
     {
@@ -170,37 +188,8 @@ int main(int, char**)
             DispatchMessage(&msg);
             continue;
         }
-		if (modSetTexture)
-			modSetTexture(g_ModTexture);
+
         ImGui_ImplDX9_NewFrame();
-
-        // 1. Show a simple window
-        // Tip: if we don't call ImGui::Begin()/ImGui::End() the widgets appears in a window automatically called "Debug"
-        {
-            static float f = 0.0f;
-            ImGui::Text("Hello, world!");
-            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
-            ImGui::ColorEdit3("clear color", (float*)&clear_col);
-            if (ImGui::Button("Test Window")) show_test_window ^= 1;
-            if (ImGui::Button("Another Window")) show_another_window ^= 1;
-            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-        }
-
-        // 2. Show another simple window, this time using an explicit Begin/End pair
-        if (show_another_window)
-        {
-            ImGui::SetNextWindowSize(ImVec2(200,100), ImGuiSetCond_FirstUseEver);
-            ImGui::Begin("Another Window", &show_another_window);
-            ImGui::Text("Hello");
-            ImGui::End();
-        }
-
-        // 3. Show the ImGui test window. Most of the sample code is in ImGui::ShowTestWindow()
-        if (show_test_window)
-        {
-            ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiSetCond_FirstUseEver);
-            ImGui::ShowTestWindow(&show_test_window);
-        }
 
         // Rendering
         g_pd3dDevice->SetRenderState(D3DRS_ZENABLE, false);

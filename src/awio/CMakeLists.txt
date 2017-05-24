@@ -41,7 +41,7 @@ ADD_EXECUTABLE(test_main
 	${IMGUI_DIRECTORY}/imgui_demo.cpp
 	${IMGUI_DIRECTORY}/imgui_draw.cpp
 	${IMGUI_DIRECTORY}/examples/directx11_example/imgui_impl_dx11.h
-	${IMGUI_DIRECTORY}/examples/directx11_example/imgui_impl_dx11.cpp
+	#${IMGUI_DIRECTORY}/examples/directx11_example/imgui_impl_dx11.cpp
 	${IMGUI_DIRECTORY}/imgui_internal.h
 	main.cpp
 	Resource.rc
@@ -67,7 +67,7 @@ ADD_EXECUTABLE(test_main_dx9
 	${IMGUI_DIRECTORY}/imgui_demo.cpp
 	${IMGUI_DIRECTORY}/imgui_draw.cpp
 	${IMGUI_DIRECTORY}/examples/directx9_example/imgui_impl_dx9.h
-	${IMGUI_DIRECTORY}/examples/directx9_example/imgui_impl_dx9.cpp
+	#${IMGUI_DIRECTORY}/examples/directx9_example/imgui_impl_dx9.cpp
 	${IMGUI_DIRECTORY}/imgui_internal.h
 	main_dx9.cpp
 	Resource.rc

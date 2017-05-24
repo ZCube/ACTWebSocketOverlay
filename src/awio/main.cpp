@@ -2,6 +2,7 @@
 
 #include <imgui.h>
 #include "imgui_impl_dx11.h"
+#include "imgui_impl_dx11.cpp"
 #include <d3d11.h>
 #define DIRECTINPUT_VERSION 0x0800
 #include <dinput.h>
@@ -25,8 +26,6 @@ HMODULE mod = nullptr;
 /////////////////////////////////////////////////////////////////////////////////
 
 // Data
-static ID3D11Device*            g_pd3dDevice = NULL;
-static ID3D11DeviceContext*     g_pd3dDeviceContext = NULL;
 static IDXGISwapChain*          g_pSwapChain = NULL;
 static ID3D11RenderTargetView*  g_mainRenderTargetView = NULL;
 
@@ -127,6 +126,14 @@ static void ImGui_ImplDX11_CreateModTexture()
 {
 	if (!modTextureData)
 		return;
+
+	if (g_pModTextureView)
+	{
+		g_pModTextureView->Release();
+		g_pModTextureView = nullptr;
+		if (modSetTexture)
+			modSetTexture(nullptr);
+	}
 	// Build texture atlas
 	ImGuiIO& io = ImGui::GetIO();
 	unsigned char* pixels;
@@ -185,6 +192,9 @@ static void ImGui_ImplDX11_CreateModTexture()
 	//	desc.MaxLOD = 0.f;
 	//	g_pd3dDevice->CreateSamplerState(&desc, &g_pFontSampler);
 	//}
+
+	if (modSetTexture)
+		modSetTexture(g_pModTextureView);
 }
 
 int main(int, char**)
@@ -199,8 +209,8 @@ int main(int, char**)
 	if (mod)
 	{
 		modInit = (TModInit)GetProcAddress(mod, "ModInit");
-		modRender = (TModInit)GetProcAddress(mod, "ModRender");
-		modUnInit = (TModInit)GetProcAddress(mod, "ModUnInit");
+		modRender = (TModRender)GetProcAddress(mod, "ModRender");
+		modUnInit = (TModUnInit)GetProcAddress(mod, "ModUnInit");
 		modTextureData = (TModTextureData)GetProcAddress(mod, "ModTextureData");
 		modSetTexture = (TModSetTexture)GetProcAddress(mod, "ModSetTexture");
 	}
@@ -211,6 +221,12 @@ int main(int, char**)
     RegisterClassEx(&wc);
     HWND hwnd = CreateWindow(_T("ImGui Example"), _T("ImGui DirectX11 Example"), WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, NULL, NULL, wc.hInstance, NULL);
 
+	/////////////////////////////////////////////////////////////////////////////////
+	if (modInit)
+	{
+		modInit(ImGui::GetCurrentContext());
+	}
+	/////////////////////////////////////////////////////////////////////////////////
     // Initialize Direct3D
     if (CreateDeviceD3D(hwnd) < 0)
     {
@@ -244,13 +260,6 @@ int main(int, char**)
     MSG msg;
     ZeroMemory(&msg, sizeof(msg));
 
-	/////////////////////////////////////////////////////////////////////////////////
-	if (modInit)
-	{
-		modInit(ImGui::GetCurrentContext());
-	}
-	/////////////////////////////////////////////////////////////////////////////////
-	ImGui_ImplDX11_CreateModTexture();
     while (msg.message != WM_QUIT)
     {
         if (PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE))
@@ -259,8 +268,10 @@ int main(int, char**)
             DispatchMessage(&msg);
             continue;
         }
-		if(modSetTexture)
-			modSetTexture(g_pModTextureView);
+
+		if (!g_pModTextureView) {
+			ImGui_ImplDX11_CreateModTexture();
+		}
         ImGui_ImplDX11_NewFrame();
 
 		/////////////////////////////////////////////////////////////////////////////////
