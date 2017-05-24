@@ -1,4 +1,5 @@
-﻿#include <imgui.h>
+﻿#include "version.h"
+#include <imgui.h>
 #include "imgui_internal.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -92,6 +93,9 @@ static std::unordered_map<std::string, Image> overlay_images;
 static std::map<std::string, std::vector<std::string>> color_category_map;
 static Json::Value overlay_atlas;
 static std::vector<const char*> glyph_range_key;
+static std::map<std::string, bool> boolean_map;
+static bool& show_status = boolean_map["ShowStatus"];
+static bool& movable = boolean_map["Movable"];
 
 class Table
 {
@@ -752,6 +756,11 @@ extern "C" int ModInit(ImGuiContext* context)
 					{
 						opacity_map[i.key().asString()] = i->asFloat();
 					}
+					Json::Value boolean = setting.get("boolean_map", Json::Value());
+					for (auto i = boolean.begin(); i != boolean.end(); ++i)
+					{
+						boolean_map[i.key().asString()] = i->asFloat();
+					}
 					Json::Value nameToJob = setting.get("name_to_job", Json::nullValue);
 					std::string name_to_job_str = "name_to_job";
 					if (nameToJob.find(&*name_to_job_str.begin(), &*name_to_job_str.begin() + name_to_job_str.size()) != nullptr)
@@ -930,6 +939,13 @@ void SaveSettings()
 		opacity[i->first] = i->second;
 	}
 	setting["opacity_map"] = opacity;
+
+	Json::Value boolean;
+	for (auto i = boolean_map.begin(); i != boolean_map.end(); ++i)
+	{
+		boolean[i->first] = i->second;
+	}
+	setting["boolean_map"] = boolean;
 
 	Json::Value dealer_columns;
 	for (int i = 3; i < dealerTable.columns.size(); ++i)
@@ -1145,7 +1161,7 @@ void RenderTable(Table& table)
 {
 	const ImGuiStyle& style = ImGui::GetStyle();
 	const ImGuiIO& io = ImGui::GetIO();
-	int windowWidth = ImGui::GetWindowSize().x - style.ItemInnerSpacing.x * 2.0f - 10;
+	int windowWidth = ImGui::GetWindowContentRegionWidth();
 	int column_max = table.columns.size();
 	const int height = 20 * io.FontGlobalScale;
 	table.UpdateColumnWidth(windowWidth, height, column_max, io.FontGlobalScale);
@@ -1166,6 +1182,17 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 {
 	ImGui::Begin("Preferences", show_preferences, ImVec2(300, 500), -1, ImGuiWindowFlags_NoCollapse);
 	{
+		ImGui::Text("Version : %s", VERSION_LONG_STRING);
+		ImGui::Text("Github : https://github.com/ZCube/ACTWebSocket");
+		ImGui::Text("");
+		if (ImGui::TreeNode("Windows"))
+		{
+			if (ImGui::Checkbox("Status", &show_status))
+			{
+				SaveSettings();
+			}
+			ImGui::TreePop();
+		}
 		if (ImGui::TreeNode("Table"))
 		{
 			if (ImGui::TreeNode("DPS Table"))
@@ -1644,10 +1671,14 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 extern "C" int ModRender(ImGuiContext* context)
 {
 	static bool show_preferences = false;
+	bool move_key_pressed = GetAsyncKeyState(VK_SHIFT) && GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_MENU);
+	bool use_input = movable || show_preferences || move_key_pressed;
 	try {
 		ImGui::SetCurrentContext(context);
 
 		{
+			ImVec2 padding(0, 0);
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, padding);
 			ImGui::PushStyleColor(ImGuiCol_WindowBg, ColorWithAlpha(color_map["Background"], background_opacity * global_opacity));
 			ImGui::PushStyleColor(ImGuiCol_TitleBg, ColorWithAlpha(color_map["TitleBackground"], title_background_opacity * global_opacity));
 			ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ColorWithAlpha(color_map["TitleBackgroundActive"], title_background_opacity * global_opacity));
@@ -1659,57 +1690,79 @@ extern "C" int ModRender(ImGuiContext* context)
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3, 0.3, 0.3, background_opacity * global_opacity));
 			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0, 0.0, 0.0, 0.0f));
 			ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(color_map["TitleText"], text_opacity * global_opacity));
-			//ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0);
 			ImGui::Begin("AWIO (ActWebSocket ImGui Overlay)", nullptr, ImVec2(300, 500), -1,
-				//ImGuiWindowFlags_NoTitleBar);
-				NULL);
+				ImGuiWindowFlags_NoTitleBar | (use_input ? NULL : ImGuiWindowFlags_NoInputs));
 
 			mutex.lock();
+
+			auto &io = ImGui::GetIO();
+			Image& cog = overlay_images["cog"];
+			Image& resize = overlay_images["resize"];
+			float icon_color_change = (cosf(GetTickCount() / 500.0f) + 1.0f) / 2.0f;
+			ImVec4 color = ColorWithAlpha(color_map["TitleText"], text_opacity * global_opacity);
+			color.x *= icon_color_change;
+			color.y *= icon_color_change;
+			color.z *= icon_color_change;
+			ImGui::BeginChild("Btn",
+				//ImVec2(100,100),
+				ImVec2((cog.width+resize.width+36) * io.FontGlobalScale / 6, (cog.height + 18) * io.FontGlobalScale /6),
+				false,
+				ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+			if (ImGui::ImageButton(overlay_texture, ImVec2(resize.width * io.FontGlobalScale / 6, resize.height * io.FontGlobalScale / 6), resize.uv0, resize.uv1, 2, ImVec4(0, 0, 0, 0), color))
+			{
+				movable = !movable;
+			}
+			ImGui::EndChild();
+			ImGui::SameLine((cog.width + 18) * io.FontGlobalScale / 6);
+			ImGui::BeginChild("Btn1",
+				//ImVec2(100,100),
+				ImVec2((cog.width + resize.width + 36) * io.FontGlobalScale / 6, (cog.height + 18) * io.FontGlobalScale / 6),
+				false,
+				ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+			if (ImGui::ImageButton(overlay_texture, ImVec2(cog.width * io.FontGlobalScale / 6, cog.height * io.FontGlobalScale / 6), cog.uv0, cog.uv1, 2, ImVec4(0, 0, 0, 0), color))
+			{
+				show_preferences = !show_preferences;
+			}
+			ImGui::EndChild();
+			ImGui::SameLine();
 
 			RenderTable(dealerTable);
 
 			ImGui::Separator();
+
+			ImGui::End();
+			ImGui::PopStyleVar(1);
+
+
+			if (show_status)
 			{
-				auto &io = ImGui::GetIO();
-				int height = 40 * io.FontGlobalScale;
-				const ImGuiStyle& style = ImGui::GetStyle();
-				ImGuiWindow* window = ImGui::GetCurrentWindow();
-				ImVec2 winsize = ImGui::GetWindowSize();
-				//ImGui::SetCursorPos(ImVec2(0, base + i * height));
-				ImVec2 winpos = ImGui::GetWindowPos();
-				ImVec2 pos = ImGui::GetCursorPos();
-				pos = ImVec2(pos.x + winpos.x, pos.y + winpos.y - height);
-				//pos = window->DC.CursorPos;
-				int windowWidth = ImGui::GetWindowSize().x - style.ItemInnerSpacing.x * 2.0f;// -style.ScrollbarSize;
-				int windowHeight= ImGui::GetWindowSize().y - style.ItemInnerSpacing.y * 2.0f;// -style.ScrollbarSize;
-				ImRect bb(ImVec2(winpos.x, winpos.y + windowHeight - height), ImVec2(pos.x + windowWidth, winpos.y+ windowHeight));
-				ImGui::GetWindowDrawList()->AddRectFilled(bb.Min, bb.Max, ImGui::GetColorU32(ColorWithAlpha(color_map["ToolbarBackground"], toolbar_opacity * global_opacity)));
-				//ImGui::RenderFrame(bb.Min, bb.Max, , true, 0);
-
-				// title
-
+				ImGui::PushStyleColor(ImGuiCol_WindowBg, ColorWithAlpha(color_map["ToolbarBackground"], background_opacity * global_opacity));
 				ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(color_map["TitleText"], text_opacity * global_opacity));
-				std::string duration_short = "- " + duration;
-
-				ImGui::SetCursorPos(ImVec2(style.ItemInnerSpacing.x, windowHeight - height+3*io.FontGlobalScale));
-				pos = ImGui::GetCursorPos();
-				ImGui::Text("%s - %s", zone.c_str(), duration.c_str(), rdps.c_str(), rhps.c_str());
-				ImGui::Text("RDPS : %s RHPS : %s", rdps.c_str(), rhps.c_str());
-				ImGui::SetCursorPos(ImVec2(windowWidth - 65 * io.FontGlobalScale / 2, pos.y));
-
-				Image& cog = overlay_images["cog"];
-				if (ImGui::ImageButton(overlay_texture, ImVec2(65* io.FontGlobalScale / 2, 60 * io.FontGlobalScale / 2), cog.uv0, cog.uv1, -1, ImVec4(0, 0, 0, 0), ColorWithAlpha(color_map["TitleText"], text_opacity * global_opacity)))
+				ImGui::Begin("Status", nullptr, ImVec2(300, 50), -1,
+					ImGuiWindowFlags_NoTitleBar | (use_input ? NULL : ImGuiWindowFlags_NoInputs));
 				{
-					show_preferences = !show_preferences;
-				}
+					int height = 40 * io.FontGlobalScale;
+					const ImGuiStyle& style = ImGui::GetStyle();
+					ImGuiWindow* window = ImGui::GetCurrentWindow();
+					{
+						std::string duration_short = "- " + duration;
 
-				ImGui::PopStyleColor();
+						ImVec2 pos = ImGui::GetCursorPos();
+						ImGui::Text("%s - %s", zone.c_str(), duration.c_str(), rdps.c_str(), rhps.c_str());
+						ImGui::Text("RDPS : %s RHPS : %s", rdps.c_str(), rhps.c_str());
+
+						ImGui::SetCursorPos(pos);
+						ImGui::Text(" ");
+						ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - (65 + 5) * io.FontGlobalScale / 2);
+					}
+				}
+				ImGui::End();
+				ImGui::PopStyleColor(2);
 			}
 
 
-			ImGui::Separator();
+			//ImGui::Separator();
 
-			ImGui::End();
 			//ImGui::PopStyleVar();
 			ImGui::PopStyleColor(11);
 
@@ -1722,9 +1775,8 @@ extern "C" int ModRender(ImGuiContext* context)
 			else
 			{
 				auto &io = ImGui::GetIO();
-				// ignore Keyboard without preferences.
-				// TODO: reshade menu check.
 				io.WantCaptureKeyboard = false;
+				io.WantCaptureMouse = false;
 			}
 			mutex.unlock();
 		}

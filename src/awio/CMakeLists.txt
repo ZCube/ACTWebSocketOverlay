@@ -22,6 +22,7 @@ ADD_LIBRARY(ActWebSocketImguiOverlay
 	overlay.def
 	Resource.rc
 	resource.h
+	version.h
 )
 
 TARGET_LINK_LIBRARIES(ActWebSocketImguiOverlay
