@@ -1772,8 +1772,11 @@ extern "C" int ModRender(ImGuiContext* context)
 			else
 			{
 				auto &io = ImGui::GetIO();
+				if (!use_input)
+				{
+					io.WantCaptureMouse = false;
+				}
 				io.WantCaptureKeyboard = false;
-				io.WantCaptureMouse = false;
 			}
 			mutex.unlock();
 		}
