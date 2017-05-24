@@ -71,6 +71,10 @@ Microsoft Visual Studio Community 2015
     1. configure.bat
     2. build.bat
 
+## Contributors
+
+[Falgern](https://github.com/Falgern/ACTWebSocketOverlay) : I refer to various things such as wrong word usage, implementation of Click-Through with button, and some bug fix.
+
 ##
 
 NO WARRANTY. ANY USE OF THE SOFTWARE IS ENTIRELY AT YOUR OWN RISK.
