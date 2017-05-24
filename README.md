@@ -25,11 +25,11 @@ Control + Scroll | Zoom.
 
 Default Setting
 
-Language | File
--------- | ----
-Default | Default (Embedded)
-Japanese | ArialUni.ttf
-Korean | gulim.ttc
+Language | File |
+-------- | ---- | --------
+Default | Default | ProggyClean.ttf font by Tristan Grimmer (MIT license).
+Japanese | ArialUni.ttf |
+Korean | gulim.ttc |
 
 ## File Overview
 Path | Description | License 
@@ -74,6 +74,17 @@ Microsoft Visual Studio Community 2015
 ## Contributors
 
 [Falgern](https://github.com/Falgern/ACTWebSocketOverlay) : I refer to various things such as wrong word usage, implementation of Click-Through with button, and some bug fix.
+
+## Milestone
+* Script Engine ( Lua or Javascript )
+* dear imgui Script binding ( Lua or Javascript )
+* 9-patch draw
+* Texture atlas module for resource managing
+* Refactoring codes
+* Runtime resource loading. (may be hard work...)
+
+## v8 or LuaJIT ?
+* 
 
 ##
 

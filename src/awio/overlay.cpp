@@ -145,8 +145,8 @@ public:
 
 	void UpdateColumnWidth(int width, int height, int column_max, float scale)
 	{
-		//if (columns.size() > 0)
-		//	columns[0].size = height / scale;
+		if (columns.size() > 0)
+			columns[0].size = height / scale;
 		int columnSizeWeightSum = 0;
 		int columnSizeFixed = 0;
 		for (int i = 0; i < column_max; ++i) {
@@ -1694,6 +1694,7 @@ extern "C" int ModRender(ImGuiContext* context)
 			mutex.lock();
 
 			auto &io = ImGui::GetIO();
+			io.FontGlobalScale = 1.0;
 			Image& cog = overlay_images["cog"];
 			Image& resize = overlay_images["resize"];
 			float icon_color_change = (cosf(GetTickCount() / 500.0f) + 1.0f) / 2.0f;
@@ -1701,6 +1702,7 @@ extern "C" int ModRender(ImGuiContext* context)
 			color.x *= icon_color_change;
 			color.y *= icon_color_change;
 			color.z *= icon_color_change;
+			auto p = ImGui::GetCursorPos();
 			ImGui::BeginChild("Btn",
 				//ImVec2(100,100),
 				ImVec2((cog.width+resize.width+36) * io.FontGlobalScale / 6, (cog.height + 18) * io.FontGlobalScale /6),
@@ -1723,6 +1725,7 @@ extern "C" int ModRender(ImGuiContext* context)
 			}
 			ImGui::EndChild();
 			ImGui::SameLine();
+			ImGui::SetCursorPos(p);
 
 			RenderTable(dealerTable);
 
