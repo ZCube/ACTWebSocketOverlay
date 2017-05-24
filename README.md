@@ -5,15 +5,15 @@ ActWebSocket overlay utility based on ImGui
 
 *ActWebSocket needed.
 
-## ShortCut
-Shift + F3 : Show/Hide
-Ctrl + Alt + Shift + Drag : Move 
-
 ## Interface
-Gear icon : Show preference window.
-Move icon : Click-through.
-"Name" : Show/Hide names.
-Control + Scroll : Zoom.
+Button or Key | Descrition
+-------- | ----
+Shift + F3 | Show/Hide
+Gear icon | Show preference window.
+Move icon | Click-through.
+Ctrl + Alt + Shift | Click-through.
+"Name" | Show/Hide names.
+Control + Scroll | Zoom.
 
 ## Screenshot
 ![N|Solid](https://raw.githubusercontent.com/ZCube/ACTWebSocketOverlay/master/screenshot.png)
