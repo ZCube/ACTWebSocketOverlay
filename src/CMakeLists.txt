@@ -6,8 +6,8 @@ INCLUDE_DIRECTORIES(
 
 INCLUDE_DIRECTORIES(
 	../external/jsoncpp/include
-	${Boost_INCLUDE_DIRS}
 	../external/beast/include
+	../external/boost
 	../external
 )
 

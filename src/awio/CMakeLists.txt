@@ -54,7 +54,7 @@ ADD_EXECUTABLE(test_main
 
 TARGET_LINK_LIBRARIES(test_main
 	jsoncpp_lib_static
-	${Boost_LIBRARIES}
+	boost
 	ActWebSocketImguiOverlay
 	d3d11.lib
 	d3dcompiler.lib
@@ -80,7 +80,7 @@ ADD_EXECUTABLE(test_main_dx9
 
 TARGET_LINK_LIBRARIES(test_main_dx9
 	jsoncpp_lib_static
-	${Boost_LIBRARIES}
+	boost
 	ActWebSocketImguiOverlay
 	d3d9.lib
 	d3dcompiler.lib

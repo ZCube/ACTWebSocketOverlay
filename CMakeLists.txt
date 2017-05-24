@@ -11,23 +11,6 @@ ADD_DEFINITIONS(
   -D_UNICODE
   -DNOMINMAX
 )
-set(Boost_ADDITIONAL_VERSIONS
-	"1.63" "1.63.0" 
-	"1.64" "1.64.0" 
-	${BOOST_ADDITIONAL_VERSION}
-)
-set(Boost_USE_STATIC_LIBS        ON)
-set(Boost_USE_MULTITHREADED      ON)
-set(Boost_USE_STATIC_RUNTIME    OFF)
-##########################################################################################
-# boost build step
-##########################################################################################
-#
-# 1. download https://dl.bintray.com/boostorg/release/1.64.0/source/:boost_1_64_0.7z
-# 2. unzip
-# 3. bootstrap.bat
-# 4. b2 --stagedir=stage   variant=debug,release address-model=32 threading=multi link=static runtime-link=shared --prefix=c:/boost32 install
-# 5. b2 --stagedir=stage64 variant=debug,release address-model=64 threading=multi link=static runtime-link=shared --prefix=c:/boost64 install
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
 	set(address_model "64")
@@ -35,12 +18,78 @@ elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
 	set(address_model "32")
 endif()
 
-set(BOOST_ROOT "c:/boost${address_model}")
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY}/lib/${address_model})
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY}/lib/${address_model})
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY}/bin/${address_model})
+include_directories(
+	${CMAKE_BINARY_DIR}/external/zlib
+	zlib
+)
 
-find_package(Boost REQUIRED COMPONENTS system filesystem )
-
+LINK_DIRECTORIES(
+	prebuilt/${address_model}
+	prebuilt/${address_model}/third_party
+	prebuilt/${address_model}/third_party/icu
+)
 ADD_SUBDIRECTORY(external)
 ADD_SUBDIRECTORY(src)
+
+
+IF(MSVC)
+  OPTION(USE_STATIC_RUNTIME_LIBRARY "Use Static Runtime Library" ON)
+  OPTION(USE_LINK_TIME_OPTIMIZATION "Use Link Time Optimization" ON)
+
+  foreach (flag_var
+           CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+           CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO
+           CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
+           CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
+
+    set(_PARAM "")
+    IF(USE_STATIC_RUNTIME_LIBRARY)
+      string(FIND "${${flag_var}}" "/MT" _TESTVAR)
+      if(${_TESTVAR} EQUAL "-1")
+        string(FIND "${${flag_var}}" "/MD" _TESTVAR)
+        if(${_TESTVAR} EQUAL "-1")
+          set(_PARAM "${_PARAM} /MT ")
+        else()
+          string(REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
+        ENDIF()
+      ENDIF()
+    ENDIF()
+    IF(USE_LINK_TIME_OPTIMIZATION)
+      set(_PARAM "${_PARAM} /GL ")
+    ENDIF()
+    
+    # multi processor
+    string(FIND "${${flag_var}}" "/MP" _TESTVAR)
+    if(${_TESTVAR} EQUAL "-1")
+      set(_PARAM "${_PARAM} /MP")
+    endif()
+    if(_PARAM)
+      set(${flag_var} "${${flag_var}} ${_PARAM}" CACHE STRING "" FORCE)
+    ENDIF()
+    
+  endforeach()
+
+  IF(USE_LINK_TIME_OPTIMIZATION)
+      message(STATUS "- MSVC: Enabled multiprocess build option")
+      foreach (flag_var
+               CMAKE_EXE_LINKER_FLAGS CMAKE_EXE_LINKER_FLAGS_DEBUG CMAKE_EXE_LINKER_FLAGS_RELEASE
+               CMAKE_EXE_LINKER_FLAGS_MINSIZEREL CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO
+               CMAKE_SHARED_LINKER_FLAGS CMAKE_SHARED_LINKER_FLAGS_DEBUG CMAKE_SHARED_LINKER_FLAGS_RELEASE
+               CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO
+               CMAKE_MODULE_LINKER_FLAGS CMAKE_MODULE_LINKER_FLAGS_DEBUG CMAKE_MODULE_LINKER_FLAGS_RELEASE
+               CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO)
+        string(FIND "${${flag_var}}" "/LTCG" _TESTVAR)
+        if(${_TESTVAR} EQUAL "-1")
+          set(${flag_var} "${${flag_var}} /LTCG" CACHE STRING "" FORCE)
+        endif()
+      endforeach()
+      foreach (flag_var
+               CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+               CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO
+               CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
+               CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
+        string(REPLACE "${${flag_var}}" "${${flag_var}} /GL" ${flag_var} "${${flag_var}}")
+      endforeach()
+  ENDIF(USE_LINK_TIME_OPTIMIZATION)
+ENDIF()
+ 
