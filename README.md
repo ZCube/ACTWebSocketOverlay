@@ -5,14 +5,28 @@ ActWebSocket overlay utility based on ImGui
 
 *ActWebSocket needed.
 
+## ShortCut
+Shift + F3 : Show/Hide
+Ctrl + Alt + Shift + Drag : Move 
+
+## Interface
+Gear icon : Show preference window.
+Move icon : Click-through.
+"Name" : Show/Hide names.
+Control + Scroll : Zoom.
+
 ## Screenshot
 ![N|Solid](https://raw.githubusercontent.com/ZCube/ACTWebSocketOverlay/master/screenshot.png)
 
 ## Font
-* Windows/Fonts Check.
+* Search Path
+1. Game Directory
+2. Windows/Fonts
 
+Default Setting
 Language | File
 -------- | ----
+Default | Default (Embedded)
 Japanese | ArialUni.ttf
 Korean | gulim.ttc
 
