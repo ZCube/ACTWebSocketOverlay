@@ -6,7 +6,7 @@ ActWebSocket overlay utility based on ImGui
 *ActWebSocket needed.
 
 ## Interface
-Button or Key | Descrition
+Button or Key | Description
 -------- | ----
 Shift + F3 | Show/Hide
 Gear icon | Show preference window.
@@ -25,11 +25,11 @@ Control + Scroll | Zoom.
 
 Default Setting
 
-Language | File |
+Language | File | Description
 -------- | ---- | --------
 Default | Default | ProggyClean.ttf font by Tristan Grimmer (MIT license).
-Japanese | ArialUni.ttf |
-Korean | gulim.ttc |
+Japanese | ArialUni.ttf | -
+Korean | gulim.ttc | -
 
 ## File Overview
 Path | Description | License 
