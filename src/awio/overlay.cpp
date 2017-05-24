@@ -485,9 +485,6 @@ extern "C" int ModInit(ImGuiContext* context)
 			}
 		}
 
-		if (initialized)
-			return true;
-
 		dealerTable.columns = {
 			// fixed
 			Table::Column("", "Job", (overlay_texture != nullptr) ? 30 : 20, 0, ImVec2(0.5f, 0.5f)),
