@@ -27,7 +27,7 @@ ADD_LIBRARY(ActWebSocketImguiOverlay
 
 TARGET_LINK_LIBRARIES(ActWebSocketImguiOverlay
 	jsoncpp_lib_static
-	${Boost_LIBRARIES}
+	boost
 )
 
 include_directories(
