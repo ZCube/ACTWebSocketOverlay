@@ -328,7 +328,7 @@ public:
 
 											for (auto i = 0; i < _values.size(); ++i)
 											{
-												auto vals = _values[i];
+												auto& vals = _values[i];
 												Table::Row row;
 												{
 													std::string& jobStr = vals[0];
