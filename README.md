@@ -56,13 +56,13 @@ Library | Description
 Microsoft Visual Studio Community 2015
 
 ## Build Instruction
-~~* boost build step
-    1. download https://dl.bintray.com/boostorg/release/1.64.0/source/:boost_1_64_0.7z
-    2. unzip
-    3. bootstrap.bat
-    4. b2 --stagedir=stage   variant=debug,release address-model=32 threading=multi link=static runtime-link=shared --prefix=c:/boost32 install
-    5. b2 --stagedir=stage64 variant=debug,release address-model=64 threading=multi link=static runtime-link=shared --prefix=c:/boost64 install
-~~
+~~* boost build step~~
+    ~~1. download https://dl.bintray.com/boostorg/release/1.64.0/source/:boost_1_64_0.7z~~
+    ~~2. unzip~~
+    ~~3. bootstrap.bat~~
+    ~~4. b2 --stagedir=stage   variant=debug,release address-model=32 threading=multi link=static runtime-link=shared --prefix=c:/boost32 install~~
+    ~~5. b2 --stagedir=stage64 variant=debug,release address-model=64 threading=multi link=static runtime-link=shared --prefix=c:/boost64 install~~
+
 * Boost is now built using cmake. The above work is no longer necessary.  see [boost-cmake](https://github.com/ZCube/boost-cmake)
 
 * Texture build step
