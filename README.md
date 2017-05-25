@@ -5,6 +5,9 @@ ActWebSocket overlay utility based on ImGui
 
 *ActWebSocket needed.
 
+## Goal
+The goal is to develop overlay that is easy to use and scriptable. 
+
 ## Interface
 Button or Key | Description
 -------- | ----
@@ -34,8 +37,9 @@ Korean | gulim.ttc | -
 ## File Overview
 Path | Description | License 
 ---- | ----------- | -------
-[/src/awio/overlay.cpp](/src/awio/overlay.cpp) | Overlay Main | GPL License
-[/src/awio/main.cpp](/src/awio/main.cpp) | Modified Dear ImGui example for test overlay | MIT License
+[/src/awio/overlay.cpp](/src/awio/overlay.cpp) | Overlay Main | BSD License
+[/src/awio/main.cpp](/src/awio/main.cpp) | Modified Dear ImGui example for overlay test | MIT License
+[/src/awio/main_dx9.cpp](/src/awio/main_dx9.cpp) | Modified Dear ImGui example for overlay test | MIT License
 
 ## Used Libraries
 Library | Description
@@ -45,8 +49,7 @@ Library | Description
 [ImGui](https://github.com/ocornut/imgui) | Dear ImGui 
 [JsonCPP](https://github.com/open-source-parsers/jsoncpp) | Json Library for parsing Message and Settings
 
-## Manual
-[Manual Google Presentation](https://docs.google.com/presentation/d/19uWnxraScX6bXAaX3My4YcTMnHZPDmXxNpg8QXjCeDY/pub?start=false&loop=false&delayms=3000)
+## [Installation Guide](/docs/Installation/Installation.md)
 
 ## Release
 [Latest](https://www.dropbox.com/s/rcypgitu9icz7kp/ACTWebSocketOverlay_latest.zip?dl=1)
