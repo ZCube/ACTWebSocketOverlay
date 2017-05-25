@@ -1217,6 +1217,8 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 					strcpy(buf, table.columns[index].Title.c_str());
 					width = table.columns[index].size;
 					align = table.columns[index].align.x;
+					auto ri = std::find(combatant_attribute_names.begin(), combatant_attribute_names.end(), table.columns[index].index);
+					current_item = (ri != combatant_attribute_names.end()) ? ri - combatant_attribute_names.begin() : -1;
 				}
 				if (ImGui::Button("Up"))
 				{
@@ -1265,13 +1267,13 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 					}
 					if (ImGui::Combo("Attribute", &current_item, combatant_attribute_names.data(), combatant_attribute_names.size()))
 					{
-						if (strlen(buf) == 0 && current_item >= 0)
-						{
-							table.columns[index].index = combatant_attribute_names[current_item];
-							SaveSettings();
-						}
 						if (current_item >= 0)
 						{
+							if (strlen(buf) == 0)
+							{
+								strcpy(buf, combatant_attribute_names[current_item]);
+							}
+							table.columns[index].index = combatant_attribute_names[current_item];
 							for (int j = 0; j < table.values.size(); ++j)
 							{
 								if (table.values[j].size() > index)
@@ -1366,11 +1368,13 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 					}
 					if (ImGui::Combo("Attribute", &current_item, combatant_attribute_names.data(), combatant_attribute_names.size()))
 					{
-						if (strlen(buf) == 0 && current_item >= 0)
+						if (current_item >= 0)
 						{
-							strcpy(buf, combatant_attribute_names[current_item]);
+							if (strlen(buf) == 0)
+							{
+								strcpy(buf, combatant_attribute_names[current_item]);
+							}
 						}
-
 					}
 					if (ImGui::SliderInt("Width", &width, 10, 100))
 					{
