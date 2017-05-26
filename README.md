@@ -56,7 +56,7 @@ Library | Description
 [Release](https://github.com/ZCube/ActWebSocketOverlay/releases)
 
 ## Build Tool
-Microsoft Visual Studio Community 2015
+Microsoft Visual Studio Community 2017
 
 ## Build Instruction
 ~~* boost build step~~

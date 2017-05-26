@@ -2,7 +2,7 @@
 
 ## Download ACTWebSocket Plugin
 
-Download ACTWebSocket Plugin and unzip. 
+Download [ACTWebSocket Plugin](https://github.com/ZCube/ACTWebSocket/releases) and unzip. 
 
 If you use windows defender, you may need to unblock files. See this [link](https://blogs.msdn.microsoft.com/delay/p/unblockingdownloadedfile/)
 

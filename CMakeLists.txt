@@ -62,6 +62,14 @@ IF(MSVC)
     if(${_TESTVAR} EQUAL "-1")
       set(_PARAM "${_PARAM} /MP")
     endif()
+
+    # exceptions (for msvc 2017)
+    string(FIND "${${flag_var}}" "/EHa" _TESTVAR)
+    if(${_TESTVAR} EQUAL "-1")
+      set(_PARAM "${_PARAM} /EHa")
+    endif()
+
+
     if(_PARAM)
       set(${flag_var} "${${flag_var}} ${_PARAM}" CACHE STRING "" FORCE)
     ENDIF()

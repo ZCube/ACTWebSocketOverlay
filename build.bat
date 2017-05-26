@@ -1,7 +1,7 @@
 @echo off
 set _ROOT=%CD%
 pushd external\reshade
-CALL "%VS140COMNTOOLS%vsvars32.bat"
+CALL "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars32.bat"
 msbuild ReShade.sln /property:Configuration=Release "/property:Platform=32-bit"
 msbuild ReShade.sln /property:Configuration=Release "/property:Platform=64-bit"
 popd
