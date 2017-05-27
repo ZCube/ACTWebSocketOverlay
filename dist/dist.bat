@@ -1,4 +1,5 @@
 @echo off
+if exist config.bat call config.bat
 pushd ..
 pushd src
 call revision.bat
