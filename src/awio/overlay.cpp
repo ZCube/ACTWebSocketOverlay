@@ -750,6 +750,7 @@ extern "C" int ModInit(ImGuiContext* context)
 
 		// default port
 		strcpy(websocket_port, "10501");
+		strcpy(websocket_host, "127.0.0.1");
 
 		{
 			GetModuleFileNameW(NULL, result, MAX_PATH);
