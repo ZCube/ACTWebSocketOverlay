@@ -56,6 +56,7 @@ TARGET_LINK_LIBRARIES(test_main
 	jsoncpp_lib_static
 	boost
 	ActWebSocketImguiOverlay
+	Sandbox
 	d3d11.lib
 	d3dcompiler.lib
 	dxgi.lib
@@ -82,6 +83,33 @@ TARGET_LINK_LIBRARIES(test_main_dx9
 	jsoncpp_lib_static
 	boost
 	ActWebSocketImguiOverlay
+	Sandbox
 	d3d9.lib
 	d3dcompiler.lib
+)
+
+
+ADD_LIBRARY(Sandbox
+	SHARED
+	${IMGUI_DIRECTORY}/imconfig.h
+	${IMGUI_DIRECTORY}/imgui.cpp
+	${IMGUI_DIRECTORY}/imgui.h
+	${IMGUI_DIRECTORY}/imgui_draw.cpp
+	${IMGUI_DIRECTORY}/imgui_internal.h
+	${IMGUI_DIRECTORY}/stb_rect_pack.h
+	${IMGUI_DIRECTORY}/stb_textedit.h
+	${IMGUI_DIRECTORY}/stb_truetype.h
+	sandbox.cpp
+	overlay.def
+	Resource.rc
+	resource.h
+	version.h
+)
+
+TARGET_LINK_LIBRARIES(Sandbox
+	jsoncpp_lib_static
+	boost
+	v8.dll.lib
+	v8_libbase.dll.lib
+	v8_libplatform.dll.lib
 )

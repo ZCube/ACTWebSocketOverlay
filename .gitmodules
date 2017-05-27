@@ -14,3 +14,9 @@
 [submodule "external/boost"]
 	path = external/boost
 	url = https://github.com/ZCube/boost-cmake.git
+[submodule "external/v8pp"]
+	path = external/v8pp
+	url = https://github.com/pmed/v8pp.git
+[submodule "prebuilt/v8"]
+	path = prebuilt/v8
+	url = https://github.com/ZCube/v8-bin.git

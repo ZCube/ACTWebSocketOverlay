@@ -105,13 +105,23 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 }
 
 
-int main(int, char**)
+int main(int argc, char** argv)
 {
 	/////////////////////////////////////////////////////////////////////////////////
 	wchar_t szPath[1024] = { 0, };
 	GetModuleFileNameW(NULL, szPath, 1023);
 	boost::filesystem::path p(szPath);
-	p = p.parent_path() / "ActWebSocketImguiOverlay.dll";
+	if (argc > 1)
+	{
+		if(boost::filesystem::exists(p.parent_path() / argv[1]))
+			p = p.parent_path() / argv[1];
+		else
+			p = argv[1];
+	}
+	else
+	{
+		p = p.parent_path() / "ActWebSocketImguiOverlay.dll";
+	}
 	mod = LoadLibraryW(p.wstring().c_str());
 	if (mod)
 	{

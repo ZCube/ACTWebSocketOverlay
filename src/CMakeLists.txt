@@ -8,11 +8,13 @@ INCLUDE_DIRECTORIES(
 	../external/jsoncpp/include
 	../external/beast/include
 	../external/boost
+	../external/v8pp
 	../external
+	../prebuilt/v8/include
 )
 
 LINK_DIRECTORIES(
-	${Boost_LIBRARY_DIRS}
+	../prebuilt/v8/lib/${address_model}
 )
 
 ADD_SUBDIRECTORY(awio)

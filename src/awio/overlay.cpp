@@ -266,6 +266,8 @@ public:
 				boost::asio::io_service ios;
 				boost::asio::ip::tcp::resolver r{ ios };
 				try {
+					websocket_reconnect = false;
+
 					// localhost only !
 					boost::asio::ip::tcp::socket sock{ ios };
 					std::string host = websocket_host;
@@ -278,8 +280,6 @@ public:
 					
 					std::string host_port = host + ":" + websocket_port;
 					ws.handshake(host_port, "/MiniParse");
-
-					websocket_reconnect = false;
 
 					if (sock.is_open())
 					{
