@@ -51,7 +51,7 @@ popd ffxiv
 set /p version=<..\src\version
 set /p tag=<..\src\tag
 SET OWNER=ZCube
-SET REPO=ACTWebSocket
+SET REPO=ACTWebSocketOverlay
 
 xcopy /hrkyd ACTWebSocketOverlay_latest.zip ACTWebSocketOverlay_%version%.*
 xcopy /hrkyd ACTWebSocketOverlay_ffxiv_latest.zip ACTWebSocketOverlay_ffxiv_%version%.*
