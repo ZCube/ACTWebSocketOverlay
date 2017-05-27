@@ -47,6 +47,19 @@ pushd ffxiv
 if %errorlevel% neq 0 exit /b %errorlevel%
 popd ffxiv
 
+set /p version=<..\src\version
+set /p tag=<..\src\tag
+SET OWNER=ZCube
+SET REPO=ACTWebSocket
+
+xcopy /hrkyd ACTWebSocketOverlay_latest.zip ACTWebSocketOverlay_%version%.*
+xcopy /hrkyd ACTWebSocketOverlay_ffxiv_latest.zip ACTWebSocketOverlay_ffxiv_%version%.*
+
+echo ==========================================================================================
+@py -2 github_uploader.py %GITHUB_TOKEN% %OWNER% %REPO% %tag% ACTWebSocketOverlay_%version%.zip
+@py -2 github_uploader.py %GITHUB_TOKEN% %OWNER% %REPO% %tag% ACTWebSocketOverlay_ffxiv_%version%.zip
+echo ==========================================================================================
+
 
 :SetVariables
 FOR /F "tokens=3 delims= " %%G IN ('REG QUERY "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders" /v "Personal"') DO (SET DocumentDir=%%G)
