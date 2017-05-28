@@ -19,7 +19,7 @@ INCLUDE_DIRECTORIES(
 LINK_DIRECTORIES(
 	../prebuilt/v8/lib/${address_model}
 	# ../prebuilt/libressl/${address_model}
-	../prebuilt/openssl/lib/${address_model}
+	../prebuilt/openssl/${address_model}/lib
 )
 
 ADD_SUBDIRECTORY(awio)
