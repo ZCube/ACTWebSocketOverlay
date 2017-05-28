@@ -56,6 +56,7 @@ static ImFont* korFont = nullptr;
 static ImFont* japFont = nullptr;
 static bool need_font_init = true;
 static std::map<std::string, ImVec2> windows_default_sizes;
+std::string your_name = "YOU";
 
 class Serializable
 {
@@ -277,6 +278,12 @@ public:
 			{
 				std::vector<Table::Row> _rows;
 				std::vector<std::vector<std::string> > _values;
+				//{"type":"broadcast", "msgtype" : "SendCharName", "from" : null, "to" : "uuid", "msg" : {"charID":00, "charName" : "charname"}}
+				if (root["type"].asString() == "broadcast" && root["msgtype"].asString() == "SendCharName")
+				{
+					your_name = root["msg"]["charName"].asString();
+				}
+
 				if (root["type"].asString() == "broadcast" && root["msgtype"].asString() == "CombatData")
 				{
 					float _maxValue = 0;
@@ -357,6 +364,10 @@ public:
 									{
 										row.color = &color_map["etc"];
 									}
+								}
+								if (nameStr == "YOU" && !your_name.empty())
+								{
+									nameStr = your_name;
 								}
 								_rows.push_back(row);
 							}
