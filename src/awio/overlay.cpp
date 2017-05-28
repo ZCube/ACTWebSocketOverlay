@@ -854,6 +854,7 @@ extern "C" int ModInit(ImGuiContext* context)
 								ImVec2 size = ImVec2(win["width"].asFloat(), win["height"].asFloat());
 								windows_default_sizes[name] = size;
 								ImGuiContext & g = *ImGui::GetCurrentContext();
+								g.Initialized = true;
 								size = ImMax(size, g.Style.WindowMinSize);
 								ImGuiIniData* settings = nullptr;
 								ImGuiID id = ImHash(name.c_str(), 0);
