@@ -12,3 +12,4 @@ dist/*
 *.7z
 textures/out/*
 src/version
+prebuilt/*

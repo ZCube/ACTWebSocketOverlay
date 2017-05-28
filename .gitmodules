@@ -20,3 +20,6 @@
 [submodule "prebuilt/v8"]
 	path = prebuilt/v8
 	url = https://github.com/ZCube/v8-bin.git
+[submodule "external/libressl"]
+	path = external/libressl
+	url = https://github.com/libressl-portable/portable.git

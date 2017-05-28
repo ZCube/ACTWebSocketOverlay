@@ -23,6 +23,9 @@
 #include <boost/thread/mutex.hpp>
 #include <beast/core.hpp>
 #include <beast/websocket.hpp>
+#include <beast/websocket/ssl.hpp>
+#include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/hex.hpp>
@@ -109,6 +112,7 @@ static std::vector<const char*> glyph_range_key;
 static std::map<std::string, bool> boolean_map;
 static bool& show_status = boolean_map["ShowStatus"];
 static bool& movable = boolean_map["Movable"];
+static bool& websocket_ssl = boolean_map["WebSocketSSL"];
 
 class Table
 {
@@ -263,6 +267,110 @@ public:
 	bool loop = false;;
 	std::shared_ptr<std::thread> websocket_thread;
 
+	void Process(const std::string& message_str)
+	{
+		{
+			Json::Value root;
+			Json::Reader r;
+
+			if (r.parse(message_str, root))
+			{
+				std::vector<Table::Row> _rows;
+				std::vector<std::vector<std::string> > _values;
+				if (root["type"].asString() == "broadcast" && root["msgtype"].asString() == "CombatData")
+				{
+					float _maxValue = 0;
+					mutex.lock();
+					Table& table = dealerTable;
+					{
+						_values.clear();
+						Json::Value combatant = root["msg"]["Combatant"];
+						Json::Value encounter = root["msg"]["Encounter"];
+
+						rdps = encounter["encdps"].asString();
+						rhps = encounter["enchps"].asString();
+
+						zone = encounter["CurrentZoneName"].asString();
+						duration = encounter["duration"].asString();
+
+						for (auto i = combatant.begin(); i != combatant.end(); ++i)
+						{
+							std::vector<std::string> vals;
+							for (int j = 0; j < table.columns.size(); ++j)
+							{
+								vals.push_back((*i)[table.columns[j].index].asString());
+							}
+							_maxValue = std::max<float>(atof(vals[table.progressColumn].c_str()), _maxValue);
+
+							_values.push_back(vals);
+						}
+
+						// sort first
+						std::sort(_values.begin(), _values.end(), [](const std::vector<std::string>& vals0, const std::vector<std::string>& vals1)
+						{
+							return atof(vals0[2].c_str()) > atof(vals1[2].c_str());
+						});
+
+						for (auto i = 0; i < _values.size(); ++i)
+						{
+							auto& vals = _values[i];
+							Table::Row row;
+							{
+								std::string& jobStr = vals[0];
+								const std::string& progressStr = vals[2];
+								std::string& nameStr = vals[1];
+								if (jobStr.empty())
+								{
+									std::string jobStrAlter;
+									typedef std::vector< std::string > split_vector_type;
+									split_vector_type splitVec; // #2: Search for tokens
+									boost::split(splitVec, nameStr, boost::is_any_of("()"), boost::token_compress_on);
+									if (splitVec.size() >= 1)
+									{
+										boost::trim(splitVec[0]);
+										auto i = name_to_job_map.find(splitVec[0]);
+										if (i != name_to_job_map.end())
+										{
+											jobStr = i->second;
+										}
+										else if (splitVec.size() > 1)
+										{
+											jobStr = default_pet_job;
+										}
+									}
+								}
+
+								ColorMapType::iterator ji;
+
+								// name and job
+								if ((ji = color_map.find(nameStr)) != color_map.end())
+								{
+									row.color = &ji->second;
+								}
+								else
+								{
+									if ((ji = color_map.find(jobStr)) != color_map.end())
+									{
+										row.color = &ji->second;
+									}
+									else
+									{
+										row.color = &color_map["etc"];
+									}
+								}
+								_rows.push_back(row);
+							}
+						}
+					}
+					dealerTable.rows = _rows;
+					dealerTable.values = _values;
+					dealerTable.maxValue = _maxValue;
+					mutex.unlock();
+				}
+			}
+		}
+	}
+
 	void Run()
 	{
 		auto func = [this]()
@@ -281,141 +389,89 @@ public:
 					std::string s = endpoint->service_name();
 					uint16_t p = endpoint->endpoint().port();
 					boost::asio::connect(sock, endpoint);
-
-					beast::websocket::stream<boost::asio::ip::tcp::socket&> ws{ sock };
 					
 					std::string host_port = host + ":" + websocket_port;
-					ws.handshake(host_port, "/MiniParse");
-
-					if (sock.is_open())
+					if (websocket_ssl)
 					{
-						strcpy_s(websocket_message, 1023, "Connected");
-					}
-					while (sock.is_open() && loop)
-					{
-						if (websocket_reconnect)
-						{
-							sock.close();
-							std::cout << "Closed" << "\n";
-							break;
-						}
-						beast::multi_buffer b;
-						beast::websocket::opcode op;
-						ws.read(op, b);
+						// Perform SSL handshaking
+						using stream_type = boost::asio::ssl::stream<boost::asio::ip::tcp::socket&>;
+						boost::asio::ssl::context ctx{ boost::asio::ssl::context::sslv23 };
+						stream_type stream{ sock, ctx };
+						stream.set_verify_mode(boost::asio::ssl::verify_none);
+						stream.handshake(boost::asio::ssl::stream_base::client );
 
-						std::string message_str;
-						message_str = boost::lexical_cast<std::string>(beast::buffers(b.data()));
-						// debug
-						//std::cout << beast::buffers(b.data()) << "\n";
-						b.consume(b.size());
-						if (message_str.size() == 1)
+						// Secure WebSocket connect and send message using Beast
+						beast::websocket::stream<stream_type&> ws{ stream };
+						ws.handshake(host_port, "/MiniParse");
+
+						if (sock.is_open())
 						{
-							ws.write(boost::asio::buffer(std::string(".")));
+							strcpy_s(websocket_message, 1023, "Connected");
 						}
-						else
+						while (sock.is_open() && loop)
 						{
+							if (websocket_reconnect)
 							{
-								Json::Value root;
-								Json::Reader r;
+								sock.close();
+								std::cout << "Closed" << "\n";
+								break;
+							}
+							beast::multi_buffer b;
+							beast::websocket::opcode op;
+							ws.read(op, b);
 
-								if (r.parse(message_str, root))
-								{
-									std::vector<Table::Row> _rows;
-									std::vector<std::vector<std::string> > _values;
-									if (root["type"].asString() == "broadcast" && root["msgtype"].asString() == "CombatData")
-									{
-										float _maxValue = 0;
-										mutex.lock();
-										Table& table = dealerTable;
-										{
-											_values.clear();
-											Json::Value combatant = root["msg"]["Combatant"];
-											Json::Value encounter = root["msg"]["Encounter"];
-
-											rdps = encounter["encdps"].asString();
-											rhps = encounter["enchps"].asString();
-
-											zone = encounter["CurrentZoneName"].asString();
-											duration = encounter["duration"].asString();
-
-											for (auto i = combatant.begin(); i != combatant.end(); ++i)
-											{
-												std::vector<std::string> vals;
-												for (int j = 0; j < table.columns.size(); ++j)
-												{
-													vals.push_back((*i)[table.columns[j].index].asString());
-												}
-												_maxValue = std::max<float>(atof(vals[table.progressColumn].c_str()), _maxValue);
-
-												_values.push_back(vals);
-											}
-
-											// sort first
-											std::sort(_values.begin(), _values.end(), [](const std::vector<std::string>& vals0, const std::vector<std::string>& vals1)
-											{
-												return atof(vals0[2].c_str()) > atof(vals1[2].c_str());
-											});
-
-											for (auto i = 0; i < _values.size(); ++i)
-											{
-												auto& vals = _values[i];
-												Table::Row row;
-												{
-													std::string& jobStr = vals[0];
-													const std::string& progressStr = vals[2];
-													std::string& nameStr = vals[1];
-													if (jobStr.empty())
-													{
-														std::string jobStrAlter;
-														typedef std::vector< std::string > split_vector_type;
-														split_vector_type splitVec; // #2: Search for tokens
-														boost::split(splitVec, nameStr, boost::is_any_of("()"), boost::token_compress_on);
-														if (splitVec.size() >= 1)
-														{
-															boost::trim(splitVec[0]);
-															auto i = name_to_job_map.find(splitVec[0]);
-															if (i != name_to_job_map.end())
-															{
-																jobStr = i->second;
-															}
-															else if (splitVec.size() > 1)
-															{
-																jobStr = default_pet_job;
-															}
-														}
-													}
-
-													ColorMapType::iterator ji;
-
-													// name and job
-													if ((ji = color_map.find(nameStr)) != color_map.end())
-													{
-														row.color = &ji->second;
-													}
-													else
-													{
-														if ((ji = color_map.find(jobStr)) != color_map.end())
-														{
-															row.color = &ji->second;
-														}
-														else
-														{
-															row.color = &color_map["etc"];
-														}
-													}
-													_rows.push_back(row);
-												}
-											}
-										}
-										dealerTable.rows = _rows;
-										dealerTable.values = _values;
-										dealerTable.maxValue = _maxValue;
-										mutex.unlock();
-									}
-								}
+							std::string message_str;
+							message_str = boost::lexical_cast<std::string>(beast::buffers(b.data()));
+							// debug
+							//std::cout << beast::buffers(b.data()) << "\n";
+							b.consume(b.size());
+							if (message_str.size() == 1)
+							{
+								ws.write(boost::asio::buffer(std::string(".")));
+							}
+							else
+							{
+								Process(message_str);
 							}
 						}
 					}
+					else
+					{
+						beast::websocket::stream<boost::asio::ip::tcp::socket&> ws{ sock };
+						
+						ws.handshake(host_port, "/MiniParse");
+						if (sock.is_open())
+						{
+							strcpy_s(websocket_message, 1023, "Connected");
+						}
+						while (sock.is_open() && loop)
+						{
+							if (websocket_reconnect)
+							{
+								sock.close();
+								std::cout << "Closed" << "\n";
+								break;
+							}
+							beast::multi_buffer b;
+							beast::websocket::opcode op;
+							ws.read(op, b);
+
+							std::string message_str;
+							message_str = boost::lexical_cast<std::string>(beast::buffers(b.data()));
+							// debug
+							//std::cout << beast::buffers(b.data()) << "\n";
+							b.consume(b.size());
+							if (message_str.size() == 1)
+							{
+								ws.write(boost::asio::buffer(std::string(".")));
+							}
+							else
+							{
+								Process(message_str);
+							}
+						}
+					}
+
 				}
 				catch (std::exception& e)
 				{
@@ -757,6 +813,10 @@ extern "C" int ModInit(ImGuiContext* context)
 		// default port
 		strcpy(websocket_port, "10501");
 		strcpy(websocket_host, "127.0.0.1");
+		websocket_ssl = false;
+
+		movable = true;
+		show_status = true;
 
 		// default size
 		windows_default_sizes["Preferences"] = ImVec2(300, 500);
@@ -1518,6 +1578,13 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 		}
 		if (ImGui::TreeNode("WebSocket"))
 		{
+			if (ImGui::Checkbox("Use SSL", &boolean_map["WebSocketSSL"]))
+			{
+				websocket_reconnect = true;
+				strcpy_s(websocket_message, 1023, "Connecting...");
+				SaveSettings();
+			}
+			
 			if (ImGui::InputText("Host", websocket_host, 50))
 			{
 				websocket_reconnect = true;

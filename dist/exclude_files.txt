@@ -2,3 +2,9 @@
 .gitignore\
 .gitmodules\
 .gif\
+Sandbox
+v8
+zlibd
+zlib
+ActWebSocketImguiOverlay
+loader

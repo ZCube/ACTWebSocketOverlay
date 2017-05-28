@@ -5,36 +5,59 @@ pushd src
 call revision.bat
 if %errorlevel% neq 0 exit /b %errorlevel%
 popd
-call configure.bat
-if %errorlevel% neq 0 exit /b %errorlevel%
-call build.bat
-if %errorlevel% neq 0 exit /b %errorlevel%
+REM call configure.bat
+REM if %errorlevel% neq 0 exit /b %errorlevel%
+REM call build.bat
+REM if %errorlevel% neq 0 exit /b %errorlevel%
 
 if not exist dist\temp mkdir dist\temp
 if not exist dist\ffxiv mkdir dist\ffxiv
-
-xcopy /hrkysd "bin\64\Release\ActWebSocketImguiOverlay.dll" "dist\temp\ACTWebSocketOverlay64.*"
-if %errorlevel% neq 0 exit /b %errorlevel%
-xcopy /hrkysd "bin\32\Release\ActWebSocketImguiOverlay.dll" "dist\temp\ACTWebSocketOverlay32.*"
-if %errorlevel% neq 0 exit /b %errorlevel%
-xcopy /hrkysd "external\reshade\bin\x64\Release\ReShade64.dll" "dist\temp\ReShade64.*"
-if %errorlevel% neq 0 exit /b %errorlevel%
-xcopy /hrkysd "external\reshade\bin\Win32\Release\ReShade32.dll" "dist\temp\ReShade32.*"
-if %errorlevel% neq 0 exit /b %errorlevel%
-xcopy /hrkysd "resource\overlay_atlas.*" "dist\temp\overlay_atlas.*"
-if %errorlevel% neq 0 exit /b %errorlevel%
-
-xcopy /hrkysd "bin\64\Release\ActWebSocketImguiOverlay.dll" "dist\ffxiv\ffxiv_dx11_mod.*"
-if %errorlevel% neq 0 exit /b %errorlevel%
-xcopy /hrkysd "bin\32\Release\ActWebSocketImguiOverlay.dll" "dist\ffxiv\ffxiv_mod.*"
-if %errorlevel% neq 0 exit /b %errorlevel%
-xcopy /hrkysd "external\reshade\bin\x64\Release\ReShade64.dll" "dist\ffxiv\dxgi.*"
-if %errorlevel% neq 0 exit /b %errorlevel%
-xcopy /hrkysd "external\reshade\bin\Win32\Release\ReShade32.dll" "dist\ffxiv\d3d9.*"
-if %errorlevel% neq 0 exit /b %errorlevel%
-xcopy /hrkysd "resource\overlay_atlas.*" "dist\ffxiv\overlay_atlas.*"
-if %errorlevel% neq 0 exit /b %errorlevel%
+if not exist dist\temp\32 mkdir dist\temp\32
+if not exist dist\ffxiv\32 mkdir dist\ffxiv\32
+if not exist dist\temp\64 mkdir dist\temp\64
+if not exist dist\ffxiv\64 mkdir dist\ffxiv\64
 popd
+
+xcopy /hrkysd /exclude:exclude_files.txt "..\bin\64\Release\*.dll" "temp\64\*.*"
+if %errorlevel% neq 0 exit /b %errorlevel%
+xcopy /hrkysd /exclude:exclude_files.txt "..\bin\32\Release\*.dll" "temp\32\*.*"
+if %errorlevel% neq 0 exit /b %errorlevel%
+xcopy /hrkysd "..\bin\64\Release\ActWebSocketImguiOverlay.dll" "temp\64\overlay_mod.*"
+if %errorlevel% neq 0 exit /b %errorlevel%
+xcopy /hrkysd "..\bin\32\Release\ActWebSocketImguiOverlay.dll" "temp\32\overlay_mod.*"
+if %errorlevel% neq 0 exit /b %errorlevel%
+
+
+xcopy /hrkysd "..\bin\64\Release\loader.dll" "temp\ACTWebSocketOverlay64.*"
+if %errorlevel% neq 0 exit /b %errorlevel%
+xcopy /hrkysd "..\bin\32\Release\loader.dll" "temp\ACTWebSocketOverlay32.*"
+if %errorlevel% neq 0 exit /b %errorlevel%
+xcopy /hrkysd "..\external\reshade\bin\x64\Release\ReShade64.dll" "temp\ReShade64.*"
+if %errorlevel% neq 0 exit /b %errorlevel%
+xcopy /hrkysd "..\external\reshade\bin\Win32\Release\ReShade32.dll" "temp\ReShade32.*"
+if %errorlevel% neq 0 exit /b %errorlevel%
+xcopy /hrkysd "..\resource\overlay_atlas.*" "temp\overlay_atlas.*"
+if %errorlevel% neq 0 exit /b %errorlevel%
+
+xcopy /hrkysd "..\bin\64\Release\*.dll" /exclude:exclude_files.txt "ffxiv\64\*.*"
+if %errorlevel% neq 0 exit /b %errorlevel%
+xcopy /hrkysd "..\bin\32\Release\*.dll" /exclude:exclude_files.txt "ffxiv\32\*.*"
+if %errorlevel% neq 0 exit /b %errorlevel%
+xcopy /hrkysd "..\bin\64\Release\ActWebSocketImguiOverlay.dll" "ffxiv\64\overlay_mod.*"
+if %errorlevel% neq 0 exit /b %errorlevel%
+xcopy /hrkysd "..\bin\32\Release\ActWebSocketImguiOverlay.dll" "ffxiv\32\overlay_mod.*"
+if %errorlevel% neq 0 exit /b %errorlevel%
+
+xcopy /hrkysd "..\bin\64\Release\loader.dll" "ffxiv\ffxiv_dx11_mod.*"
+if %errorlevel% neq 0 exit /b %errorlevel%
+xcopy /hrkysd "..\bin\32\Release\loader.dll" "ffxiv\ffxiv_mod.*"
+if %errorlevel% neq 0 exit /b %errorlevel%
+xcopy /hrkysd "..\external\reshade\bin\x64\Release\ReShade64.dll" "ffxiv\dxgi.*"
+if %errorlevel% neq 0 exit /b %errorlevel%
+xcopy /hrkysd "..\external\reshade\bin\Win32\Release\ReShade32.dll" "ffxiv\d3d9.*"
+if %errorlevel% neq 0 exit /b %errorlevel%
+xcopy /hrkysd "..\resource\overlay_atlas.*" "ffxiv\overlay_atlas.*"
+if %errorlevel% neq 0 exit /b %errorlevel%
 
 if exist ACTWebSocketOverlay_latest.zip del ACTWebSocketOverlay_latest.zip
 pushd temp

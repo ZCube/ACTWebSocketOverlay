@@ -28,6 +28,23 @@ ADD_LIBRARY(ActWebSocketImguiOverlay
 TARGET_LINK_LIBRARIES(ActWebSocketImguiOverlay
 	jsoncpp_lib_static
 	boost
+	libeay32.lib
+	ssleay32.lib
+#	libcrypto-41.lib
+#	libtls-15.lib
+#	libssl-43.lib
+)
+
+ADD_LIBRARY(loader
+	SHARED
+	loader.cpp
+	overlay.def
+	Resource.rc
+	resource.h
+	version.h
+)
+
+TARGET_LINK_LIBRARIES(loader
 )
 
 include_directories(

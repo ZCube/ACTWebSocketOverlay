@@ -2,6 +2,23 @@
 CALL "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars32.bat"
 set _ROOT=%CD%
 
+pushd prebuilt
+py -3 init_prebuilt.py
+popd
+
+REM REM libressl
+REM xcopy /hrkyd /exclude:exclude_files.txt prebuilt\libressl\64\* bin\64\Release\*
+REM xcopy /hrkyd /exclude:exclude_files.txt prebuilt\libressl\64\* bin\64\Debug\*
+REM xcopy /hrkyd /exclude:exclude_files.txt prebuilt\libressl\32\* bin\32\Release\*
+REM xcopy /hrkyd /exclude:exclude_files.txt prebuilt\libressl\32\* bin\32\Debug\*
+
+REM openssl
+xcopy /hrkyd /exclude:exclude_files.txt prebuilt\openssl\64\bin\* bin\64\Release\*
+xcopy /hrkyd /exclude:exclude_files.txt prebuilt\openssl\64\bin\* bin\64\Debug\*
+xcopy /hrkyd /exclude:exclude_files.txt prebuilt\openssl\32\bin\* bin\32\Release\*
+xcopy /hrkyd /exclude:exclude_files.txt prebuilt\openssl\32\bin\* bin\32\Debug\*
+
+REM v8
 xcopy /hrkyd /exclude:exclude_files.txt prebuilt\v8\bin\64\* bin\64\Release\*
 xcopy /hrkyd /exclude:exclude_files.txt prebuilt\v8\bin\64\* bin\64\Debug\*
 xcopy /hrkyd /exclude:exclude_files.txt prebuilt\v8\bin\32\* bin\32\Release\*
