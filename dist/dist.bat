@@ -5,10 +5,10 @@ pushd src
 call revision.bat
 if %errorlevel% neq 0 exit /b %errorlevel%
 popd
-REM call configure.bat
-REM if %errorlevel% neq 0 exit /b %errorlevel%
-REM call build.bat
-REM if %errorlevel% neq 0 exit /b %errorlevel%
+call configure.bat
+if %errorlevel% neq 0 exit /b %errorlevel%
+call build.bat
+if %errorlevel% neq 0 exit /b %errorlevel%
 
 if not exist dist\temp mkdir dist\temp
 if not exist dist\ffxiv mkdir dist\ffxiv
