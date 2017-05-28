@@ -818,11 +818,6 @@ extern "C" int ModInit(ImGuiContext* context)
 		movable = true;
 		show_status = true;
 
-		// default size
-		windows_default_sizes["Preferences"] = ImVec2(300, 500);
-		windows_default_sizes["AWIO (ActWebSocket ImGui Overlay)"] = ImVec2(300, 500);
-		windows_default_sizes["Status"] = ImVec2(300, 50);
-
 		{
 			GetModuleFileNameW(NULL, result, MAX_PATH);
 			boost::filesystem::path m = result;
@@ -956,6 +951,14 @@ extern "C" int ModInit(ImGuiContext* context)
 			}
 		}
 		initialized = true;
+
+		if (windows_default_sizes.empty())
+		{
+			// default size
+			windows_default_sizes["Preferences"] = ImVec2(300, 500);
+			windows_default_sizes["AWIO (ActWebSocket ImGui Overlay)"] = ImVec2(300, 500);
+			windows_default_sizes["Status"] = ImVec2(300, 50);
+		}
 
 		websocketThread();
 
@@ -1140,7 +1143,7 @@ extern "C" int ModUnInit(ImGuiContext* context)
 {
 	boost::unique_lock<boost::mutex> l(font_mutex);
 	ImGui::SetCurrentContext(context);
-	SaveSettings();
+	//SaveSettings();
 	initialized = false;
 	return 0;
 }
@@ -1347,6 +1350,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 {		
 	ImGui::Begin("Preferences", show_preferences, windows_default_sizes["Preferences"], -1, ImGuiWindowFlags_NoCollapse);
 	{
+		windows_default_sizes["Preferences"] = ImGui::GetWindowSize();
 		ImGui::Text("Version : %s", VERSION_LONG_STRING);
 		ImGui::Text("Github : https://github.com/ZCube/ACTWebSocket");
 		ImGui::Text("Github : https://github.com/ZCube/ACTWebSocketOverlay");
@@ -1879,6 +1883,7 @@ extern "C" int ModRender(ImGuiContext* context)
 			ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(color_map["TitleText"], text_opacity * global_opacity));
 			ImGui::Begin("AWIO (ActWebSocket ImGui Overlay)", nullptr, windows_default_sizes["AWIO (ActWebSocket ImGui Overlay)"], -1,
 				ImGuiWindowFlags_NoTitleBar | (use_input ? NULL : ImGuiWindowFlags_NoInputs));
+			windows_default_sizes["AWIO(ActWebSocket ImGui Overlay)"] = ImGui::GetWindowSize();
 
 			mutex.lock();
 
@@ -1930,6 +1935,7 @@ extern "C" int ModRender(ImGuiContext* context)
 				ImGui::Begin("Status", nullptr, windows_default_sizes["Status"], -1,
 					ImGuiWindowFlags_NoTitleBar | (use_input ? NULL : ImGuiWindowFlags_NoInputs));
 				{
+					windows_default_sizes["Status"] = ImGui::GetWindowSize();
 					int height = 40 * io.FontGlobalScale;
 					const ImGuiStyle& style = ImGui::GetStyle();
 					ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -1955,6 +1961,17 @@ extern "C" int ModRender(ImGuiContext* context)
 			//ImGui::PopStyleVar();
 			ImGui::PopStyleColor(11);
 
+			typedef std::chrono::duration<long, std::chrono::milliseconds> milliseconds;
+			static std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
+
+			// auto save per 60 sec
+			std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
+			if (std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() > 60000) // 60sec
+			{
+				boost::unique_lock<boost::mutex> l(font_mutex);
+				SaveSettings();
+				start = end;
+			}
 
 			if (show_preferences)
 			{
