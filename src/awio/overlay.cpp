@@ -52,6 +52,7 @@ static ImFont* largeFont = nullptr;
 static ImFont* korFont = nullptr;
 static ImFont* japFont = nullptr;
 static bool need_font_init = true;
+static std::map<std::string, ImVec2> windows_default_sizes;
 
 class Serializable
 {
@@ -757,6 +758,11 @@ extern "C" int ModInit(ImGuiContext* context)
 		strcpy(websocket_port, "10501");
 		strcpy(websocket_host, "127.0.0.1");
 
+		// default size
+		windows_default_sizes["Preferences"] = ImVec2(300, 500);
+		windows_default_sizes["AWIO (ActWebSocket ImGui Overlay)"] = ImVec2(300, 500);
+		windows_default_sizes["Status"] = ImVec2(300, 50);
+
 		{
 			GetModuleFileNameW(NULL, result, MAX_PATH);
 			boost::filesystem::path m = result;
@@ -846,6 +852,7 @@ extern "C" int ModInit(ImGuiContext* context)
 									continue;
 								ImVec2 pos = ImVec2(win["x"].asFloat(), win["y"].asFloat());
 								ImVec2 size = ImVec2(win["width"].asFloat(), win["height"].asFloat());
+								windows_default_sizes[name] = size;
 								ImGuiContext & g = *ImGui::GetCurrentContext();
 								size = ImMax(size, g.Style.WindowMinSize);
 								ImGuiIniData* settings = nullptr;
@@ -1276,8 +1283,8 @@ void RenderTable(Table& table)
 }
 
 void Preference(ImGuiContext* context, bool* show_preferences)
-{
-	ImGui::Begin("Preferences", show_preferences, ImVec2(300, 500), -1, ImGuiWindowFlags_NoCollapse);
+{		
+	ImGui::Begin("Preferences", show_preferences, windows_default_sizes["Preferences"], -1, ImGuiWindowFlags_NoCollapse);
 	{
 		ImGui::Text("Version : %s", VERSION_LONG_STRING);
 		ImGui::Text("Github : https://github.com/ZCube/ACTWebSocket");
@@ -1802,7 +1809,7 @@ extern "C" int ModRender(ImGuiContext* context)
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3, 0.3, 0.3, background_opacity * global_opacity));
 			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0, 0.0, 0.0, 0.0f));
 			ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(color_map["TitleText"], text_opacity * global_opacity));
-			ImGui::Begin("AWIO (ActWebSocket ImGui Overlay)", nullptr, ImVec2(300, 500), -1,
+			ImGui::Begin("AWIO (ActWebSocket ImGui Overlay)", nullptr, windows_default_sizes["AWIO (ActWebSocket ImGui Overlay)"], -1,
 				ImGuiWindowFlags_NoTitleBar | (use_input ? NULL : ImGuiWindowFlags_NoInputs));
 
 			mutex.lock();
@@ -1852,7 +1859,7 @@ extern "C" int ModRender(ImGuiContext* context)
 			{
 				ImGui::PushStyleColor(ImGuiCol_WindowBg, ColorWithAlpha(color_map["ToolbarBackground"], background_opacity * global_opacity));
 				ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(color_map["TitleText"], text_opacity * global_opacity));
-				ImGui::Begin("Status", nullptr, ImVec2(300, 50), -1,
+				ImGui::Begin("Status", nullptr, windows_default_sizes["Status"], -1,
 					ImGuiWindowFlags_NoTitleBar | (use_input ? NULL : ImGuiWindowFlags_NoInputs));
 				{
 					int height = 40 * io.FontGlobalScale;
