@@ -845,7 +845,7 @@ extern "C" int ModInit(ImGuiContext* context)
 								if (name.empty())
 									continue;
 								ImVec2 pos = ImVec2(win["x"].asFloat(), win["y"].asFloat());
-								ImVec2 size = ImVec2(win["x"].asFloat(), win["y"].asFloat());
+								ImVec2 size = ImVec2(win["width"].asFloat(), win["height"].asFloat());
 								ImGuiContext & g = *ImGui::GetCurrentContext();
 								size = ImMax(size, g.Style.WindowMinSize);
 								ImGuiIniData* settings = nullptr;
