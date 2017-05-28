@@ -1,4 +1,9 @@
-﻿#include "version.h"
+﻿/*
+* This file is subject to the terms and conditions defined in
+* file 'LICENSE', which is part of this source code package.
+*/
+
+#include "version.h"
 #include <imgui.h>
 #include "imgui_internal.h"
 #define STB_IMAGE_IMPLEMENTATION
@@ -824,6 +829,57 @@ extern "C" int ModInit(ImGuiContext* context)
 							}
 						}
 					}
+					Json::Value windows  = setting.get("windows", Json::nullValue);
+					std::string windows_str = "windows";
+					if (setting.find(&*windows_str.begin(), &*windows_str.begin() + windows_str.size()) != nullptr)
+					{
+						if (windows.size() > 0)
+						{
+							Json::Value;
+							for (auto i = windows.begin();
+								i != windows.end();
+								++i)
+							{
+								Json::Value& win = *i;
+								std::string name = win["name"].asString();
+								if (name.empty())
+									continue;
+								ImVec2 pos = ImVec2(win["x"].asFloat(), win["y"].asFloat());
+								ImVec2 size = ImVec2(win["x"].asFloat(), win["y"].asFloat());
+								ImGuiContext & g = *ImGui::GetCurrentContext();
+								size = ImMax(size, g.Style.WindowMinSize);
+								ImGuiIniData* settings = nullptr;
+								ImGuiID id = ImHash(name.c_str(), 0);
+								{
+									for (int i = 0; i != g.Settings.Size; i++)
+									{
+										ImGuiIniData* ini = &g.Settings[i];
+										if (ini->Id == id)
+										{
+											settings = ini;
+											break;
+										}
+									}
+									if (settings == nullptr)
+									{
+										GImGui->Settings.resize(GImGui->Settings.Size + 1);
+										ImGuiIniData* ini = &GImGui->Settings.back();
+										ini->Name = ImStrdup(name.c_str());
+										ini->Id = ImHash(name.c_str(), 0);
+										ini->Collapsed = false;
+										ini->Pos = ImVec2(FLT_MAX, FLT_MAX);
+										ini->Size = ImVec2(0, 0);
+										settings = ini;
+									}
+								}
+								if (settings)
+								{
+									settings->Pos = pos;
+									settings->Size = size;
+								}
+							}
+						}
+					}
 				}
 				fin.close();
 			}
@@ -986,6 +1042,26 @@ void SaveSettings()
 	}
 	setting["fonts"] = fonts;
 
+	Json::Value windows;
+	{
+		ImGuiContext& g = *ImGui::GetCurrentContext();
+		{
+			for (int i = 0; i != g.Windows.Size; i++)
+			{
+				ImGuiWindow* window = g.Windows[i];
+				if (window->Flags & ImGuiWindowFlags_NoSavedSettings)
+					continue;
+				Json::Value win;
+				win["name"] = window->Name;
+				win["x"] = window->Pos.x;
+				win["y"] = window->Pos.y;
+				win["width"] = window->SizeFull.x;
+				win["height"] = window->SizeFull.y;
+				windows[window->Name] = win;
+			}
+		}
+	}
+	setting["windows"] = windows;
 	std::ofstream fout((m.parent_path() / "mod.json").wstring());
 	fout << w.write(setting);
 	fout.close();
