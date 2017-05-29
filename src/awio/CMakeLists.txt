@@ -123,7 +123,7 @@ ADD_LIBRARY(Sandbox
 )
 
 TARGET_LINK_LIBRARIES(Sandbox
-	liblua_static
+	liblua
 	jsoncpp_lib_static
 	boost
 )
