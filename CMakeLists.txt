@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.0.0)
 
 project(ActWebSocketOverlay C CXX)
 
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
 ADD_DEFINITIONS(
   -DBOOST_ALL_NO_LIB
   -D_CRT_SECURE_NO_WARNINGS

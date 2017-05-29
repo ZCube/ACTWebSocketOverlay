@@ -30,9 +30,6 @@ TARGET_LINK_LIBRARIES(ActWebSocketImguiOverlay
 	boost
 	libeay32.lib
 	ssleay32.lib
-#	libcrypto-41.lib
-#	libtls-15.lib
-#	libssl-43.lib
 )
 
 ADD_LIBRARY(loader
@@ -105,6 +102,7 @@ TARGET_LINK_LIBRARIES(test_main_dx9
 	d3dcompiler.lib
 )
 
+include_directories(${CMAKE_HOME_DIRECTORY}/external/imgui_lua_bindings)
 
 ADD_LIBRARY(Sandbox
 	SHARED
@@ -112,6 +110,7 @@ ADD_LIBRARY(Sandbox
 	${IMGUI_DIRECTORY}/imgui.cpp
 	${IMGUI_DIRECTORY}/imgui.h
 	${IMGUI_DIRECTORY}/imgui_draw.cpp
+	${IMGUI_DIRECTORY}/imgui_demo.cpp
 	${IMGUI_DIRECTORY}/imgui_internal.h
 	${IMGUI_DIRECTORY}/stb_rect_pack.h
 	${IMGUI_DIRECTORY}/stb_textedit.h
@@ -124,9 +123,7 @@ ADD_LIBRARY(Sandbox
 )
 
 TARGET_LINK_LIBRARIES(Sandbox
+	liblua_static
 	jsoncpp_lib_static
 	boost
-	v8.dll.lib
-	v8_libbase.dll.lib
-	v8_libplatform.dll.lib
 )

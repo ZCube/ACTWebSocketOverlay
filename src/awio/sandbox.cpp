@@ -6,6 +6,7 @@
 #include "version.h"
 #include <imgui.h>
 #include "imgui_internal.h"
+#include <imgui_lua_bindings.cpp>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
@@ -28,13 +29,9 @@
 #include <boost/algorithm/hex.hpp>
 #include <boost/thread/shared_mutex.hpp>
 #include <chrono>
-#include <libplatform/libplatform.h>
-#include <v8pp/module.hpp>
 
 #include <atlstr.h>
 #define STR2UTF8(s) (CW2A(CA2W(s), CP_UTF8))
-
-#include <v8.h>
 
 static char websocket_message[1024] = { 0, };
 static char websocket_host[256] = { 0, };
@@ -48,29 +45,6 @@ static int overlay_texture_width = 0, overlay_texture_height = 0, overlay_textur
 #include <concurrent_queue.h>
 std::string data;
 boost::mutex data_mutex;
-
-v8::Local<v8::String> StringToV8String(const std::string& str)
-{
-	v8::Local<v8::String> ret = v8::String::NewFromUtf8(v8::Isolate::GetCurrent(), str.data());
-	return ret;
-}
-
-std::string V8StringToString(v8::Local<v8::Value> value)
-{
-	return std::string(*v8::String::Utf8Value(value));
-}
-
-void messageGetter(v8::Local<v8::String> property,
-	const v8::PropertyCallbackInfo<v8::Value>& info) {
-	boost::mutex::scoped_lock l(data_mutex);
-	info.GetReturnValue().Set(StringToV8String(::data));
-}
-
-void uiGetter(v8::Local<v8::String> property,
-	const v8::PropertyCallbackInfo<v8::Value>& info);
-void uiSetter(v8::Local<v8::String> property,
-	v8::Local< v8::Value > value,
-	const v8::PropertyCallbackInfo< void >& info);
 
 std::string processed_data;
 boost::mutex processed_data_mutex;
@@ -197,123 +171,52 @@ inline static void websocketThread()
 }
 
 
-
-
-class V8Instance
+class OverlayInstance
 {
 public:
-	v8::Platform* platform;
-	v8::Isolate::CreateParams create_params;
-	v8::Isolate::CreateParams create_params2;
-	v8::Local<v8::UnboundScript> render_script_unbound;
-	v8::Local<v8::UnboundScript> logic_script_unbound;
-	v8::Local<v8::Script> render_script;
-	v8::Local<v8::Script> logic_script;
-	v8::Isolate* logic_isolate;
-	v8::Isolate* render_isolate;
 
-	std::string render_sc;
-	std::string logic_sc;
-
-	V8Instance()
+	lua_State *L;
+	OverlayInstance()
 	{
-		using namespace v8;
-		v8::V8::Initialize();
-		char modulePath[MAX_PATH + 1] = { 0, };
-		GetModuleFileNameA(NULL, modulePath, MAX_PATH);
-
-		v8::V8::InitializeICUDefaultLocation(modulePath);
-		v8::V8::InitializeExternalStartupData(modulePath);
-		platform = v8::platform::CreateDefaultPlatform();
-		v8::V8::InitializePlatform(platform);
-		v8::V8::Initialize();
-
-		create_params.array_buffer_allocator =
-			v8::ArrayBuffer::Allocator::NewDefaultAllocator();
-		create_params2.array_buffer_allocator =
-			v8::ArrayBuffer::Allocator::NewDefaultAllocator();
+		char buff[256];
+		int error;
+		L = luaL_newstate();   /* opens Lua */
+		lState = L;
+		LoadImguiBindings();
+		luaopen_base(L);             /* opens the basic library */
+		luaopen_table(L);            /* opens the table library */
+		luaopen_io(L);               /* opens the I/O library */
+		luaopen_string(L);           /* opens the string lib. */
+		luaopen_math(L);             /* opens the math lib. */
 	}
-	~V8Instance()
+	~OverlayInstance()
 	{
-		v8::V8::Dispose();
-		v8::V8::ShutdownPlatform();
-		delete platform;
-		delete create_params.array_buffer_allocator;
 	}
 
 	void BuildScript(const std::string& logic_script, const std::string& render_script)
 	{
-		render_sc = render_script;
-		logic_sc = logic_script;
 	}
 
 	void Run()
 	{
-		using namespace v8;
-		Isolate* isolate = Isolate::New(create_params);
+		std::string data;
+		typedef std::chrono::duration<long, std::chrono::milliseconds> milliseconds;
+		std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
+		while (true)
 		{
-			// Create a stack-allocated handle scope.
-			HandleScope handle_scope(isolate);
-
-			Local<ObjectTemplate> global = ObjectTemplate::New(isolate);
-
-			global->SetInternalFieldCount(1);
-			global->SetAccessor(String::NewFromUtf8(isolate, "data"), messageGetter);
-			global->SetAccessor(String::NewFromUtf8(isolate, "ui"), uiGetter, uiSetter);
-
-			Isolate::Scope isolate_scope(isolate);
-
-			Local<Context> context = Context::New(isolate, NULL, global);
-
-			Context::Scope context_scope(context);
-
-			Local<String> logic_source = StringToV8String(logic_sc);
-			Local<Script> logic_script = Script::Compile(logic_source, v8::String::NewFromUtf8(isolate, "Logic"));
-
-			Local<String> render_source = StringToV8String(render_sc);
-			Local<Script> render_script = Script::Compile(render_source, v8::String::NewFromUtf8(isolate, "Render"));
-
-			std::string data;
-			typedef std::chrono::duration<long, std::chrono::milliseconds> milliseconds;
-			std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
-			while (true)
+			while (data_queue.try_pop(data))
 			{
-				while (data_queue.try_pop(data))
 				{
-					{
-						boost::mutex::scoped_lock l(data_mutex);
-						::data = data;
-					}
-					Local<Value> result = logic_script->Run(context).ToLocalChecked();
-					if (!result.IsEmpty() && result->IsString())
-					{
-						boost::mutex::scoped_lock l(processed_data_mutex);
-						processed_data = V8StringToString(result);
-						//std::cerr << processed_data << std::endl;
-					}
+					boost::mutex::scoped_lock l(data_mutex);
+					::data = data;
 				}
-				std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
-				if(std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() > 100)
-				{
-					Local<Value> result = render_script->Run(context).ToLocalChecked();
-					if (!result.IsEmpty() && result->IsString())
-					{
-						boost::mutex::scoped_lock l(processed_data_mutex);
-						processed_data = V8StringToString(result);
-						//std::cerr << processed_data << std::endl;
-					}
-					start = end;
-				}
-				Sleep(50);
 			}
+			Sleep(50);
 		}
-
-		isolate->Dispose();
 	}
 };
 boost::mutex m;
-std::shared_ptr<V8Instance> instance;
-
+std::shared_ptr<OverlayInstance> instance;
 
 
 class Serializable
@@ -544,25 +447,9 @@ extern "C" int ModInit(ImGuiContext* context)
 		boost::unique_lock<boost::mutex> l(m);
 		if (!instance)
 		{
-			instance = std::make_shared<V8Instance>();
-
-			std::string logic, render;
-			wchar_t szPath[1024] = { 0, };
-			GetModuleFileNameW(NULL, szPath, 1023);
-			boost::filesystem::path p(szPath);
-			{
-				p = p.parent_path() / "logic.js";
-				std::ifstream ifs(p.wstring().c_str());
-				logic.assign((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
-			}
-			{
-				p = p.parent_path() / "render.js";
-				std::ifstream ifs(p.wstring().c_str());
-				render.assign((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
-			}
-			instance->BuildScript(logic, render);
+			instance = std::make_shared<OverlayInstance>();
 		}
-		new std::thread(boost::bind(&V8Instance::Run, instance));// , instance->Run();
+		new std::thread(boost::bind(&OverlayInstance::Run, instance));// , instance->Run();
 
 		strcpy(websocket_port, "10501");
 		strcpy(websocket_host, "127.0.0.1");
@@ -626,21 +513,6 @@ extern "C" int ModInit(ImGuiContext* context)
 
 	// datathread;
 	// render;
-
-	{
-		ui.windows["asdf1"].commands = {
-			DrawCommand("Text", "center", ImVec2(0, 0), ImVec2(50, 50), ImVec4(1, 1, 1, 1)),
-			DrawCommand("Image", "center.png", ImVec2(0, 0), ImVec2(50, 50), ImVec4(1, 1, 1, 1)),
-			DrawCommand("Text", "center", ImVec2(0, 40), ImVec2(50, 90), ImVec4(1, 1, 1, 1)),
-			DrawCommand("Text", "center", ImVec2(0, 0), ImVec2(50, 50), ImVec4(1, 1, 1, 1)),
-		};
-		ui.windows["asdf2"].commands = {
-			DrawCommand("Image", "center", ImVec2(0, 0), ImVec2(50, 50), ImVec4(1, 1, 1, 1)),
-		};
-		ui.windows["asdf3"].commands = {
-			DrawCommand("Image", "center", ImVec2(0, 0), ImVec2(50, 50), ImVec4(1, 1, 1, 1)),
-		};
-	}
 	websocketThread();
 	return 0;
 }
@@ -677,63 +549,28 @@ extern "C" void ModSetTexture(void* texture)
 	}
 }
 
-
-void uiGetter(v8::Local<v8::String> property,
-	const v8::PropertyCallbackInfo<v8::Value>& info)
-{
-	Json::Value val;
-	Json::FastWriter w;
-	{
-		boost::shared_lock<boost::shared_mutex> lock(ui_mutex);
-		ui.ToJson(val);
-	}
-	std::cerr << w.write(val) << std::endl;
-	info.GetReturnValue().Set(StringToV8String(w.write(val)));
-}
-
-void uiSetter(v8::Local<v8::String> property,
-	v8::Local< v8::Value > value,
-	const v8::PropertyCallbackInfo< void >& info)
-{
-	if (value->IsString())
-	{
-		std::string s = V8StringToString(value);
-		std::cerr << s << std::endl;
-		Json::Reader r;
-		Json::Value v;
-		if (r.parse(s, v))
-		{
-			{
-				boost::upgrade_lock<boost::shared_mutex> lock(ui_mutex);
-				boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
-				ui.FromJson(v);
-			}
-		}
-	}
-}
-
 extern "C" int ModRender(ImGuiContext* context)
 {
-	boost::shared_lock<boost::shared_mutex> lock(ui_mutex);
-	ImVec2 padding(0, 0);
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, padding);
+	std::string logic, render;
+	wchar_t szPath[1024] = { 0, };
+	GetModuleFileNameW(NULL, szPath, 1023);
+	boost::filesystem::path p(szPath);
 	{
-		for (auto w = ui.windows.begin(); w != ui.windows.end(); ++w)
-		{
-			if (ImGui::Begin(w->first.c_str(), nullptr, ImGuiWindowFlags_NoTitleBar))
-			{
-				auto& win = w->second;
-				win.min = ImGui::GetWindowContentRegionMin();
-				win.max = ImGui::GetWindowContentRegionMax();
-				//ImGui::GetWindowDrawList()->PushClipRect(win.min, win.max);
-				win.Begin();
-				win.Draw();
-				win.End();
-				//ImGui::GetWindowDrawList()->PopClipRect();
-				ImGui::End();
-			}
+		auto L = instance->L;
+		p = p.parent_path() / "test.lua";
+		int status = luaL_loadfile(instance->L, p.string().c_str());
+
+		if (status) {
+			/* If something went wrong, error message is at the top of */
+			/* the stack */
+			fprintf(stderr, "Couldn't load file: %s\n", lua_tostring(instance->L, -1));
+			exit(1);
 		}
-		ImGui::PopStyleVar(1);
+		int result = lua_pcall(instance->L, 0, LUA_MULTRET, 0);
+		printf("%d\r\n", result);
+		if (result) {
+			fprintf(stderr, "Failed to run script: %s\n", lua_tostring(L, -1));
+		}
 	}
 	return 0;
 }

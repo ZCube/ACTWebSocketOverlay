@@ -9,16 +9,13 @@ INCLUDE_DIRECTORIES(
 	../external/jsoncpp/include
 	../external/beast/include
 	../external/boost
-	../external/v8pp
+	../external/lua/src
+	${CMAKE_BINARY_DIR}/external/lua
 	../external
-	# ../prebuilt/libressl/include
 	../prebuilt/openssl/${address_model}/include
-	../prebuilt/v8/include
 )
 
 LINK_DIRECTORIES(
-	../prebuilt/v8/lib/${address_model}
-	# ../prebuilt/libressl/${address_model}
 	../prebuilt/openssl/${address_model}/lib
 )
 

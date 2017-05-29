@@ -75,8 +75,8 @@ Microsoft Visual Studio Community 2017
 [Falgern](https://github.com/Falgern/ACTWebSocketOverlay) : I refer to various things such as wrong word usage, implementation of Click-Through with button, and some bug fix.
 
 ## Milestone
-* Script Engine ( v8 )
-* dear imgui Script binding ( v8 )
+* Script Engine ( ~~v8~~ Lua ) Using https://github.com/patrickriordan/imgui_lua_bindings
+* dear imgui Script binding ( ~~v8~~ Lua )
 * 9-patch draw
 * Texture atlas module for resource managing
 * Refactoring codes
