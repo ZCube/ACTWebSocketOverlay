@@ -200,6 +200,18 @@ void OverlayContextLua::SetTexture(ImTextureID texture, const std::unordered_map
 extern "C" int getImage(lua_State* L);
 extern "C" int getWindowSize(lua_State* L);
 extern "C" int setWindowSize(lua_State* L);
+extern "C" int getColor4(lua_State* L);
+extern "C" int setColor4(lua_State* L);
+extern "C" int getColor3(lua_State* L);
+extern "C" int setColor3(lua_State* L);
+extern "C" int getString(lua_State* L);
+extern "C" int setString(lua_State* L);
+extern "C" int getInt(lua_State* L);
+extern "C" int setInt(lua_State* L);
+extern "C" int getFloat(lua_State* L);
+extern "C" int setFloat(lua_State* L);
+extern "C" int getBoolean(lua_State* L);
+extern "C" int setBoolean(lua_State* L);
 
 bool OverlayContextLua::Init(boost::filesystem::path path) {
 	path = boost::filesystem::absolute(path);

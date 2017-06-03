@@ -40,14 +40,14 @@ function render(use_input, data)
 					table.insert (row, value[col])
 				end
 				table.insert(tbl, row)
+				w, h, uv0x, uv0y, uv1x, uv1y = getImage(row[1])
+				-- Image
+				imgui.Image(texture_id, 300, 300, uv0x, uv0y, uv1x, uv1y, 1,1,1,1, 0,0,0,0)
+				-- DrawList_AddImage
+				imgui.DrawList_AddImage(texture_id, winx, winy, winx+150, winy+150, uv0x, uv0y, uv1x, uv1y, tonumber("ffffffff", 16))
 			end
 			local pretty_json_text = JSON:encode_pretty(tbl)
 			winx, winy = imgui.GetWindowPos()
-			w, h, uv0x, uv0y, uv1x, uv1y = getImage(tbl[1][1])
-			-- Image
-			imgui.Image(texture_id, 300, 300, uv0x, uv0y, uv1x, uv1y, 1,1,1,1, 0,0,0,0)
-			-- DrawList_AddImage
-			imgui.DrawList_AddImage(texture_id, winx, winy, winx+150, winy+150, uv0x, uv0y, uv1x, uv1y, tonumber("ffffffff", 16))
 			-- Text
 			imgui.Text(pretty_json_text)
 			-- GetWindowContentRegionWidth

@@ -50,16 +50,16 @@ extern "C" int getWindowSize(lua_State* L)
 		}
 		else
 		{
-			lua_pushnumber(L, 300);
-			lua_pushnumber(L, 300);
+			lua_pushnumber(L, -1);
+			lua_pushnumber(L, -1);
 		}
 	}
 	else
 	{
-		lua_pushnumber(L, 300);
-		lua_pushnumber(L, 300);
+		lua_pushnumber(L, -1);
+		lua_pushnumber(L, -1);
 	}
-	return 6;
+	return 2;
 }
 extern "C" int setWindowSize(lua_State* L)
 {
@@ -76,7 +76,7 @@ extern "C" int setWindowSize(lua_State* L)
 			i->second.y = y;
 		}
 	}
-	return 6;
+	return 0;
 }
 
 extern "C" int getImage(lua_State* L)
