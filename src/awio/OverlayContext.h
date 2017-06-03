@@ -4,5 +4,5 @@
 */
 
 #pragma once
-#define VERSION_SHORT_STRING "@VERSION_SHORT@"
-#define VERSION_LONG_STRING "@VERSION_LONG@"
+#include "OverlayContextBase.h"
+#include "OverlayContextLua.h"

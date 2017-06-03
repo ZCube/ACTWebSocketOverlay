@@ -238,6 +238,18 @@ int main(int argc, char** argv)
 		modInit(ImGui::GetCurrentContext());
 	}
 	/////////////////////////////////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////
+	if (modUnInit)
+	{
+		modUnInit(ImGui::GetCurrentContext());
+	}
+	/////////////////////////////////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////
+	if (modInit)
+	{
+		modInit(ImGui::GetCurrentContext());
+	}
+	/////////////////////////////////////////////////////////////////////////////////
     // Initialize Direct3D
     if (CreateDeviceD3D(hwnd) < 0)
     {
@@ -252,6 +264,8 @@ int main(int argc, char** argv)
 
     // Setup ImGui binding
     ImGui_ImplDX11_Init(hwnd, g_pd3dDevice, g_pd3dDeviceContext);
+	ImGuiIO& io = ImGui::GetIO();
+	io.IniFilename = nullptr;
 
     // Load Fonts
     // (there is a default font, this is only if you want to change it. see extra_fonts/README.txt for more details)

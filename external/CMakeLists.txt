@@ -1,8 +1,5 @@
-SET(JSONCPP_WITH_TESTS OFF CACHE BOOL "" FORCE)
-SET(JSONCPP_WITH_POST_BUILD_UNITTEST OFF CACHE BOOL "" FORCE)
-SET(JSONCPP_WITH_WARNING_AS_ERROR OFF CACHE BOOL "" FORCE)
-SET(JSONCPP_WITH_STRICT_ISO OFF CACHE BOOL "" FORCE)
-SET(JSONCPP_WITH_PKGCONFIG_SUPPORT "Generate and install .pc files" OFF CACHE BOOL "" FORCE)
+SET(BUILD_SHARED_LIBS OFF)
+SET(BUILD_STATIC_LIBS ON)
 
 include_directories(
 	${CMAKE_BUILD_DIR}/external/zlib
@@ -10,13 +7,24 @@ include_directories(
 )
 
 ADD_SUBDIRECTORY(zlib)
-ADD_SUBDIRECTORY(jsoncpp)
 ADD_SUBDIRECTORY(boost)
 ADD_SUBDIRECTORY(lua)
+set_target_properties ( liblua PROPERTIES OUTPUT_NAME liblua CLEAN_DIRECT_OUTPUT 1 )
 
+# for /MT /MD setting....
+# global setting is not working.
+# TODO : check.
+# ADD_SUBDIRECTORY(jsoncpp)
 include_directories(
-	${CMAKE_BUILD_DIR}/external/zlib
-	zlib
+	jsoncpp/include
+)
+
+ADD_LIBRARY(jsoncpp_lib_static STATIC
+	jsoncpp/src/lib_json/json_tool.h
+	jsoncpp/src/lib_json/json_reader.cpp
+	jsoncpp/src/lib_json/json_valueiterator.inl
+	jsoncpp/src/lib_json/json_value.cpp
+	jsoncpp/src/lib_json/json_writer.cpp
 )
 
 set_target_properties (zlib PROPERTIES FOLDER external/zlib)
@@ -29,3 +37,4 @@ set_target_properties (liblua PROPERTIES FOLDER external/lua)
 set_target_properties (lua PROPERTIES FOLDER external/lua)
 set_target_properties (luac PROPERTIES FOLDER external/lua)
 set_target_properties (wlua PROPERTIES FOLDER external/lua)
+

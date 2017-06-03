@@ -35,7 +35,7 @@ ADD_SUBDIRECTORY(src)
 
 IF(MSVC)
   OPTION(USE_STATIC_RUNTIME_LIBRARY "Use Static Runtime Library" ON)
-  OPTION(USE_LINK_TIME_OPTIMIZATION "Use Link Time Optimization" OFF)
+  OPTION(USE_LINK_TIME_OPTIMIZATION "Use Link Time Optimization" ON)
 
   IF(USE_STATIC_RUNTIME_LIBRARY)
       message(STATUS "- MSVC: Use Static Runtime Library")
@@ -58,23 +58,11 @@ IF(MSVC)
         ENDIF()
       ENDIF()
     ENDIF()
-    IF(USE_LINK_TIME_OPTIMIZATION)
-      set(_PARAM "${_PARAM} /GL ")
-    ENDIF()
-    
-    # multi processor
+		
     string(FIND "${${flag_var}}" "/MP" _TESTVAR)
     if(${_TESTVAR} EQUAL "-1")
       set(_PARAM "${_PARAM} /MP")
     endif()
-
-    # exceptions (for msvc 2017)
-    string(FIND "${${flag_var}}" "/EHa" _TESTVAR)
-    if(${_TESTVAR} EQUAL "-1")
-      set(_PARAM "${_PARAM} /EHa")
-    endif()
-
-
     if(_PARAM)
       set(${flag_var} "${${flag_var}} ${_PARAM}" CACHE STRING "" FORCE)
     ENDIF()
@@ -82,17 +70,33 @@ IF(MSVC)
   endforeach()
 
   IF(USE_LINK_TIME_OPTIMIZATION)
-      message(STATUS "- MSVC: Use Link Time Optimization")
       foreach (flag_var
-               CMAKE_EXE_LINKER_FLAGS CMAKE_EXE_LINKER_FLAGS_RELEASE
+               CMAKE_EXE_LINKER_FLAGS_RELEASE
                CMAKE_EXE_LINKER_FLAGS_MINSIZEREL CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO
-               CMAKE_SHARED_LINKER_FLAGS CMAKE_SHARED_LINKER_FLAGS_RELEASE
+               CMAKE_SHARED_LINKER_FLAGS_RELEASE
                CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO
-               CMAKE_MODULE_LINKER_FLAGS CMAKE_MODULE_LINKER_FLAGS_RELEASE
+               CMAKE_MODULE_LINKER_FLAGS_RELEASE
                CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO)
         string(FIND "${${flag_var}}" "/LTCG" _TESTVAR)
         if(${_TESTVAR} EQUAL "-1")
-          set(${flag_var} "${${flag_var}} /LTCG" CACHE STRING "" FORCE)
+          set(${flag_var} "${${flag_var}} /LTCG")
+        endif()
+      endforeach()
+      foreach (flag_var
+               CMAKE_EXE_LINKER_FLAGS
+               CMAKE_SHARED_LINKER_FLAGS
+               CMAKE_MODULE_LINKER_FLAGS
+               CMAKE_EXE_LINKER_FLAGS_DEBUG 
+               CMAKE_SHARED_LINKER_FLAGS_DEBUG 
+               CMAKE_MODULE_LINKER_FLAGS_DEBUG)
+        string(FIND "${${flag_var}}" "/LTCG" _TESTVAR)
+        if(NOT ${_TESTVAR} EQUAL "-1")
+          string(REPLACE "/LTCG" " " temp "${${flag_var}}")
+          set(${flag_var} "${temp}")
+        endif()
+        string(FIND "${${flag_var}}" "/INCREMENTAL" _TESTVAR)
+        if(${_TESTVAR} EQUAL "-1")
+          set(${flag_var} "${${flag_var}} /INCREMENTAL")
         endif()
       endforeach()
       foreach (flag_var
@@ -102,6 +106,40 @@ IF(MSVC)
                CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
         string(REPLACE "${${flag_var}}" "${${flag_var}} /GL" ${flag_var} "${${flag_var}}")
       endforeach()
+  ELSEIF(USE_LINK_TIME_OPTIMIZATION)
+      foreach (flag_var
+               CMAKE_EXE_LINKER_FLAGS_RELEASE
+               CMAKE_EXE_LINKER_FLAGS_MINSIZEREL CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO
+               CMAKE_SHARED_LINKER_FLAGS_RELEASE
+               CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO
+               CMAKE_MODULE_LINKER_FLAGS_RELEASE
+               CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO
+               CMAKE_EXE_LINKER_FLAGS
+               CMAKE_SHARED_LINKER_FLAGS
+               CMAKE_MODULE_LINKER_FLAGS
+               CMAKE_EXE_LINKER_FLAGS_DEBUG 
+               CMAKE_SHARED_LINKER_FLAGS_DEBUG 
+               CMAKE_MODULE_LINKER_FLAGS_DEBUG)
+        string(FIND "${${flag_var}}" "/INCREMENTAL" _TESTVAR)
+        if(${_TESTVAR} EQUAL "-1")
+          set(${flag_var} "${${flag_var}} /INCREMENTAL")
+        endif()
+      endforeach()
   ENDIF(USE_LINK_TIME_OPTIMIZATION)
+  foreach (flag_var
+           CMAKE_EXE_LINKER_FLAGS_RELEASE
+           CMAKE_EXE_LINKER_FLAGS_MINSIZEREL CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO
+           CMAKE_SHARED_LINKER_FLAGS_RELEASE
+           CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO
+           CMAKE_MODULE_LINKER_FLAGS_RELEASE
+           CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO
+           CMAKE_EXE_LINKER_FLAGS
+           CMAKE_SHARED_LINKER_FLAGS
+           CMAKE_MODULE_LINKER_FLAGS
+           CMAKE_EXE_LINKER_FLAGS_DEBUG 
+           CMAKE_SHARED_LINKER_FLAGS_DEBUG 
+           CMAKE_MODULE_LINKER_FLAGS_DEBUG)
+    set(${flag_var} "${${flag_var}}" CACHE STRING "" FORCE)
+  endforeach()
 ENDIF()
  

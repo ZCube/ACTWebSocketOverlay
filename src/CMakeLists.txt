@@ -1,5 +1,6 @@
-
 SET(STB_DIRECTORY ${CMAKE_HOME_DIRECTORY}/external/reshade/deps/stb)
+
+option(USE_SSL ON)
 
 INCLUDE_DIRECTORIES(
 	${STB_DIRECTORY}

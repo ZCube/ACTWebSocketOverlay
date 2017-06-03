@@ -159,7 +159,19 @@ int main(int argc, char** argv)
 		modInit(ImGui::GetCurrentContext());
 	}
 	/////////////////////////////////////////////////////////////////////////////////
-    // Create the D3DDevice
+	/////////////////////////////////////////////////////////////////////////////////
+	if (modUnInit)
+	{
+		modUnInit(ImGui::GetCurrentContext());
+	}
+	/////////////////////////////////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////
+	if (modInit)
+	{
+		modInit(ImGui::GetCurrentContext());
+	}
+	/////////////////////////////////////////////////////////////////////////////////
+	// Create the D3DDevice
     if (pD3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hwnd, D3DCREATE_HARDWARE_VERTEXPROCESSING, &g_d3dpp, &g_pd3dDevice) < 0)
     {
         pD3D->Release();
@@ -169,6 +181,8 @@ int main(int argc, char** argv)
 
     // Setup ImGui binding
     ImGui_ImplDX9_Init(hwnd, g_pd3dDevice);
+	ImGuiIO& io = ImGui::GetIO();
+	io.IniFilename = nullptr;
 
     // Load Fonts
     // (there is a default font, this is only if you want to change it. see extra_fonts/README.txt for more details)

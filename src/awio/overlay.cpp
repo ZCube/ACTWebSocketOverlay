@@ -22,20 +22,14 @@
 #include <boost/bind.hpp>
 #include <boost/thread/mutex.hpp>
 #include <beast/core.hpp>
-#include <beast/websocket.hpp>
-#include <beast/websocket/ssl.hpp>
-#include <boost/asio.hpp>
-#include <boost/asio/ssl.hpp>
+#include "websocket.h"
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/hex.hpp>
-
+#include "Serializable.h"
 
 #include <atlstr.h>
 #define STR2UTF8(s) (CW2A(CA2W(s), CP_UTF8))
-
-// This source code seems to require refactoring. :<
-// Until then, focus on the features. I am not yet familiar with dear imgui.
 
 static boost::mutex font_mutex;
 static boost::mutex mutex;
@@ -47,6 +41,7 @@ static bool show_name = true;
 static char websocket_message[1024] = { 0, };
 static char websocket_host[256] = { 0, };
 static char websocket_port[256] = { 0, };
+static const char* websocket_path = "/MiniParse";
 static bool websocket_reconnect = true;
 static void* overlay_texture = nullptr;
 static unsigned char *overlay_texture_filedata = nullptr;
@@ -58,53 +53,6 @@ static bool need_font_init = true;
 static std::map<std::string, ImVec2> windows_default_sizes;
 std::string your_name = "YOU";
 
-class Serializable
-{
-public:
-	virtual void ToJson(Json::Value& value) const = 0;
-	virtual void FromJson(Json::Value& value) = 0;
-};
-
-class Font : public Serializable
-{
-public:
-	Font() {}
-	Font(std::string fontname, std::string glyph_range, float font_size)
-	{
-		this->fontname = fontname;
-		this->glyph_range = glyph_range;
-		this->font_size = font_size;
-	}
-	std::string fontname;
-	std::string glyph_range;
-	float font_size;
-	void ToJson(Json::Value& value) const
-	{
-		value["fontname"] = fontname;
-		value["glyph_range"] = glyph_range;
-		value["font_size"] = font_size;
-	}
-	void FromJson(Json::Value& value)
-	{
-		fontname = value["fontname"].asString();
-		glyph_range = value["glyph_range"].asString();
-		font_size = value["font_size"].asFloat();
-	}
-};
-
-class Image
-{
-public:
-	int x;
-	int y;
-	int width;
-	int height;
-	ImVec2 uv0;
-	ImVec2 uv1;
-	std::vector<int> widths;
-	std::vector<int> heights;
-};
-
 static std::vector<Font> fonts;
 static std::unordered_map<std::string, Image> overlay_images;
 static std::map<std::string, std::vector<std::string>> color_category_map;
@@ -115,101 +63,7 @@ static bool& show_status = boolean_map["ShowStatus"];
 static bool& movable = boolean_map["Movable"];
 static bool& websocket_ssl = boolean_map["WebSocketSSL"];
 
-class Table
-{
-public:
-	class Row
-	{
-	public:
-		ImVec4* color = nullptr;
-	};
-	class Column : public Serializable
-	{
-	public:
-		Column(std::string title_ = "", std::string index_ = "", int size_ = 0, int sizeWeight_ = 0, ImVec2 align_ = ImVec2(0.5f,0.5f), bool visible_ = true)
-			: Title(title_)
-			, index(index_)
-			, size(size_)
-			, sizeWeight(sizeWeight_)
-			, align(align_)
-			, visible(visible_)
-		{
-
-		}
-		void ToJson(Json::Value& value) const
-		{
-			value["width"] = size;
-			value["title"] = Title;
-			value["index"] = index;
-			value["align"] = align.x;
-		}
-		void FromJson(Json::Value& value)
-		{
-			size = value["width"].asInt();
-			Title = value["title"].asString();
-			index = value["index"].asString();
-			align.x = value["align"].asFloat();
-		}
-		int size = 0;
-		int sizeWeight = 0;
-		std::string Title = "";
-		std::string index = "";
-		bool visible = true;
-		ImVec2 align = ImVec2(0.5f, 0.5f);
-		int offset = 0;
-	};
-
-	int column_margin = 2;
-
-	void UpdateColumnWidth(int width, int height, int column_max, float scale)
-	{
-		if (columns.size() > 0)
-			columns[0].size = height / scale;
-		int columnSizeWeightSum = 0;
-		int columnSizeFixed = 0;
-		for (int i = 0; i < column_max; ++i) {
-			if (!columns[i].visible)
-				continue;
-			if (columns[i].sizeWeight != 0)
-			{
-				columnSizeWeightSum += columns[i].sizeWeight;
-			}
-			else
-			{
-				// icon size must be fixed.
-				columnSizeFixed += (columns[i].size + column_margin * 2) * scale;
-			}
-		}
-		int offset = 0;
-		for (int i = 0; i < column_max; ++i) {
-			if (!columns[i].visible)
-				continue;
-			if (columns[i].sizeWeight != 0)
-			{
-				columns[i].size = std::max(0,((width - columnSizeFixed) * columns[i].sizeWeight) / columnSizeWeightSum) / scale;
-			}
-			columns[i].offset = offset + (column_margin) * scale;
-			offset += (columns[i].size + column_margin) * scale;
-		}
-
-		for (int i = 2; i < column_max; ++i) {
-			if (!columns[i].visible)
-				continue;
-			if (columns[i - 1].offset + columns[i - 1].size * scale > columns[i].offset)
-			{
-				columns[i].offset = columns[i - 1].offset + (columns[i - 1].size) * scale;
-			}
-		}
-	}
-
-	std::vector<int> offsets;
-	std::vector<Column> columns;
-	std::vector<Row> rows;
-	std::vector<std::vector<std::string> > values;
-
-	int progressColumn = 2;
-	float maxValue = 0;
-};
+#include "Table.h"
 
 typedef std::map<std::string, ImVec4> ColorMapType;
 static ColorMapType color_map;
@@ -220,8 +74,7 @@ static std::string zone;
 static std::string duration;
 static std::string rdps;
 static std::string rhps;
-static Table dealerTable;
-static Table healerTable;
+
 static std::vector<const char*> combatant_attribute_names;
 
 static float& global_opacity = opacity_map["Global"];
@@ -231,6 +84,16 @@ static float& title_background_opacity = opacity_map["TitleBackground"];
 static float& toolbar_opacity = opacity_map["Toolbar"];
 static float& resizegrip_opacity = opacity_map["ResizeGrip"];
 static float& graph_opacity = opacity_map["Graph"];
+static std::string graph = "center";
+static Table dealerTable(
+	global_opacity,
+	text_opacity,
+	graph_opacity,
+	color_map["GraphText"],
+	color_map["etc"],
+	graph
+);
+
 static std::string default_pet_job;
 
 ImVec4 htmlCodeToImVec4(const std::string hex)
@@ -265,7 +128,8 @@ public:
 		}
 	}
 
-	bool loop = false;;
+	bool loop = false;
+	std::shared_ptr<websocket_context_base> websocket;
 	std::shared_ptr<std::thread> websocket_thread;
 
 	void Process(const std::string& message_str)
@@ -388,101 +252,73 @@ public:
 		{
 			while (loop)
 			{
-				boost::asio::io_service ios;
-				boost::asio::ip::tcp::resolver r{ ios };
 				try {
 					websocket_reconnect = false;
 
-					// localhost only !
-					boost::asio::ip::tcp::socket sock{ ios };
+					char*buf = websocket_port;
+					//char buf[32] = { 0, };
+					//sprintf(buf, "%d", websocket_port);
+
 					std::string host = websocket_host;
-					auto endpoint = r.resolve(boost::asio::ip::tcp::resolver::query{ host, websocket_port });
+					boost::asio::io_service ios;
+					boost::asio::ip::tcp::resolver r{ ios };
+					auto endpoint = r.resolve(boost::asio::ip::tcp::resolver::query{ host, buf });
 					std::string s = endpoint->service_name();
 					uint16_t p = endpoint->endpoint().port();
-					boost::asio::connect(sock, endpoint);
-					
-					std::string host_port = host + ":" + websocket_port;
+
+
+#if defined(USE_SSL)
 					if (websocket_ssl)
 					{
-						// Perform SSL handshaking
-						using stream_type = boost::asio::ssl::stream<boost::asio::ip::tcp::socket&>;
-						boost::asio::ssl::context ctx{ boost::asio::ssl::context::sslv23 };
-						stream_type stream{ sock, ctx };
-						stream.set_verify_mode(boost::asio::ssl::verify_none);
-						stream.handshake(boost::asio::ssl::stream_base::client );
-
-						// Secure WebSocket connect and send message using Beast
-						beast::websocket::stream<stream_type&> ws{ stream };
-						ws.handshake(host_port, "/MiniParse");
-
-						if (sock.is_open())
-						{
-							strcpy_s(websocket_message, 1023, "Connected");
-						}
-						while (sock.is_open() && loop)
-						{
-							if (websocket_reconnect)
-							{
-								sock.close();
-								std::cout << "Closed" << "\n";
-								break;
-							}
-							beast::multi_buffer b;
-							beast::websocket::opcode op;
-							ws.read(op, b);
-
-							std::string message_str;
-							message_str = boost::lexical_cast<std::string>(beast::buffers(b.data()));
-							// debug
-							//std::cout << beast::buffers(b.data()) << "\n";
-							b.consume(b.size());
-							if (message_str.size() == 1)
-							{
-								ws.write(boost::asio::buffer(std::string(".")));
-							}
-							else
-							{
-								Process(message_str);
-							}
-						}
+						websocket = std::make_shared<websocket_ssl_context>();
 					}
 					else
+#endif
 					{
-						beast::websocket::stream<boost::asio::ip::tcp::socket&> ws{ sock };
-						
-						ws.handshake(host_port, "/MiniParse");
-						if (sock.is_open())
+						websocket = std::make_shared<websocket_context>();
+					}
+
+					std::string host_port = host + ":" + buf;
+
+					boost::asio::connect(websocket->sock, endpoint);
+					websocket->handshake(host_port, websocket_path);
+					{
+						if (websocket->sock.is_open())
 						{
 							strcpy_s(websocket_message, 1023, "Connected");
 						}
-						while (sock.is_open() && loop)
-						{
-							if (websocket_reconnect)
+						beast::multi_buffer b;
+						beast::websocket::opcode op;
+						//std::function<void(std::string write) > write;
+						std::function<void(beast::error_code) > read_handler =
+							[this, &read_handler, &b, &op](beast::error_code ec) {
+							if (ec || websocket_reconnect)
 							{
-								sock.close();
-								std::cout << "Closed" << "\n";
-								break;
-							}
-							beast::multi_buffer b;
-							beast::websocket::opcode op;
-							ws.read(op, b);
-
-							std::string message_str;
-							message_str = boost::lexical_cast<std::string>(beast::buffers(b.data()));
-							// debug
-							//std::cout << beast::buffers(b.data()) << "\n";
-							b.consume(b.size());
-							if (message_str.size() == 1)
-							{
-								ws.write(boost::asio::buffer(std::string(".")));
+								strcpy_s(websocket_message, 1023, "Disconnected");
 							}
 							else
 							{
-								Process(message_str);
+								std::string message_str;
+								message_str = boost::lexical_cast<std::string>(beast::buffers(b.data()));
+								// debug
+								//std::cout << beast::buffers(b.data()) << "\n";
+								b.consume(b.size());
+								if (message_str.size() == 1)
+								{
+									websocket->write(boost::asio::buffer(std::string(".")));
+								}
+								else
+								{
+									Process(message_str);
+								}
+								if (loop)
+									websocket->async_read(op, b, websocket->strand.wrap(read_handler));
 							}
-						}
+						};
+						if (loop)
+							websocket->async_read(op, b, websocket->strand.wrap(read_handler));
+						websocket->ios.run();
 					}
-
 				}
 				catch (std::exception& e)
 				{
@@ -495,7 +331,7 @@ public:
 				}
 				if (!loop)
 					break;
-				for (int i = 0; i<50 && loop && !websocket_reconnect; ++i)
+				for (int i = 0; i < 50 && loop && !websocket_reconnect; ++i)
 					Sleep(100);
 				if (!loop)
 					break;
@@ -823,7 +659,7 @@ extern "C" int ModInit(ImGuiContext* context)
 
 		// default port
 		strcpy(websocket_port, "10501");
-		strcpy(websocket_host, "127.0.0.1");
+		strcpy(websocket_host, "localhost");
 		websocket_ssl = false;
 
 		movable = true;
@@ -841,7 +677,12 @@ extern "C" int ModInit(ImGuiContext* context)
 				{
 					show_name = setting.get("show_name", true).asBool();
 					default_pet_job = setting.get("default_pet_job", default_pet_job).asString();
-					strcpy(websocket_host, setting.get("websocket_host", "127.0.0.1").asCString());
+					strcpy(websocket_host, setting.get("websocket_host", "localhost").asCString());
+					if (strcmp(websocket_host, "127.0.0.1") == 0)
+					{
+						// for ipv6
+						strcpy(websocket_host, "localhost");
+					}
 					strcpy(websocket_port, setting.get("websocket_port", "10501").asCString());
 					Json::Value color = setting.get("color_map", Json::Value());
 					for (auto i = color.begin(); i != color.end(); ++i)
@@ -1185,187 +1026,12 @@ extern "C" void ModSetTexture(void* texture)
 	}
 }
 
-ImVec4 ColorWithAlpha(ImVec4 col, float alpha)
-{
-	col.w = alpha;
-	return col;
-}
-
-void RenderTableColumnHeader(Table& table, int height)
-{
-	const ImGuiStyle& style = ImGui::GetStyle();
-	ImGuiWindow* window = ImGui::GetCurrentWindow();
-
-	const ImGuiIO& io = ImGui::GetIO();
-	int base = ImGui::GetCursorPosY();
-	for (int i = 0; i < table.columns.size(); ++i)
-	{
-		if (!table.columns[i].visible)
-			continue;
-		const ImGuiStyle& style = ImGui::GetStyle();
-		ImVec2 winpos = ImGui::GetWindowPos();
-		ImVec2 pos = ImGui::GetCursorPos();
-		pos = window->DC.CursorPos;
-
-		{
-			ImGui::SetCursorPos(ImVec2(table.columns[i].offset + style.ItemInnerSpacing.x, base));
-			ImVec2 winpos = ImGui::GetWindowPos();
-			ImVec2 pos = ImGui::GetCursorPos();
-			pos = window->DC.CursorPos;
-			ImRect clip, align;
-
-			std::string text = table.columns[i].Title;
-			if (i == 1)
-			{
-				if (ImGui::Button("Name")) show_name = !show_name;
-			}
-			else
-			{
-				ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(ImVec4(0, 0, 0, 1), text_opacity * global_opacity));
-				ImGui::RenderTextClipped(ImVec2(pos.x + 1, pos.y + 1), ImVec2(pos.x + (table.columns[i].size + 1) * io.FontGlobalScale, pos.y + height + 1),
-					text.c_str(),
-					text.c_str() + text.size(),
-					nullptr,
-					ImVec2(0.5f, 0.5f),
-					//table.columns[i].align,
-					nullptr);
-				ImGui::PopStyleColor();
-				ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(color_map["GraphText"], text_opacity * global_opacity));
-				ImGui::RenderTextClipped(pos, ImVec2(pos.x + (table.columns[i].size) * io.FontGlobalScale, pos.y + height),
-					text.c_str(),
-					text.c_str() + text.size(),
-					nullptr,
-					ImVec2(0.5f, 0.5f),
-					//table.columns[i].align,
-					nullptr);
-				ImGui::PopStyleColor();
-			}
-		}
-		ImGui::NewLine();
-	}
-	ImGui::SetCursorPos(ImVec2(0, base + height));
-}
-
-void RenderTableRow(Table& table, int row, int height)
-{
-	const ImGuiStyle& style = ImGui::GetStyle();
-	ImGuiWindow* window = ImGui::GetCurrentWindow();
-
-	const ImGuiIO& io = ImGui::GetIO();
-	int offset = 0;
-	int base = ImGui::GetCursorPosY();
-	ImGui::SetCursorPos(ImVec2(0, base));
-
-	int i = row;
-	{
-		std::string& jobStr = table.values[i][0];
-		const std::string& progressStr = table.values[i][2];
-		std::string& nameStr = table.values[i][1];
-
-		if (table.maxValue == 0.0)
-			table.maxValue = 1.0;
-		float progress = atof(progressStr.c_str()) / table.maxValue;
-		ImVec4 progressColor = table.rows[i].color != nullptr ? *table.rows[i].color : color_map["etc"];
-
-		progressColor.w = graph_opacity * global_opacity;
-		const ImGuiStyle& style = ImGui::GetStyle();
-		ImVec2 winpos = ImGui::GetWindowPos();
-		ImVec2 pos = ImGui::GetCursorPos();
-		pos = window->DC.CursorPos;
-
-		Image& center = overlay_images["center"];
-
-		{
-			int length = (ImGui::GetWindowSize().x) * progress;
-			ImRect bb(ImVec2(pos.x, pos.y),
-				ImVec2(pos.x + length, pos.y + height));
-			window->DrawList->AddImage(overlay_texture, bb.Min, ImVec2(bb.Max.x, pos.y + height),
-				center.uv0, center.uv1, ImGui::GetColorU32(progressColor));
-		}
-		//ImGui::RenderFrame(bb.Min, bb.Max, ImGui::GetColorU32(ImVec4(0.5, 0.5, 0.5, 0.0)), true, style.FrameRounding);
-		//ImRect bb2(pos, ImVec2(pos.x + ImGui::GetWindowSize().x * progress, pos.y + height));
-		//ImGui::RenderFrame(bb2.Min, bb2.Max, ImGui::GetColorU32(progressColor), true, style.FrameRounding);
-		for (int j = 0; j < table.columns.size() && j < table.values[i].size(); ++j)
-		{
-			if (!table.columns[j].visible)
-				continue;
-			ImGui::SetCursorPos(ImVec2(table.columns[j].offset + style.ItemInnerSpacing.x, base));
-			ImVec2 winpos = ImGui::GetWindowPos();
-			ImVec2 pos = ImGui::GetCursorPos();
-			pos = window->DC.CursorPos;
-			ImRect clip, align;
-
-			std::string text = table.values[i][j];
-			if (j == 0 && overlay_texture)
-			{
-				std::string icon = boost::to_lower_copy(text);
-				std::unordered_map<std::string, Image>::iterator im;
-				if ((im = overlay_images.find(icon)) != overlay_images.end())
-				{
-					ImGuiWindow* window = ImGui::GetCurrentWindow();
-					window->DrawList->AddImage(overlay_texture, ImVec2(pos.x + 1, pos.y + 1), ImVec2(pos.x + (table.columns[j].size + 1)*io.FontGlobalScale, pos.y + height + 1),
-						im->second.uv0, im->second.uv1);// , GetColorU32(tint_col));
-				}
-			}
-			else if (j != 1 || show_name)
-			{
-				ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(ImVec4(0, 0, 0, 1), text_opacity * global_opacity));
-				ImGui::RenderTextClipped(ImVec2(pos.x + 1, pos.y + 1), ImVec2(pos.x + (table.columns[j].size + 1) * io.FontGlobalScale, pos.y + height + 1),
-					text.c_str(),
-					text.c_str() + text.size(),
-					nullptr,
-					table.columns[j].align,
-					nullptr);
-				ImGui::PopStyleColor();
-				ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(color_map["GraphText"], text_opacity * global_opacity));
-				ImGui::RenderTextClipped(pos, ImVec2(pos.x + table.columns[j].size * io.FontGlobalScale, pos.y + height),
-					text.c_str(),
-					text.c_str() + text.size(),
-					nullptr,
-					table.columns[j].align,
-					nullptr);
-				ImGui::PopStyleColor();
-			}
-		}
-		{
-			ImVec2 pos = ImGui::GetCursorPos();
-			ImGui::SetCursorPos(ImVec2(pos.x, pos.y + height));
-			ImGui::NewLine();
-		}
-	}
-	ImGui::SetCursorPos(ImVec2(0, base + height));
-}
-
-void RenderTable(Table& table)
-{
-	const ImGuiStyle& style = ImGui::GetStyle();
-	const ImGuiIO& io = ImGui::GetIO();
-	int windowWidth = ImGui::GetWindowContentRegionWidth();
-	int column_max = table.columns.size();
-	const int height = 20 * io.FontGlobalScale;
-	table.UpdateColumnWidth(windowWidth, height, column_max, io.FontGlobalScale);
-
-	ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(color_map["GraphText"], text_opacity * global_opacity));
-	RenderTableColumnHeader(table, height);
-
-	ImGui::Separator();
-
-	for (int row = 0; row < table.values.size(); ++row)
-	{
-		RenderTableRow(table, row, height);
-	}
-	ImGui::PopStyleColor(1);
-}
-
 void Preference(ImGuiContext* context, bool* show_preferences)
-{		
-	ImGui::Begin("Preferences", show_preferences, windows_default_sizes["Preferences"], -1, ImGuiWindowFlags_NoCollapse);
+{	
+	if(ImGui::Begin("Preferences", show_preferences, windows_default_sizes["Preferences"], -1, ImGuiWindowFlags_NoCollapse))
 	{
+		ImGui::Text("ACTWebSocketOverlay - %s", VERSION_LONG_STRING);
 		windows_default_sizes["Preferences"] = ImGui::GetWindowSize();
-		ImGui::Text("Version : %s", VERSION_LONG_STRING);
-		ImGui::Text("Github : https://github.com/ZCube/ACTWebSocket");
-		ImGui::Text("Github : https://github.com/ZCube/ACTWebSocketOverlay");
-		ImGui::Text("");
 		if (ImGui::TreeNode("Windows"))
 		{
 			if (ImGui::Checkbox("Status", &show_status))
@@ -1591,15 +1257,26 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 			//dealerTable
 			ImGui::TreePop();
 		}
-		if (ImGui::TreeNode("WebSocket"))
+
+		if (ImGui::TreeNode("WebSocket", "%s : %s", "WebSocket", websocket_message))
 		{
+			ImGui::Text("WebSocket : %s://%s:%s%s",
+#if defined(USE_SSL)
+				websocket_ssl ? "wss" :
+#endif
+				"ws", websocket_host, websocket_port, websocket_path);
+#if defined(USE_SSL)
 			if (ImGui::Checkbox("Use SSL", &boolean_map["WebSocketSSL"]))
 			{
 				websocket_reconnect = true;
+				if (websocket.websocket)
+				{
+					websocket.websocket->close(beast::websocket::close_reason(0));
+				}
 				strcpy_s(websocket_message, 1023, "Connecting...");
 				SaveSettings();
 			}
-			
+#endif	
 			if (ImGui::InputText("Host", websocket_host, 50))
 			{
 				websocket_reconnect = true;
@@ -1614,8 +1291,6 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 			}
 			ImGui::TreePop();
 		}
-		ImGui::Text("WebSocket Status : %s", websocket_message);
-		ImGui::Separator();
 		if (ImGui::TreeNode("Opacity"))
 		{
 			static int group_opacity = 255;
@@ -1644,11 +1319,20 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 				static int index_ = -1;
 				static char buf[100] = { 0, };
 				static int current_item = -1;
-				static float font_size = 15.0f;
+				static float font_size = 12.0f;
 				static int glyph_range = 0;
 				static int index = -1;
 				bool decIndex = false;
 				bool incIndex = false;
+				static float font_size_default = 12.0f;
+				if (ImGui::InputFloat("FontSizes", &font_size_default, 0.5f))
+				{
+					for (auto i = fonts.begin(); i != fonts.end(); ++i)
+					{
+						i->font_size = font_size_default;
+					}
+					SaveSettings();
+				}
 				if (ImGui::ListBox("Fonts", &index_, data.data(), data.size()))
 				{
 					index = index_;
@@ -1699,7 +1383,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 							SaveSettings();
 						}
 					}
-					if (ImGui::SliderFloat("Size", &font_size, 5, 100))
+					if (ImGui::InputFloat("Size", &font_size, 0.5f))
 					{
 						fonts[index].font_size = font_size;
 						SaveSettings();
@@ -1765,22 +1449,21 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 				ImGui::SameLine();
 				if (ImGui::Button("Append"))
 				{
+					font_size = font_size_default;
 					ImGui::OpenPopup("Append Column");
 				}
 				if (ImGui::BeginPopup("Append Column"))
 				{
 					static char buf[100] = { 0, };
 					static int glyph_range = -1;
-					static float font_size = 15.0f;
-					if (ImGui::InputText("Title", buf, 99))
+					if (ImGui::InputText("FontName", buf, 99))
 					{
 					}
 					if (ImGui::Combo("GlyphRange", &glyph_range, glyph_range_key.data(), glyph_range_key.size()))
 					{
 					}
-					if (ImGui::SliderFloat("Size", &font_size, 5, 100))
+					if (ImGui::InputFloat("Size", &font_size, 0.5f))
 					{
-						SaveSettings();
 					}
 					if (ImGui::Button("Append"))
 					{
@@ -1794,7 +1477,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 							ImGui::CloseCurrentPopup();
 							strcpy(buf, "");
 							current_item = -1;
-							font_size = 15.0f;
+							font_size = font_size_default;
 							SaveSettings();
 						}
 					}
@@ -1866,6 +1549,14 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 			}
 			ImGui::TreePop();
 		}
+		if (ImGui::TreeNode("Info"))
+		{
+			ImGui::Text("Version : %s", VERSION_LONG_STRING);
+			ImGui::Text("Github : https://github.com/ZCube/ACTWebSocket");
+			ImGui::Text("Github : https://github.com/ZCube/ACTWebSocketOverlay");
+			ImGui::Text("");
+			ImGui::TreePop();
+		}
 	}
 	ImGui::End();
 }
@@ -1931,7 +1622,7 @@ extern "C" int ModRender(ImGuiContext* context)
 			ImGui::SameLine();
 			ImGui::SetCursorPos(p);
 
-			RenderTable(dealerTable);
+			dealerTable.RenderTable(overlay_texture, &overlay_images);
 
 			ImGui::Separator();
 

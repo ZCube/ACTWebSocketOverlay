@@ -1,4 +1,6 @@
 @echo off
+SETLOCAL
+
 set _ROOT=%CD%
 pushd external\reshade
 CALL "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars32.bat"
@@ -16,3 +18,4 @@ pushd build\32
 cmake --build . --config Release
 popd
 
+ENDLOCAL
