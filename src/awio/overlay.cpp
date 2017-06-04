@@ -1561,9 +1561,10 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 	ImGui::End();
 }
 
+static bool show_preferences = false;
+
 extern "C" int ModRender(ImGuiContext* context)
 {
-	static bool show_preferences = false;
 	bool move_key_pressed = GetAsyncKeyState(VK_SHIFT) && GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_MENU);
 	bool use_input = movable || show_preferences || move_key_pressed;
 	try {
@@ -1698,4 +1699,13 @@ extern "C" int ModRender(ImGuiContext* context)
 		std::cerr << e.what() << std::endl;
 	}
 	return 0;
+}
+
+extern "C" bool ModMenu(bool* show)
+{
+	if (show)
+		show_preferences = *show;
+	else
+		show_preferences = !show_preferences;
+	return show_preferences;
 }

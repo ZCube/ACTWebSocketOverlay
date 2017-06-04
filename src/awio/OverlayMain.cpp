@@ -413,6 +413,15 @@ extern "C" int ModRender(ImGuiContext* context)
 	return 0;
 }
 
+extern "C" bool ModMenu(bool* show)
+{
+	if (show)
+		instance.options.show_preferences = *show;
+	else
+		instance.options.show_preferences = !instance.options.show_preferences;
+	return instance.options.show_preferences;
+}
+
 void OverlayInstance::SetTexture(ImTextureID texture)
 {
 	overlay_texture = texture;
@@ -900,11 +909,15 @@ void OverlayInstance::Render(ImGuiContext * context)
 	ImGuiStyle& style = ImGui::GetStyle();
 	ImGuiStyle backup = style;
 
+	bool isVisible = false;
 	for (auto i = overlays.begin(); i != overlays.end(); ++i) {
 		style = imgui_style;
 		current_storage = &i->second->preference_storage;
-		if(i->second->IsVisible())
+		if (i->second->IsVisible())
+		{
 			i->second->Render(use_input, &options);
+			isVisible = true;
+		}
 	}
 	current_storage = nullptr;
 	style = imgui_style;

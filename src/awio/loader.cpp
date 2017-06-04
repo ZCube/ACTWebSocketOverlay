@@ -18,6 +18,7 @@ typedef int(*TModRender)(ImGuiContext* context);
 typedef int(*TModInit)(ImGuiContext* context);
 typedef void(*TModTextureData)(unsigned char** out_pixels, int* out_width, int* out_height, int* out_bytes_per_pixel);
 typedef void(*TModSetTexture)(void* texture);
+typedef bool(*TModMenu)(bool* show);
 
 static TModUnInit modUnInit = nullptr;
 static TModRender modRender = nullptr;
@@ -25,6 +26,7 @@ static TModInit modInit = nullptr;
 static TModTextureData modTextureData = nullptr;
 static TModSetTexture modSetTexture = nullptr;
 static HMODULE mod = nullptr;
+static TModMenu modMenu = nullptr;
 std::mutex m;
 /////////////////////////////////////////////////////////////////////////////////
 
@@ -64,6 +66,7 @@ extern "C" int ModInit(ImGuiContext* context)
 			modUnInit = (TModInit)GetProcAddress(mod, "ModUnInit");
 			modTextureData = (TModTextureData)GetProcAddress(mod, "ModTextureData");
 			modSetTexture = (TModSetTexture)GetProcAddress(mod, "ModSetTexture");
+			modMenu = (TModMenu)GetProcAddress(mod, "ModMenu");
 		}
 	}
 	m.unlock();
@@ -95,4 +98,9 @@ extern "C" int ModRender(ImGuiContext* context)
 	if (modRender)
 		return modRender(context);
 	return 0;
+}
+
+extern "C" bool ModMenu(bool* show)
+{
+	return modMenu(show);
 }

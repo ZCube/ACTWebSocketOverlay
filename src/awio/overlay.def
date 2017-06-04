@@ -5,3 +5,4 @@ EXPORTS
    ModUnInit      @3
    ModTextureData @4
    ModSetTexture  @5
+   ModMenu        @6
