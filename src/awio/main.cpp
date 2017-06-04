@@ -16,13 +16,17 @@ typedef int(*TModRender)(ImGuiContext* context);
 typedef int(*TModInit)(ImGuiContext* context);
 typedef void(*TModTextureData)(unsigned char** out_pixels, int* out_width, int* out_height, int* out_bytes_per_pixel);
 typedef void(*TModSetTexture)(void* texture);
+typedef bool(*TModUpdateFont)(ImGuiContext* context);
+typedef bool(*TModMenu)(bool* show);
 
 TModUnInit modUnInit = nullptr;
 TModRender modRender = nullptr;
 TModInit modInit = nullptr;
 TModTextureData modTextureData = nullptr;
 TModSetTexture modSetTexture = nullptr;
-HMODULE mod = nullptr;
+TModUpdateFont modUpdateFont = nullptr;
+TModMenu modMenu = nullptr;
+HMODULE mod;
 /////////////////////////////////////////////////////////////////////////////////
 
 // Data
@@ -224,6 +228,7 @@ int main(int argc, char** argv)
 		modUnInit = (TModUnInit)GetProcAddress(mod, "ModUnInit");
 		modTextureData = (TModTextureData)GetProcAddress(mod, "ModTextureData");
 		modSetTexture = (TModSetTexture)GetProcAddress(mod, "ModSetTexture");
+		modUpdateFont = (TModUpdateFont)GetProcAddress(mod, "ModUpdateFont");
 	}
 	/////////////////////////////////////////////////////////////////////////////////
 
@@ -293,6 +298,20 @@ int main(int argc, char** argv)
             DispatchMessage(&msg);
             continue;
         }
+
+		if (modUpdateFont)
+		{
+			if (modUpdateFont(ImGui::GetCurrentContext()))
+			{
+				if (g_pFontTextureView)
+					g_pFontTextureView->Release();
+				g_pFontTextureView = nullptr;
+				if (g_pFontSampler)
+					g_pFontSampler->Release();
+				g_pFontSampler = nullptr;
+				ImGui_ImplDX11_CreateFontsTexture();
+			}
+		}
 
 		if (!g_pModTextureView) {
 			ImGui_ImplDX11_CreateModTexture();

@@ -422,6 +422,16 @@ extern "C" bool ModMenu(bool* show)
 	return instance.options.show_preferences;
 }
 
+extern "C" bool ModUpdateFont(ImGuiContext* context)
+{
+	if (instance.font_setting_dirty)
+	{
+		instance.LoadFonts();
+		return true;
+	}
+	return false;
+}
+
 void OverlayInstance::SetTexture(ImTextureID texture)
 {
 	overlay_texture = texture;
@@ -547,7 +557,6 @@ OverlayInstance::~OverlayInstance()
 void OverlayInstance::FontsPreferences() {
 	if (ImGui::TreeNode("Fonts"))
 	{
-		ImGui::Text("The font settings are applied at the next start.");
 		ImGui::Text("Default font is \'Default\' with fixed font size 13.0");
 		{
 			std::vector<const char*> data;
@@ -566,7 +575,6 @@ void OverlayInstance::FontsPreferences() {
 			static int index = -1;
 			bool decIndex = false;
 			bool incIndex = false;
-			static float font_size_all = 13.0f;
 			if (ImGui::ListBox("Fonts", &index_, data.data(), data.size()))
 			{
 				index = index_;
@@ -589,6 +597,7 @@ void OverlayInstance::FontsPreferences() {
 				{
 					fontname_idx = -1;
 				}
+				font_setting_dirty = true;
 			}
 			if (ImGui::Button("Up"))
 			{
@@ -597,6 +606,7 @@ void OverlayInstance::FontsPreferences() {
 					std::swap(fonts[index], fonts[index - 1]);
 					Save();
 					decIndex = true;
+					font_setting_dirty = true;
 				}
 			}
 			ImGui::SameLine();
@@ -607,6 +617,7 @@ void OverlayInstance::FontsPreferences() {
 					std::swap(fonts[index], fonts[index + 1]);
 					Save();
 					incIndex = true;
+					font_setting_dirty = true;
 				}
 			}
 			ImGui::SameLine();
@@ -622,6 +633,7 @@ void OverlayInstance::FontsPreferences() {
 				if (index >= 0)
 				{
 					fonts.erase(fonts.begin() + index);
+					font_setting_dirty = true;
 					Save();
 				}
 				if (index >= fonts.size())
@@ -642,6 +654,7 @@ void OverlayInstance::FontsPreferences() {
 					{
 						glyph_range = ri - glyph_range_key.begin();
 					}
+					font_setting_dirty = true;
 				}
 				else
 				{
@@ -663,6 +676,7 @@ void OverlayInstance::FontsPreferences() {
 					{
 						glyph_range = ri - glyph_range_key.begin();
 					}
+					font_setting_dirty = true;
 				}
 				else
 				{
@@ -674,7 +688,7 @@ void OverlayInstance::FontsPreferences() {
 			ImGui::SameLine();
 			if (ImGui::Button("Append"))
 			{
-				font_size = font_size_all;
+				font_size = font_sizes;
 				ImGui::OpenPopup("Append Column");
 			}
 			if (ImGui::BeginPopup("Append Column"))
@@ -710,6 +724,7 @@ void OverlayInstance::FontsPreferences() {
 				}
 				if (ImGui::InputFloat("Size", &font_size, 0.5f))
 				{
+					font_size = std::min(std::max(font_size, 6.0f), 30.0f);
 				}
 				if (ImGui::Button("Append"))
 				{
@@ -723,7 +738,8 @@ void OverlayInstance::FontsPreferences() {
 						ImGui::CloseCurrentPopup();
 						strcpy(buf, "");
 						current_item = -1;
-						font_size = font_size_all;
+						font_size = font_sizes;
+						font_setting_dirty = true;
 						Save();
 					}
 				}
@@ -732,14 +748,15 @@ void OverlayInstance::FontsPreferences() {
 			ImGui::SameLine();
 			if (ImGui::Button("Default"))
 			{
-				font_size_all = default_font_size;
+				font_sizes = 13;
 				fonts = {
-					Font("consolab.ttf", "Default", default_font_size),
-					Font("Default", "Default", default_font_size), // Default will ignore font size.
-					Font("ArialUni.ttf", "Japanese", default_font_size),
-					Font("NanumBarunGothic.ttf", "Korean", default_font_size),
-					Font("gulim.ttc", "Korean", default_font_size),
+					Font("consolab.ttf", "Default", font_sizes),
+					Font("Default", "Default", font_sizes), // Default will ignore font size.
+					Font("ArialUni.ttf", "Japanese", font_sizes),
+					Font("NanumBarunGothic.ttf", "Korean", font_sizes),
+					Font("gulim.ttc", "Korean", font_sizes),
 				};
+				font_setting_dirty = true;
 			}
 
 			//if (ImGui::BeginPopup("Edit Column"))
@@ -756,6 +773,7 @@ void OverlayInstance::FontsPreferences() {
 						fonts[index].fontname = font_cstr_filenames[fontname_idx];
 						strcpy(buf, font_cstr_filenames[fontname_idx]);
 						Save();
+						font_setting_dirty = true;
 					}
 				}
 				if (ImGui::InputText("FontName", buf, 99))
@@ -773,6 +791,7 @@ void OverlayInstance::FontsPreferences() {
 					{
 						fontname_idx = -1;
 					}
+					font_setting_dirty = true;
 					Save();
 				}
 				if (ImGui::Combo("GlyphRange", &glyph_range, glyph_range_key.data(), glyph_range_key.size()))
@@ -780,24 +799,29 @@ void OverlayInstance::FontsPreferences() {
 					if (glyph_range >= 0)
 					{
 						fonts[index].glyph_range = glyph_range_key[glyph_range];
+						font_setting_dirty = true;
 						Save();
 					}
 				}
 				if (ImGui::InputFloat("Size", &font_size, 0.5f))
 				{
+					font_size = std::min(std::max(font_size, 6.0f), 30.0f);
 					fonts[index].font_size = font_size;
+					font_setting_dirty = true;
 					Save();
 				}
 				ImGui::Separator();
 				ImGui::EndGroup();
 			}
-			if (ImGui::InputFloat("FontSizes (for all)", &font_size_all, 0.5f))
+			if (ImGui::InputFloat("FontSizes (for all)", &font_sizes, 0.5f))
 			{
+				font_sizes = std::min(std::max(font_sizes, 6.0f), 30.0f);
 				for (auto i = fonts.begin(); i != fonts.end(); ++i)
 				{
-					i->font_size = font_size_all;
+					i->font_size = font_sizes;
 				}
-				font_size = font_size_all;
+				font_size = font_sizes;
+				font_setting_dirty = true;
 				Save();
 			}
 		}
@@ -1358,4 +1382,19 @@ void OverlayInstance::LoadFonts()
 			config.MergeMode = true;
 		}
 	}
+	// do not remove
+	io.Fonts->AddFontDefault();
+	if (fonts.empty())
+	{
+		font_sizes = 13;
+	}
+	else
+	{
+		font_sizes = fonts[0].font_size;
+		for (auto i = fonts.begin(); i != fonts.end(); ++i)
+		{
+			font_sizes = std::min(font_sizes, i->font_size);
+		}
+	}
+	font_setting_dirty = false;
 }

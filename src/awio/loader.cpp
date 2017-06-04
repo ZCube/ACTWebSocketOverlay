@@ -13,20 +13,23 @@
 struct ImGuiContext;
 /////////////////////////////////////////////////////////////////////////////////
 #include <Windows.h>
+
 typedef int(*TModUnInit)(ImGuiContext* context);
 typedef int(*TModRender)(ImGuiContext* context);
 typedef int(*TModInit)(ImGuiContext* context);
 typedef void(*TModTextureData)(unsigned char** out_pixels, int* out_width, int* out_height, int* out_bytes_per_pixel);
 typedef void(*TModSetTexture)(void* texture);
+typedef bool(*TModUpdateFont)(ImGuiContext* context);
 typedef bool(*TModMenu)(bool* show);
 
-static TModUnInit modUnInit = nullptr;
-static TModRender modRender = nullptr;
-static TModInit modInit = nullptr;
-static TModTextureData modTextureData = nullptr;
-static TModSetTexture modSetTexture = nullptr;
-static HMODULE mod = nullptr;
-static TModMenu modMenu = nullptr;
+TModUnInit modUnInit = nullptr;
+TModRender modRender = nullptr;
+TModInit modInit = nullptr;
+TModTextureData modTextureData = nullptr;
+TModSetTexture modSetTexture = nullptr;
+TModUpdateFont modUpdateFont = nullptr;
+TModMenu modMenu = nullptr;
+HMODULE mod;
 std::mutex m;
 /////////////////////////////////////////////////////////////////////////////////
 
@@ -67,6 +70,7 @@ extern "C" int ModInit(ImGuiContext* context)
 			modTextureData = (TModTextureData)GetProcAddress(mod, "ModTextureData");
 			modSetTexture = (TModSetTexture)GetProcAddress(mod, "ModSetTexture");
 			modMenu = (TModMenu)GetProcAddress(mod, "ModMenu");
+			modUpdateFont = (TModUpdateFont)GetProcAddress(mod, "ModUpdateFont");
 		}
 	}
 	m.unlock();
@@ -102,5 +106,15 @@ extern "C" int ModRender(ImGuiContext* context)
 
 extern "C" bool ModMenu(bool* show)
 {
-	return modMenu(show);
+	if(modMenu)
+		return modMenu(show);
+	return false;
 }
+
+extern "C" bool ModUpdateFont(ImGuiContext* context)
+{
+	if(modUpdateFont)
+		return modUpdateFont(context);
+	return false;
+}
+

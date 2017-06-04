@@ -34,6 +34,7 @@
 static boost::mutex font_mutex;
 static boost::mutex mutex;
 static bool initialized = false;
+static bool font_setting_dirty = false;
 std::unordered_map<ImGuiContext*, bool> font_inited;
 
 static bool show_name = true;
@@ -51,6 +52,7 @@ static ImFont* korFont = nullptr;
 static ImFont* japFont = nullptr;
 static bool need_font_init = true;
 static std::map<std::string, ImVec2> windows_default_sizes;
+static float font_sizes = 12.0f;
 std::string your_name = "YOU";
 
 static std::vector<Font> fonts;
@@ -350,8 +352,114 @@ static WebSocket websocket;
 inline static void websocketThread()
 {
 	// only one.
-	if(!websocket.websocket_thread)
+	if (!websocket.websocket_thread)
 		websocket.Run();
+}
+
+bool LoadFonts(ImGuiContext* context)
+{
+	if (!context)
+		return false;
+
+	{
+		// Changing or adding fonts at runtime causes a crash.
+		// TODO: is it possible ?...
+
+		ImGuiIO& io = context->IO;
+
+		WCHAR result[MAX_PATH] = {};
+		GetWindowsDirectoryW(result, MAX_PATH);
+		boost::filesystem::path p = result;
+
+		GetModuleFileNameW(NULL, result, MAX_PATH);
+		boost::filesystem::path m = result;
+
+		// font
+		io.Fonts->Clear();
+		io.Fonts->TexID = 0;
+
+		std::map<std::string, const ImWchar*> glyph_range_map = {
+			{ "Default", io.Fonts->GetGlyphRangesDefault() },
+			{ "Chinese", io.Fonts->GetGlyphRangesChinese() },
+			{ "Cyrillic", io.Fonts->GetGlyphRangesCyrillic() },
+			{ "Japanese", io.Fonts->GetGlyphRangesJapanese() },
+			{ "Korean", io.Fonts->GetGlyphRangesKorean() },
+			{ "Thai", io.Fonts->GetGlyphRangesThai() },
+		};
+
+		// Add fonts in this order.
+		glyph_range_key = {
+			"Default",
+			"Chinese",
+			"Cyrillic",
+			"Japanese",
+			"Korean",
+			"Thai",
+		};
+
+		std::vector<boost::filesystem::path> font_find_folders = {
+			m.parent_path(), // dll path
+			p / "Fonts", // windows fonts
+		};
+
+		ImFontConfig config;
+		config.MergeMode = false;
+		for (auto i = glyph_range_key.begin(); i != glyph_range_key.end(); ++i)
+		{
+			bool is_loaded = false;
+
+			for (auto j = fonts.begin(); j != fonts.end() && !is_loaded; ++j)
+			{
+				if (j->glyph_range == *i)
+				{
+					if (j->fontname == "Default")
+					{
+						io.Fonts->AddFontDefault(&config);
+						is_loaded = true;
+						config.MergeMode = true;
+					}
+					else
+					{
+						for (auto k = font_find_folders.begin(); k != font_find_folders.end(); ++k)
+						{
+							// ttf, ttc only
+							auto fontpath = (*k) / j->fontname;
+							if (boost::filesystem::exists(fontpath))
+							{
+								io.Fonts->AddFontFromFileTTF((fontpath).string().c_str(), j->font_size, &config, glyph_range_map[j->glyph_range]);
+								is_loaded = true;
+								config.MergeMode = true;
+							}
+						}
+					}
+				}
+			}
+
+			if (*i == "Default" && !is_loaded)
+			{
+				io.Fonts->AddFontDefault(&config);
+				is_loaded = true;
+				config.MergeMode = true;
+			}
+
+		}
+		// do not remove
+		io.Fonts->AddFontDefault();
+	}
+	if (fonts.empty())
+	{
+		font_sizes = 13;
+	}
+	else
+	{
+		font_sizes = fonts[0].font_size;
+		for (auto i = fonts.begin(); i != fonts.end(); ++i)
+		{
+			font_sizes = std::min(font_sizes, i->font_size);
+		}
+	}
+	font_setting_dirty = false;
+	return true;
 }
 
 extern "C" int ModInit(ImGuiContext* context)
@@ -814,88 +922,7 @@ extern "C" int ModInit(ImGuiContext* context)
 
 		websocketThread();
 
-		{
-			// Changing or adding fonts at runtime causes a crash.
-			// TODO: is it possible ?...
-
-			ImGuiIO& io = ImGui::GetIO();
-
-			WCHAR result[MAX_PATH] = {};
-			GetWindowsDirectoryW(result, MAX_PATH);
-			boost::filesystem::path p = result;
-
-			GetModuleFileNameW(NULL, result, MAX_PATH);
-			boost::filesystem::path m = result;
-
-			// font
-			ImGui::GetIO().Fonts->Clear();
-			
-			std::map<std::string, const ImWchar*> glyph_range_map = {
-				{ "Default", io.Fonts->GetGlyphRangesDefault() },
-				{ "Chinese", io.Fonts->GetGlyphRangesChinese() },
-				{ "Cyrillic", io.Fonts->GetGlyphRangesCyrillic() },
-				{ "Japanese", io.Fonts->GetGlyphRangesJapanese() },
-				{ "Korean", io.Fonts->GetGlyphRangesKorean() },
-				{ "Thai", io.Fonts->GetGlyphRangesThai() },
-			};
-
-			// Add fonts in this order.
-			glyph_range_key = {
-				"Default",
-				"Chinese",
-				"Cyrillic",
-				"Japanese",
-				"Korean",
-				"Thai",
-			};
-
-			std::vector<boost::filesystem::path> font_find_folders = {
-				m.parent_path(), // dll path
-				p / "Fonts", // windows fonts
-			};
-
-			ImFontConfig config;
-			config.MergeMode = false;
-			for (auto i = glyph_range_key.begin(); i != glyph_range_key.end(); ++i)
-			{
-				bool is_loaded = false;
-
-				for (auto j = fonts.begin(); j != fonts.end() && !is_loaded; ++j)
-				{
-					if (j->glyph_range == *i)
-					{
-						if (j->fontname == "Default")
-						{
-							io.Fonts->AddFontDefault(&config);
-							is_loaded = true;
-							config.MergeMode = true;
-						}
-						else
-						{
-							for (auto k = font_find_folders.begin(); k != font_find_folders.end(); ++k)
-							{
-								// ttf, ttc only
-								auto fontpath = (*k) / j->fontname;
-								if (boost::filesystem::exists(fontpath))
-								{
-									io.Fonts->AddFontFromFileTTF((fontpath).string().c_str(), j->font_size, &config, glyph_range_map[j->glyph_range]);
-									is_loaded = true;
-									config.MergeMode = true;
-								}
-							}
-						}
-					}
-				}
-
-				if (*i == "Default" && !is_loaded)
-				{
-					io.Fonts->AddFontDefault(&config);
-					is_loaded = true;
-					config.MergeMode = true;
-				}
-
-			}
-		}
+		LoadFonts(context);
 	}
 	catch (std::exception& e)
 	{
@@ -1306,7 +1333,6 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 		}
 		if (ImGui::TreeNode("Fonts"))
 		{
-			ImGui::Text("The font settings are applied at the next start.");
 			ImGui::Text("Default font is \'Default\'");
 			{
 				std::vector<const char*> data;
@@ -1324,13 +1350,14 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 				static int index = -1;
 				bool decIndex = false;
 				bool incIndex = false;
-				static float font_size_default = 12.0f;
-				if (ImGui::InputFloat("FontSizes", &font_size_default, 0.5f))
+				if (ImGui::InputFloat("FontSizes", &font_sizes, 0.5f))
 				{
+					font_sizes = std::min(std::max(font_sizes, 6.0f), 30.0f);
 					for (auto i = fonts.begin(); i != fonts.end(); ++i)
 					{
-						i->font_size = font_size_default;
+						i->font_size = font_sizes;
 					}
+					font_setting_dirty = true;
 					SaveSettings();
 				}
 				if (ImGui::ListBox("Fonts", &index_, data.data(), data.size()))
@@ -1343,6 +1370,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 					{
 						glyph_range = ri - glyph_range_key.begin();
 					}
+					font_setting_dirty = true;
 				}
 				if (ImGui::Button("Up"))
 				{
@@ -1351,6 +1379,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 						std::swap(fonts[index], fonts[index - 1]);
 						SaveSettings();
 						decIndex = true;
+						font_setting_dirty = true;
 					}
 				}
 				ImGui::SameLine();
@@ -1361,6 +1390,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 						std::swap(fonts[index], fonts[index + 1]);
 						SaveSettings();
 						incIndex = true;
+						font_setting_dirty = true;
 					}
 				}
 				ImGui::SameLine();
@@ -1374,6 +1404,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 					{
 						fonts[index].fontname = buf;
 						SaveSettings();
+						font_setting_dirty = true;
 					}
 					if (ImGui::Combo("GlyphRange", &glyph_range, glyph_range_key.data(), glyph_range_key.size()))
 					{
@@ -1381,12 +1412,15 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 						{
 							fonts[index].glyph_range = glyph_range_key[glyph_range];
 							SaveSettings();
+							font_setting_dirty = true;
 						}
 					}
 					if (ImGui::InputFloat("Size", &font_size, 0.5f))
 					{
+						font_size = std::min(std::max(font_size, 6.0f), 30.0f);
 						fonts[index].font_size = font_size;
 						SaveSettings();
+						font_setting_dirty = true;
 					}
 					ImGui::EndPopup();
 				}
@@ -1398,6 +1432,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 					{
 						fonts.erase(fonts.begin() + index);
 						SaveSettings();
+						font_setting_dirty = true;
 					}
 					if (index >= fonts.size())
 					{
@@ -1417,6 +1452,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 						{
 							glyph_range = ri - glyph_range_key.begin();
 						}
+						font_setting_dirty = true;
 					}
 					else
 					{
@@ -1438,6 +1474,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 						{
 							glyph_range = ri - glyph_range_key.begin();
 						}
+						font_setting_dirty = true;
 					}
 					else
 					{
@@ -1449,7 +1486,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 				ImGui::SameLine();
 				if (ImGui::Button("Append"))
 				{
-					font_size = font_size_default;
+					font_size = font_sizes;
 					ImGui::OpenPopup("Append Column");
 				}
 				if (ImGui::BeginPopup("Append Column"))
@@ -1464,6 +1501,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 					}
 					if (ImGui::InputFloat("Size", &font_size, 0.5f))
 					{
+						font_size = std::min(std::max(font_size, 6.0f), 30.0f);
 					}
 					if (ImGui::Button("Append"))
 					{
@@ -1477,8 +1515,9 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 							ImGui::CloseCurrentPopup();
 							strcpy(buf, "");
 							current_item = -1;
-							font_size = font_size_default;
+							font_size = font_sizes;
 							SaveSettings();
+							font_setting_dirty = true;
 						}
 					}
 					ImGui::EndPopup();
@@ -1709,3 +1748,16 @@ extern "C" bool ModMenu(bool* show)
 		show_preferences = !show_preferences;
 	return show_preferences;
 }
+
+extern "C" bool ModUpdateFont(ImGuiContext* context)
+{
+	int width, height;
+	unsigned char *pixels;
+	if (font_setting_dirty)
+	{
+		bool ret = LoadFonts(context);
+		return ret;
+	}
+	return false;
+}
+
