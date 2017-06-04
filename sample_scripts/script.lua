@@ -2,7 +2,6 @@
 -- Insert attributes of icon, color, display_name, owner to combatant JSON data.
 --
 
-JSON = require "json"
 charName = "YOU"
 combatant = {}
 lastMessage = "{}"
@@ -72,9 +71,9 @@ name_to_job_map["타이탄 에기"] = "titan"
 
 name_to_job_map["Limit Break"] = "limit break";
 
-function script(data)
+function script(root)
 	-- from websocket
-	local root = JSON:decode(data)
+	-- root = jsonDecode(data)
 	
 	if root then
 		-- get user name
@@ -150,6 +149,7 @@ function script(data)
 	end
 	
 	-- send to render.lua
-	return JSON:encode({combatant = ret})
+	-- print(jsonEncodePretty({combatant = ret}))
+	return {combatant = ret}
 end
 

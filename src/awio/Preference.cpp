@@ -27,7 +27,7 @@ void PreferenceBase::Preferences(PreferenceNode & preference_node, PreferenceSto
 			if (preference_node.val)
 			{
 				int* i = reinterpret_cast<int*>(preference_node.val);
-				if (ImGui::InputInt(name, i))
+				if (ImGui::InputInt(name, i, preference_node.step))
 				{
 					*i = preference_storage.int_map[name];
 					Save();
@@ -35,7 +35,7 @@ void PreferenceBase::Preferences(PreferenceNode & preference_node, PreferenceSto
 			}
 			else
 			{
-				if (ImGui::InputInt(name, &preference_storage.int_map[name]))
+				if (ImGui::InputInt(name, &preference_storage.int_map[name], preference_node.step))
 				{
 					Save();
 				}
@@ -45,14 +45,14 @@ void PreferenceBase::Preferences(PreferenceNode & preference_node, PreferenceSto
 			if (preference_node.val)
 			{
 				float* i = reinterpret_cast<float*>(preference_node.val);
-				if (ImGui::InputFloat(name, i))
+				if (ImGui::InputFloat(name, i, preference_node.step))
 				{
 					Save();
 				}
 			}
 			else
 			{
-				if (ImGui::InputFloat(name, &preference_storage.float_map[name]))
+				if (ImGui::InputFloat(name, &preference_storage.float_map[name], preference_node.step))
 				{
 					Save();
 				}

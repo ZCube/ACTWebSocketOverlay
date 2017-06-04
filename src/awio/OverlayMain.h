@@ -70,6 +70,7 @@ public:
 	std::vector<boost::filesystem::path> font_paths;
 	std::vector<std::string> font_filenames;
 	std::vector<const char *> font_cstr_filenames;
+	PreferenceStorage* current_storage = nullptr;
 
 	ImGuiStyle imgui_style;
 

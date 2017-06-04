@@ -1,6 +1,5 @@
 -- just simple example
 
-JSON = require "json"
 _G.charName = "YOU"
 --icon, color, name, dps, maxhit
 columns_length = 4
@@ -19,8 +18,7 @@ function string.tohex(str)
     end))
 end
 
-function render(use_input, data)
-	local root = JSON:decode(data)
+function render(use_input, root)
 	flags = ImGuiWindowFlags_NoTitleBar
 	if(not use_input) then
 		flags = flags | ImGuiWindowFlags_NoInputs
@@ -38,6 +36,8 @@ function render(use_input, data)
 				row = {}
 				for idx,col in pairs(columns) do
 					table.insert (row, value[col])
+					-- Text
+					imgui.Text(value[col])
 				end
 				table.insert(tbl, row)
 				w, h, uv0x, uv0y, uv1x, uv1y = getImage(row[1])
@@ -46,10 +46,7 @@ function render(use_input, data)
 				-- DrawList_AddImage
 				imgui.DrawList_AddImage(texture_id, winx, winy, winx+150, winy+150, uv0x, uv0y, uv1x, uv1y, tonumber("ffffffff", 16))
 			end
-			local pretty_json_text = JSON:encode_pretty(tbl)
 			winx, winy = imgui.GetWindowPos()
-			-- Text
-			imgui.Text(pretty_json_text)
 			-- GetWindowContentRegionWidth
 			width = imgui.GetWindowContentRegionWidth()
 			-- GetWindowPos
@@ -62,7 +59,7 @@ function render(use_input, data)
 			end
 		end
 		winx, winy = imgui.GetWindowPos()
-		imgui.DrawList_AddText(winx + 10, winy + 10, tonumber("ffffffff", 16), "AddText test")
+		imgui.DrawList_AddText(winx + 40, winy + 40, tonumber("ffffffff", 16), "AddText test")
 		height = 20
 		imgui.Text(imgui.GetWindowContentRegionWidth())
 		winx, winy = imgui.GetWindowPos()
@@ -70,6 +67,6 @@ function render(use_input, data)
 	imgui.End()
 	
 	-- dump to debug window
-	-- val = JSON:encode_pretty(root)
+	-- val = jsonEncodePretty(root)
 	-- imgui.Text(val)
 end

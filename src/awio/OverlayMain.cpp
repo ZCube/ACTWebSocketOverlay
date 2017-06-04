@@ -107,6 +107,241 @@ extern "C" int getImage(lua_State* L)
 	}
 	return 6;
 }
+
+extern "C" int getColor4(lua_State* L)
+{
+	PreferenceStorage* storage = lua_islightuserdata(L, 1) ? reinterpret_cast<PreferenceStorage*>(lua_touserdata(L, 1)) : nullptr;
+	const char* str = luaL_checkstring(L, 2);
+	if (str && storage)
+	{
+		auto i = storage->color_map.find(str);
+		if (i != storage->color_map.end())
+		{
+			ImVec4& v = i->second;
+			lua_pushnumber(L, v.x);
+			lua_pushnumber(L, v.y);
+			lua_pushnumber(L, v.z);
+			lua_pushnumber(L, v.w);
+			return 4;
+		}
+	}
+	ImVec4 v(0,0,0,1);
+	lua_pushnumber(L, v.x);
+	lua_pushnumber(L, v.y);
+	lua_pushnumber(L, v.z);
+	lua_pushnumber(L, v.w);
+	return 4;
+}
+extern "C" int setColor4(lua_State* L)
+{
+	PreferenceStorage* storage = lua_islightuserdata(L, 1) ? reinterpret_cast<PreferenceStorage*>(lua_touserdata(L, 1)) : nullptr;
+	const char* str = luaL_checkstring(L, 2);
+	if (str &&
+		lua_isnumber(L, 3) &&
+		lua_isnumber(L, 4) &&
+		lua_isnumber(L, 5) &&
+		lua_isnumber(L, 6) &&
+		storage)
+	{
+		auto i = storage->color_map.find(str);
+		if (i != storage->color_map.end())
+		{
+			const float v0 = luaL_checknumber(L, 3);
+			const float v1 = luaL_checknumber(L, 4);
+			const float v2 = luaL_checknumber(L, 5);
+			const float v3 = luaL_checknumber(L, 6);
+			i->second.x = v0;
+			i->second.y = v1;
+			i->second.z = v2;
+			i->second.w = v3;
+			return 0;
+		}
+	}
+	return 0;
+}
+extern "C" int getColor3(lua_State* L)
+{
+	PreferenceStorage* storage = lua_islightuserdata(L, 1) ? reinterpret_cast<PreferenceStorage*>(lua_touserdata(L, 1)) : nullptr;
+	const char* str = luaL_checkstring(L, 2);
+	if (str && storage)
+	{
+		auto i = storage->color_map.find(str);
+		if (i != storage->color_map.end())
+		{
+			ImVec4& v = i->second;
+			lua_pushnumber(L, v.x);
+			lua_pushnumber(L, v.y);
+			lua_pushnumber(L, v.z);
+			return 3;
+		}
+	}
+	ImVec4 v(0, 0, 0, 1);
+	lua_pushnumber(L, v.x);
+	lua_pushnumber(L, v.y);
+	lua_pushnumber(L, v.z);
+	return 3;
+}
+extern "C" int setColor3(lua_State* L)
+{
+	PreferenceStorage* storage = lua_islightuserdata(L, 1) ? reinterpret_cast<PreferenceStorage*>(lua_touserdata(L, 1)) : nullptr;
+	const char* str = luaL_checkstring(L, 2);
+	if (str &&
+		lua_isnumber(L, 3) &&
+		lua_isnumber(L, 4) &&
+		lua_isnumber(L, 5) &&
+		storage)
+	{
+		auto i = storage->color_map.find(str);
+		if (i != storage->color_map.end())
+		{
+			const float v0 = luaL_checknumber(L, 3);
+			const float v1 = luaL_checknumber(L, 4);
+			const float v2 = luaL_checknumber(L, 5);
+			i->second.x = v0;
+			i->second.y = v1;
+			i->second.z = v2;
+			return 0;
+		}
+	}
+	return 0;
+}
+extern "C" int getString(lua_State* L)
+{
+	PreferenceStorage* storage = lua_islightuserdata(L, 1) ? reinterpret_cast<PreferenceStorage*>(lua_touserdata(L, 1)) : nullptr;
+	const char* str = luaL_checkstring(L, 2);
+	if (str && storage)
+	{
+		auto i = storage->string_map.find(str);
+		if (i != storage->string_map.end())
+		{
+			std::string& v = i->second;
+			lua_pushlstring(L, v.c_str(), v.size());
+			return 1;
+		}
+	}
+	std::string v;
+	lua_pushlstring(L, v.c_str(), v.size());
+	return 1;
+}
+extern "C" int setString(lua_State* L)
+{
+	PreferenceStorage* storage = lua_islightuserdata(L, 1) ? reinterpret_cast<PreferenceStorage*>(lua_touserdata(L, 1)) : nullptr;
+	const char* str = luaL_checkstring(L, 2);
+	const char* v = luaL_checkstring(L, 3);
+	if (v && str && storage)
+	{
+		auto i = storage->string_map.find(str);
+		if (i != storage->string_map.end())
+		{
+			i->second = v;
+			return 0;
+		}
+	}
+	return 0;
+}
+extern "C" int getInt(lua_State* L)
+{
+	PreferenceStorage* storage = lua_islightuserdata(L, 1) ? reinterpret_cast<PreferenceStorage*>(lua_touserdata(L, 1)) : nullptr;
+	const char* str = luaL_checkstring(L, 2);
+	if (str && storage)
+	{
+		auto i = storage->int_map.find(str);
+		if (i != storage->int_map.end())
+		{
+			int& v = i->second;
+			lua_pushnumber(L, v);
+			return 1;
+		}
+	}
+	int v = 0;
+	lua_pushnumber(L, v);
+	return 1;
+}
+extern "C" int setInt(lua_State* L)
+{
+	PreferenceStorage* storage = lua_islightuserdata(L, 1) ? reinterpret_cast<PreferenceStorage*>(lua_touserdata(L, 1)) : nullptr;
+	const char* str = luaL_checkstring(L, 2);
+	if (lua_isnumber(L, 3) && str && storage)
+	{
+		const int v = lua_tonumber(L, 3);
+		auto i = storage->int_map.find(str);
+		if (i != storage->int_map.end())
+		{
+			i->second = v;
+			return 0;
+		}
+	}
+	return 0;
+}
+extern "C" int getFloat(lua_State* L)
+{
+	PreferenceStorage* storage = lua_islightuserdata(L, 1) ? reinterpret_cast<PreferenceStorage*>(lua_touserdata(L, 1)) : nullptr;
+	const char* str = luaL_checkstring(L, 2);
+	if (str && storage)
+	{
+		auto i = storage->float_map.find(str);
+		if (i != storage->float_map.end())
+		{
+			float& v = i->second;
+			lua_pushnumber(L, v);
+			return 1;
+		}
+	}
+	float v = 0.0f;
+	lua_pushnumber(L, v);
+	return 1;
+}
+extern "C" int setFloat(lua_State* L)
+{
+	PreferenceStorage* storage = lua_islightuserdata(L, 1) ? reinterpret_cast<PreferenceStorage*>(lua_touserdata(L, 1)) : nullptr;
+	const char* str = luaL_checkstring(L, 2);
+	if (lua_isnumber(L, 3) && str && storage)
+	{
+		const float v = lua_tonumber(L, 3);
+		auto i = storage->float_map.find(str);
+		if (i != storage->float_map.end())
+		{
+			i->second = v;
+			return 0;
+		}
+	}
+	return 0;
+}
+extern "C" int getBoolean(lua_State* L)
+{
+	PreferenceStorage* storage = lua_islightuserdata(L, 1) ? reinterpret_cast<PreferenceStorage*>(lua_touserdata(L, 1)) : nullptr;
+	const char* str = luaL_checkstring(L, 2);
+	if (str && storage)
+	{
+		auto i = storage->boolean_map.find(str);
+		if (i != storage->boolean_map.end())
+		{
+			bool& v = i->second;
+			lua_pushboolean(L, v);
+			return 1;
+		}
+	}
+	bool v = false;
+	lua_pushboolean(L, v);
+	return 1;
+}
+extern "C" int setBoolean(lua_State* L)
+{
+	PreferenceStorage* storage = lua_islightuserdata(L, 1) ? reinterpret_cast<PreferenceStorage*>(lua_touserdata(L, 1)) : nullptr;
+	const char* str = luaL_checkstring(L, 2);
+	if (lua_isboolean(L, 3) && str && storage)
+	{
+		const bool v = lua_toboolean(L, 3);
+		auto i = storage->boolean_map.find(str);
+		if (i != storage->boolean_map.end())
+		{
+			i->second = v;
+			return 0;
+		}
+	}
+	return 0;
+}
+
 extern "C" int ModInit(ImGuiContext* context)
 {
 	boost::recursive_mutex::scoped_lock l(instanceLock);
@@ -581,6 +816,16 @@ void OverlayInstance::Preferences() {
 		}
 		if (ImGui::TreeNodeEx("Overlays", ImGuiTreeNodeFlags_Bullet | ImGuiTreeNodeFlags_DefaultOpen))
 		{
+			ImGui::BeginGroup();
+			ImGui::Text("Visible");
+			for (auto i = overlays.begin(); i != overlays.end(); ++i) {
+				if (ImGui::Checkbox((std::string("Show ") + i->second->name).c_str(), &i->second->IsVisible()))
+				{
+					Save();
+				}
+			}
+			ImGui::Separator();
+			ImGui::Text("more...");
 			for (auto i = overlays.begin(); i != overlays.end(); ++i) {
 				if (i->second->IsLoaded())
 				{
@@ -589,6 +834,7 @@ void OverlayInstance::Preferences() {
 					ImGui::EndGroup();
 				}
 			}
+			ImGui::EndGroup();
 			ImGui::TreePop();
 		}
 		if (ImGui::TreeNode("Reload"))
@@ -656,8 +902,11 @@ void OverlayInstance::Render(ImGuiContext * context)
 
 	for (auto i = overlays.begin(); i != overlays.end(); ++i) {
 		style = imgui_style;
-		i->second->Render(use_input, &options);
+		current_storage = &i->second->preference_storage;
+		if(i->second->IsVisible())
+			i->second->Render(use_input, &options);
 	}
+	current_storage = nullptr;
 	style = imgui_style;
 	if (options.show_preferences)
 	{
@@ -687,6 +936,14 @@ void OverlayInstance::Load() {
 		if (r.parse(fin, setting))
 		{
 			preference_storage.FromJson(setting);
+
+			{
+				auto it = preference_storage.boolean_map.find("Movable");
+				if (it != preference_storage.boolean_map.end())
+				{
+					options.movable = it->second;
+				}
+			}
 
 			int count = 0;
 			int transparent_count = 0;
@@ -808,6 +1065,8 @@ void OverlayInstance::Save() {
 	{
 		preference_storage.color_map[i->first] = *i->second;
 	}
+
+	preference_storage.boolean_map["Movable"] = options.movable;
 
 	preference_storage.ToJson(setting);
 
@@ -975,7 +1234,6 @@ void OverlayInstance::LoadOverlays()
 		}
 	}
 }
-
 
 void OverlayInstance::LoadFonts()
 {

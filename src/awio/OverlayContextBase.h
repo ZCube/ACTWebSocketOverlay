@@ -27,17 +27,23 @@ protected:
 	char websocket_message[1024] = { 0, };
 	bool websocket_reconnect = true;
 
+	bool& visible =
+		preference_storage.boolean_map["Visible"] = true;
 	bool& websocket_ssl =
 		preference_storage.boolean_map["WebsocketSSL"];
 	std::string& websocket_host =
 		preference_storage.string_map["WebsocketHost"];
-	int websocket_port =
+	int& websocket_port =
 		preference_storage.int_map["WebsocketPort"];
 	std::string& websocket_path =
 		preference_storage.string_map["WebsocketPath"];
 public:
-	std::string processed_data;
-	std::string last_processed_data;
+	bool& IsVisible()
+	{
+		return visible;
+	}
+	Json::Value processed_data;
+	Json::Value last_processed_data;
 	boost::mutex processed_data_mutex;
 	bool processed_updated;
 	std::string name;

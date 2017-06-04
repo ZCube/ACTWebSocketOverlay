@@ -1,4 +1,35 @@
 {
-	"Name" :"SimpleTest",
-	"Type" :"Lua"
+	"Name": "SimpleTest",
+	"Type": "Lua",
+	"WebSocketDefault": {
+		"Path": "/Default",
+		"Port": 3456,
+		"Host": "localhost",
+		"SSL": false
+	},
+	"Preferences": {
+		"Test0": {
+			"Test1": {
+				"NodeType": "Color3"
+			},
+			"Test2": {
+				"NodeType": "Color4"
+			},
+			"Test3": {
+				"NodeType": "String",
+				"StringMaxLength": 33
+			},
+			"Test4": {
+				"NodeType": "Boolean"
+			},
+			"Test5": {
+				"NodeType": "Int",
+				"Step": 3
+			},
+			"Test6": {
+				"NodeType": "Float",
+				"Step": 0.5
+			}
+		}
+	}
 }

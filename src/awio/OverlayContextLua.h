@@ -27,6 +27,7 @@ protected:
 	boost::filesystem::path render_filename;
 	std::mutex errors_mutex;
 	std::set<std::string> errors;
+	PreferenceNode OverlayContextLua::LoadPreferenceNode(const std::string& name, const Json::Value& value);
 public:
 	lua_State *L_render;
 

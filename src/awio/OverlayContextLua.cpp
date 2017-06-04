@@ -149,40 +149,47 @@ OverlayContextLua::~OverlayContextLua() {
 
 void OverlayContextLua::Process(const std::string & message_str)
 {
-	if (L_script)
+	Json::Reader r;
+	Json::Value v, v2;
+
+	if (r.parse(message_str, v))
 	{
-		lua_getglobal(L_script, "script");
-		if (!lua_isfunction(L_script, -1))
+		if (L_script)
 		{
-			lua_pop(L_script, 1);
+			lua_getglobal(L_script, "script");
+			if (!lua_isfunction(L_script, -1))
+			{
+				lua_pop(L_script, 1);
+				{
+					boost::mutex::scoped_lock l(processed_data_mutex);
+					processed_updated = true;
+					processed_data = v;
+				}
+			}
+
+			PushJsonToLuaTable(L_script, v);
+			int result = lua_pcall(L_script, 1, 1, 0);
+			if (result) {
+				char buf[1024] = { 0, };
+				sprintf_s(buf, 1024, "Failed to run script: %s\n", lua_tostring(L_script, -1));
+				errors_mutex.lock();
+				errors.insert(buf);
+				errors_mutex.unlock();
+			}
+			//if (lua_isstring(L_script, -1))
 			{
 				boost::mutex::scoped_lock l(processed_data_mutex);
 				processed_updated = true;
-				processed_data = message_str;
+				PopJsonFromLuaTable(L_script, v2);
+				processed_data = v2;
 			}
 		}
-
-		lua_pushlstring(L_script, message_str.c_str(), message_str.size());
-		int result = lua_pcall(L_script, 1, 1, 0);
-		if (result) {
-			char buf[1024] = { 0, };
-			sprintf_s(buf, 1024, "Failed to run script: %s\n", lua_tostring(L_script, -1));
-			errors_mutex.lock();
-			errors.insert(buf);
-			errors_mutex.unlock();
-		}
-		if (lua_isstring(L_script, -1))
+		else
 		{
 			boost::mutex::scoped_lock l(processed_data_mutex);
 			processed_updated = true;
-			processed_data = lua_tostring(L_script, -1);
+			processed_data = v;
 		}
-	}
-	else
-	{
-		boost::mutex::scoped_lock l(processed_data_mutex);
-		processed_updated = true;
-		processed_data = message_str;
 	}
 }
 
@@ -213,6 +220,65 @@ extern "C" int setFloat(lua_State* L);
 extern "C" int getBoolean(lua_State* L);
 extern "C" int setBoolean(lua_State* L);
 
+PreferenceNode OverlayContextLua::LoadPreferenceNode(const std::string& name, const Json::Value& value)
+{
+	PreferenceNode node;
+	static std::unordered_map<std::string, PreferenceNode::Type> types =
+	{
+		{ "Color3",PreferenceNode::Color },
+		{ "Color4",PreferenceNode::Color4 },
+		{ "Boolean",PreferenceNode::Boolean },
+		{ "Int",PreferenceNode::Integer },
+		{ "String",PreferenceNode::String },
+		{ "Float",PreferenceNode::Float },
+	};
+
+	auto i = types.find(value["NodeType"].asString());
+	if (i != types.end())
+	{
+		switch (i->second)
+		{
+		case PreferenceNode::Color:
+			node.type = i->second;
+			preference_storage.color_map[name];
+			break;
+		case PreferenceNode::Color4:
+			node.type = i->second;
+			preference_storage.color_map[name];
+			break;
+		case PreferenceNode::Boolean:
+			node.type = i->second;
+			preference_storage.boolean_map[name];
+			break;
+		case PreferenceNode::Integer:
+			node.type = i->second;
+			node.step = value.get("Step", 0).asInt();
+			preference_storage.int_map[name];
+			break;
+		case PreferenceNode::String:
+			node.type = i->second;
+			node.string_max_length = value.get("StringMaxLength", 64).asInt();
+			preference_storage.string_map[name].reserve(node.string_max_length);
+			break;
+		case PreferenceNode::Float:
+			node.type = i->second;
+			node.step = value.get("Step", 0).asFloat();
+			preference_storage.float_map[name];
+			break;
+		};
+	}
+	for (auto j = value.begin(); j != value.end(); ++j)
+	{
+		if (j->isObject())
+		{
+			std::string key = j.key().asString();
+			node.map[key] = LoadPreferenceNode(key, *j);
+			node.UpdateMap();
+		}
+	}
+	return node;
+}
+
 bool OverlayContextLua::Init(boost::filesystem::path path) {
 	path = boost::filesystem::absolute(path);
 	auto script_path = path / "script.json";
@@ -230,6 +296,32 @@ bool OverlayContextLua::Init(boost::filesystem::path path) {
 			auto script_path = (path / "script.lua");
 			auto preference_path = (path / "preference.lua");
 
+			Json::Value& websocket_default = value["WebSocketDefault"];
+			if (!websocket_default.isNull())
+			{
+				websocket_path = websocket_default.get("Path", "/").asString();
+				websocket_host = websocket_default.get("Host", "localhost").asString();
+				if (websocket_host == "127.0.0.1")
+				{
+					websocket_host = "localhost";
+				}
+				websocket_port = websocket_default.get("Port", 0).asInt();
+#if defined(USE_SSL)
+				websocket_ssl = websocket_default.get("SSL", false).asBool();
+#endif
+			}
+
+			Json::Value& preferences = value["Preferences"];
+			preference_nodes.clear();
+			if (!preferences.isNull())
+			{
+				for (auto i = preferences.begin(); i != preferences.end(); ++i)
+				{
+					preference_nodes.push_back(LoadPreferenceNode(i.key().asString(), *i));
+					preference_nodes.back().name = i.key().asString();
+				}
+			}
+
 			render_filename = path.filename() / "render.lua";
 
 			if (boost::filesystem::exists(render_path))
@@ -238,9 +330,28 @@ bool OverlayContextLua::Init(boost::filesystem::path path) {
 				lState = L_render;
 				LoadImguiBindings();
 				_luaL_openlibs(L_render);
+				lua_register(L_render, "jsonEncode", jsonEncode);
+				lua_register(L_render, "jsonEncodePretty", jsonEncodePretty);
+				lua_register(L_render, "jsonDecode", jsonDecode);
 				lua_register(L_render, "getImage", getImage);
 				lua_register(L_render, "getWindowSize", getImage);
 				lua_register(L_render, "setWindowSize", getImage);
+				
+				lua_register(L_render, "getColor4", getColor4);
+				lua_register(L_render, "setColor4", setColor4);
+				lua_register(L_render, "getColor3", getColor3);
+				lua_register(L_render, "setColor3", setColor3);
+				lua_register(L_render, "getString", getString);
+				lua_register(L_render, "setString", setString);
+				lua_register(L_render, "getInt", getInt);
+				lua_register(L_render, "setInt", setInt);
+				lua_register(L_render, "getFloat", getFloat);
+				lua_register(L_render, "setFloat", setFloat);
+				lua_register(L_render, "getBoolean", getBoolean);
+				lua_register(L_render, "setBoolean", setBoolean);
+
+				lua_pushlightuserdata(L_render, &preference_storage);
+				lua_setglobal(L_render, "storage");
 
 				lua_pushlstring(L_render, path.string().c_str(), path.string().size());
 				lua_setglobal(L_render, "global_path");
@@ -282,6 +393,26 @@ bool OverlayContextLua::Init(boost::filesystem::path path) {
 			{
 				L_script = luaL_newstate();   /* opens Lua */
 				_luaL_openlibs(L_script);
+				lua_register(L_script, "jsonEncode", jsonEncode);
+				lua_register(L_script, "jsonEncodePretty", jsonEncodePretty);
+				lua_register(L_script, "jsonDecode", jsonDecode);
+
+				lua_register(L_script, "getColor4", getColor4);
+				lua_register(L_script, "setColor4", setColor4);
+				lua_register(L_script, "getColor3", getColor3);
+				lua_register(L_script, "setColor3", setColor3);
+				lua_register(L_script, "getString", getString);
+				lua_register(L_script, "setString", setString);
+				lua_register(L_script, "getInt", getInt);
+				lua_register(L_script, "setInt", setInt);
+				lua_register(L_script, "getFloat", getFloat);
+				lua_register(L_script, "setFloat", setFloat);
+				lua_register(L_script, "getBoolean", getBoolean);
+				lua_register(L_script, "setBoolean", setBoolean);
+
+				lua_pushlightuserdata(L_script, &preference_storage);
+				lua_setglobal(L_script, "storage");
+
 				lua_pushlstring(L_script, path.string().c_str(), path.string().size());
 				lua_setglobal(L_script, "global_path");
 				luaL_dostring(L_script, "package.path = package.path .. ';' .. global_path .. '/?.lua'");

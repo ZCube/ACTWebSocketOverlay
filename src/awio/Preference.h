@@ -154,6 +154,7 @@ public:
 	int string_max_length = 64;
 	std::string name;
 	std::map<std::string, PreferenceNode> map;
+	float step = 0;
 };
 
 class PreferenceBase : public Serializable
