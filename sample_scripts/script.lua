@@ -193,7 +193,7 @@ function script(root)
 	end
 	
 	-- send to render.lua
-	-- print(jsonEncodePretty({combatant = ret}))
-	return {combatant = ret}
+	tbl = {combatant = ret, rdps = rdps, rhps = rhps, zone = zone,duration = duration }
+	return tbl
 end
 

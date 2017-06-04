@@ -2,8 +2,8 @@
 	"Name": "SimpleTest",
 	"Type": "Lua",
 	"WebSocketDefault": {
-		"Path": "/Default",
-		"Port": 3456,
+		"Path": "/MiniParse",
+		"Port": 10501,
 		"Host": "localhost",
 		"SSL": false
 	},

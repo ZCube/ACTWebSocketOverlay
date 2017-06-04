@@ -30,39 +30,41 @@ function render(use_input, root)
 		tbl = {}
 		if root then
 			_G.combatant = root["combatant"]
+			imgui.Text(root.duration .. " - " .. root.zone)
+			imgui.Text('rdps - ' .. root.rdps .. '  rhps - ' .. root.rhps)
 		end
-		if _G.combatant then
-			for key,value in pairs(_G.combatant) do --pseudocode
-				row = {}
-				for idx,col in pairs(columns) do
-					table.insert (row, value[col])
-					-- Text
-					imgui.Text(value[col])
-				end
-				table.insert(tbl, row)
-				w, h, uv0x, uv0y, uv1x, uv1y = getImage(row[1])
-				-- Image
-				imgui.Image(texture_id, 300, 300, uv0x, uv0y, uv1x, uv1y, 1,1,1,1, 0,0,0,0)
-				-- DrawList_AddImage
-				imgui.DrawList_AddImage(texture_id, winx, winy, winx+150, winy+150, uv0x, uv0y, uv1x, uv1y, tonumber("ffffffff", 16))
-			end
-			winx, winy = imgui.GetWindowPos()
-			-- GetWindowContentRegionWidth
-			width = imgui.GetWindowContentRegionWidth()
-			-- GetWindowPos
-			winx, winy = imgui.GetWindowPos()
-			for key,value in pairs(_G.combatant) do --pseudocode
-				for idx,col in pairs(columns) do
-					table.insert (row, value[col])
-				end
-				table.insert(tbl, row)
-			end
-		end
-		winx, winy = imgui.GetWindowPos()
-		imgui.DrawList_AddText(winx + 40, winy + 40, tonumber("ffffffff", 16), "AddText test")
-		height = 20
-		imgui.Text(imgui.GetWindowContentRegionWidth())
-		winx, winy = imgui.GetWindowPos()
+		-- if _G.combatant then
+			-- for key,value in pairs(_G.combatant) do --pseudocode
+				-- row = {}
+				-- for idx,col in pairs(columns) do
+					-- table.insert (row, value[col])
+					-- -- Text
+					-- imgui.Text(value[col])
+				-- end
+				-- table.insert(tbl, row)
+				-- w, h, uv0x, uv0y, uv1x, uv1y = getImage(row[1])
+				-- -- Image
+				-- imgui.Image(texture_id, 300, 300, uv0x, uv0y, uv1x, uv1y, 1,1,1,1, 0,0,0,0)
+				-- -- DrawList_AddImage
+				-- imgui.DrawList_AddImage(texture_id, winx, winy, winx+150, winy+150, uv0x, uv0y, uv1x, uv1y, tonumber("ffffffff", 16))
+			-- end
+			-- winx, winy = imgui.GetWindowPos()
+			-- -- GetWindowContentRegionWidth
+			-- width = imgui.GetWindowContentRegionWidth()
+			-- -- GetWindowPos
+			-- winx, winy = imgui.GetWindowPos()
+			-- for key,value in pairs(_G.combatant) do --pseudocode
+				-- for idx,col in pairs(columns) do
+					-- table.insert (row, value[col])
+				-- end
+				-- table.insert(tbl, row)
+			-- end
+		-- end
+		-- winx, winy = imgui.GetWindowPos()
+		-- imgui.DrawList_AddText(winx + 40, winy + 40, tonumber("ffffffff", 16), "AddText test")
+		-- height = 20
+		-- imgui.Text(imgui.GetWindowContentRegionWidth())
+		-- winx, winy = imgui.GetWindowPos()
 	end
 	imgui.End()
 	
