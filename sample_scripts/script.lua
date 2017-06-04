@@ -91,6 +91,50 @@ function script(root)
 		end
 	end
 	
+	-- -- preference test
+	-- setColor3(storage, "Test1", 0.2, 0.3, 0.4);
+	-- x,y,z = getColor3(storage, "Test1")
+	-- print(x,y,z)
+	-- setColor3(storage, "Test1", 0.1, 0.2, 0.3);
+	-- x,y,z = getColor3(storage, "Test1")
+	-- print(x,y,z)
+
+	-- setColor4(storage, "Test2", 0.2, 0.3, 0.4, 0.5);
+	-- x,y,z,w = getColor4(storage, "Test2")
+	-- print(x,y,z,w)
+	-- setColor4(storage, "Test2", 0.1, 0.2, 0.3, 0.4);
+	-- x,y,z,w = getColor4(storage, "Test2")
+	-- print(x,y,z,w)
+
+	-- setString(storage, "Test3", "t1");
+	-- x = getString(storage, "Test3")
+	-- print(x)
+	-- setString(storage, "Test3", "t2");
+	-- x = getString(storage, "Test3")
+	-- print(x)
+	
+	-- setBoolean(storage, "Test4", false);
+	-- x = getBoolean(storage, "Test4")
+	-- print(x)
+	-- setBoolean(storage, "Test4", true);
+	-- x = getBoolean(storage, "Test4")
+	-- print(x)
+	
+	-- setInt(storage, "Test5", 1);
+	-- x = getInt(storage, "Test5")
+	-- print(x)
+	-- setInt(storage, "Test5", 5);
+	-- x = getInt(storage, "Test5")
+	-- print(x)
+	
+	-- setFloat(storage, "Test6", 1.2);
+	-- x = getFloat(storage, "Test6")
+	-- print(x)
+	-- setFloat(storage, "Test6", 2.4);
+	-- x = getFloat(storage, "Test6")
+	-- print(x)
+	-- -- preference test end
+	
 	-- return table
 	ret = {}
 	
