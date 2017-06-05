@@ -23,8 +23,9 @@ function render(use_input, root)
 	if(not use_input) then
 		flags = flags | ImGuiWindowFlags_NoInputs
 	end
-	
 	shoulddraw, p_opened = imgui.Begin("test###"..window_id, nil, flags)
+	-- setWindowSize(window_id, imgui.GetWindowSize())
+
 	w, h, uv0x, uv0y, uv1x, uv1y = getImage("center")
 	if shoulddraw then
 		tbl = {}

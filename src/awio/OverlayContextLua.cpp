@@ -334,8 +334,8 @@ bool OverlayContextLua::Init(boost::filesystem::path path) {
 				lua_register(L_render, "jsonEncodePretty", jsonEncodePretty);
 				lua_register(L_render, "jsonDecode", jsonDecode);
 				lua_register(L_render, "getImage", getImage);
-				lua_register(L_render, "getWindowSize", getImage);
-				lua_register(L_render, "setWindowSize", getImage);
+				lua_register(L_render, "getWindowSize", getWindowSize);
+				lua_register(L_render, "setWindowSize", setWindowSize);
 				
 				lua_register(L_render, "getColor4", getColor4);
 				lua_register(L_render, "setColor4", setColor4);

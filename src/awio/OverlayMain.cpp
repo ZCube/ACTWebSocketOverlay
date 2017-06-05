@@ -1,4 +1,4 @@
-/*
+﻿/*
 * This file is subject to the terms and conditions defined in
 * file 'LICENSE', which is part of this source code package.
 */
@@ -42,16 +42,17 @@ extern "C" int getWindowSize(lua_State* L)
 	const char* str = luaL_checkstring(L, 1);
 	if (str)
 	{
-		auto i = instance.options.windows_default_sizes.find(str);
-		if (i != instance.options.windows_default_sizes.end())
+		if (lua_isnumber(L, 2) && lua_isnumber(L, 3))
 		{
-			lua_pushnumber(L, i->second.x);
-			lua_pushnumber(L, i->second.y);
+			ImVec2& v = instance.options.GetDefaultSize(str, ImVec2(lua_tonumber(L, 2), lua_tonumber(L, 3)));
+			lua_pushnumber(L, v.x);
+			lua_pushnumber(L, v.y);
 		}
 		else
 		{
-			lua_pushnumber(L, 300);
-			lua_pushnumber(L, 300);
+			ImVec2& v = instance.options.GetDefaultSize(str, ImVec2(300,300));
+			lua_pushnumber(L, v.x);
+			lua_pushnumber(L, v.y);
 		}
 	}
 	else
@@ -65,15 +66,19 @@ extern "C" int setWindowSize(lua_State* L)
 {
 	boost::recursive_mutex::scoped_lock l(instanceLock);
 	const char* str = luaL_checkstring(L, 1);
-	float x = luaL_checknumber(L, 2);
-	float y = luaL_checknumber(L, 3);
 	if (str)
 	{
-		auto i = instance.options.windows_default_sizes.find(str);
-		if (i != instance.options.windows_default_sizes.end())
+		if (lua_isnumber(L, 2) && lua_isnumber(L, 3))
 		{
-			i->second.x = x;
-			i->second.y = y;
+			float x = luaL_checknumber(L, 2);
+			float y = luaL_checknumber(L, 3);
+
+			auto i = instance.options.windows_default_sizes.find(str);
+			if (i != instance.options.windows_default_sizes.end())
+			{
+				i->second.x = x;
+				i->second.y = y;
+			}
 		}
 	}
 	return 0;
@@ -906,32 +911,7 @@ void OverlayInstance::Preferences() {
 			ImGui::Text("");
 			if (ImGui::TreeNode("Libraries"))
 			{
-				if (ImGui::TreeNode("jsoncpp"))
-				{
-					ImGui::TreePop();
-				}
-				if (ImGui::TreeNode("lua"))
-				{
-					ImGui::TreePop();
-				}
-				if (ImGui::TreeNode("boost"))
-				{
-					ImGui::TreePop();
-				}
-				if (ImGui::TreeNode("beast"))
-				{
-					ImGui::TreePop();
-				}
-				if (ImGui::TreeNode("zlib"))
-				{
-					ImGui::TreePop();
-				}
-#if defined(USE_SSL)
-				if (ImGui::TreeNode("openssl"))
-				{
-					ImGui::TreePop();
-				}
-#endif
+#include "licenses.h"
 				ImGui::TreePop();
 			}
 			ImGui::TreePop();

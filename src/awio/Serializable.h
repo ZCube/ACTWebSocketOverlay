@@ -57,8 +57,8 @@ struct OverlayOption
 		{
 			return it->second;
 		}
-		it->second = default;
-		return default;
+		windows_default_sizes[name] = default;
+		return windows_default_sizes[name];
 	}
 };
 

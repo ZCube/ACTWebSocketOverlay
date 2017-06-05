@@ -8,10 +8,25 @@
 		"SSL": false
 	},
 	"Preferences": {
-		"Test0": {
-			"Test1": {
+		"Colors": {
+			"BackgroundColor": {
 				"NodeType": "Color3"
 			},
+			"TextColor": {
+				"NodeType": "Color3"
+			}
+		},
+		"Opacitys": {
+			"BackgroundAlpha": {
+				"NodeType": "Int",
+				"Step": 3
+			},
+			"TextAlpha": {
+				"NodeType": "Int",
+				"Step": 3
+			}
+		},
+		"Test":{
 			"Test2": {
 				"NodeType": "Color4"
 			},
@@ -21,10 +36,6 @@
 			},
 			"Test4": {
 				"NodeType": "Boolean"
-			},
-			"Test5": {
-				"NodeType": "Int",
-				"Step": 3
 			},
 			"Test6": {
 				"NodeType": "Float",
