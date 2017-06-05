@@ -20,8 +20,9 @@ Add "ACTWebSocket.DLL" to Advanced Combat Tracker.
 * Recommended Settings
 
     * Auto Server Start. Check
-    * Server Address ~~127.0.0.1~~ Use "Loopback IPV6([::1])" or FFXIV_ACT_Plugin throws of error messages.
-    * "Any IPV6([::])" or "Any (0.0.0.0)"
+    * Server Address ~~127.0.0.1~~ Use "Loopback IPV6([::1])" or FFXIV_ACT_Plugin throws of error messages
+
+    * "Any IPV6([::])" or "Any (0.0.0.0)"
         * If you do not understand this, do not use this. This opens the port to the outside.
     * Server Port 10501
     * Use MiniParse Only
