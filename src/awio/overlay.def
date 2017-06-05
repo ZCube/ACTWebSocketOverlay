@@ -6,4 +6,3 @@ EXPORTS
    ModTextureData @4
    ModSetTexture  @5
    ModMenu        @6
-   ModUpdateFont  @7

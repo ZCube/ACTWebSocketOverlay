@@ -32,15 +32,15 @@ protected:
 	boost::filesystem::path setting_path;
 
 	bool initialized = false;
-	
-	float font_sizes = 13.0f;
+
+	const float default_font_size = 13.0f;
 	// font setting
 	std::vector<Font> fonts = {
-		Font("consolab.ttf", "Default", font_sizes),
-		Font("Default", "Default", font_sizes), // Default will ignore font size. 13
-		Font("ArialUni.ttf", "Japanese", font_sizes),
-		Font("NanumBarunGothic.ttf", "Korean", font_sizes),
-		Font("gulim.ttc", "Korean", font_sizes),
+		Font("consolab.ttf", "Default", default_font_size),
+		Font("Default", "Default", default_font_size), // Default will ignore font size. 13
+		Font("ArialUni.ttf", "Japanese", default_font_size),
+		Font("NanumBarunGothic.ttf", "Korean", default_font_size),
+		Font("gulim.ttc", "Korean", default_font_size),
 	};
 
 	std::vector<const char*> glyph_range_key = {
@@ -73,7 +73,6 @@ public:
 	PreferenceStorage* current_storage = nullptr;
 
 	ImGuiStyle imgui_style;
-	bool font_setting_dirty = false;
 
 	void LoadFonts();
 	void LoadOverlays();
