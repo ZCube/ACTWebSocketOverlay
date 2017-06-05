@@ -306,18 +306,18 @@ public:
 								std::string message_str;
 								message_str = boost::lexical_cast<std::string>(beast::buffers(b.data()));
 								// debug
-								//std::cout << beast::buffers(b.data()) << "\n";
-								b.consume(b.size());
-								if (message_str.size() == 1)
-								{
-									websocket->write(boost::asio::buffer(std::string(".")));
-								}
-								else
-								{
-									Process(message_str);
-								}
-								if (loop)
-									websocket->async_read(op, b, websocket->strand.wrap(read_handler));
+//std::cout << beast::buffers(b.data()) << "\n";
+b.consume(b.size());
+if (message_str.size() == 1)
+{
+	websocket->write(boost::asio::buffer(std::string(".")));
+}
+else
+{
+	Process(message_str);
+}
+if (loop)
+websocket->async_read(op, b, websocket->strand.wrap(read_handler));
 							}
 						};
 						if (loop)
@@ -355,7 +355,7 @@ static WebSocket websocket;
 inline static void websocketThread()
 {
 	// only one.
-	if(!websocket.websocket_thread)
+	if (!websocket.websocket_thread)
 		websocket.Run();
 }
 
@@ -405,35 +405,38 @@ bool LoadFonts(ImGuiContext* context)
 			p / "Fonts", // windows fonts
 		};
 		font_paths.clear();
-		font_filenames.clear();
-		boost::filesystem::directory_iterator itr, end_itr;
-
-
-		font_filenames.push_back("Default");
-		for (auto i = font_find_folders.begin(); i != font_find_folders.end(); ++i)
+		// first time
+		if (font_filenames.empty())
 		{
-			if (boost::filesystem::exists(*i))
+			font_filenames.clear();
+			font_cstr_filenames.clear();
+			boost::filesystem::directory_iterator itr, end_itr;
+
+			font_filenames.push_back("Default");
+			for (auto i = font_find_folders.begin(); i != font_find_folders.end(); ++i)
 			{
-				for (boost::filesystem::directory_iterator itr(*i); itr != end_itr; ++itr)
+				if (boost::filesystem::exists(*i))
 				{
-					if (is_regular_file(itr->path())) {
-						std::string extension = boost::to_lower_copy(itr->path().extension().string());
-						if (extension == ".ttc" || extension == ".ttf")
-						{
-							font_paths.push_back(itr->path());
-							font_filenames.push_back(itr->path().filename().string());
+					for (boost::filesystem::directory_iterator itr(*i); itr != end_itr; ++itr)
+					{
+						if (is_regular_file(itr->path())) {
+							std::string extension = boost::to_lower_copy(itr->path().extension().string());
+							if (extension == ".ttc" || extension == ".ttf")
+							{
+								font_paths.push_back(itr->path());
+								font_filenames.push_back(itr->path().filename().string());
+							}
 						}
 					}
 				}
 			}
-		}
-		{
-			for (auto i = font_filenames.begin(); i != font_filenames.end(); ++i)
 			{
-				font_cstr_filenames.push_back(i->c_str());
+				for (auto i = font_filenames.begin(); i != font_filenames.end(); ++i)
+				{
+					font_cstr_filenames.push_back(i->c_str());
+				}
 			}
 		}
-
 
 		ImFontConfig config;
 		config.MergeMode = false;
@@ -455,13 +458,18 @@ bool LoadFonts(ImGuiContext* context)
 					{
 						for (auto k = font_find_folders.begin(); k != font_find_folders.end(); ++k)
 						{
-							// ttf, ttc only
-							auto fontpath = (*k) / j->fontname;
-							if (boost::filesystem::exists(fontpath))
-							{
-								io.Fonts->AddFontFromFileTTF((fontpath).string().c_str(), j->font_size, &config, glyph_range_map[j->glyph_range]);
-								is_loaded = true;
-								config.MergeMode = true;
+							if (j->fontname.empty())
+								continue;
+							std::vector<std::string> extensions = { "", ".ttc", ".ttf" };
+							for (auto l = extensions.begin(); l != extensions.end(); ++l) {
+								// ttf, ttc only
+								auto fontpath = (*k) / (j->fontname + *l);
+								if (boost::filesystem::exists(fontpath) && boost::filesystem::is_regular_file(fontpath))
+								{
+									io.Fonts->AddFontFromFileTTF((fontpath).string().c_str(), j->font_size, &config, glyph_range_map[j->glyph_range]);
+									is_loaded = true;
+									config.MergeMode = true;
+								}
 							}
 						}
 					}
@@ -495,6 +503,7 @@ bool LoadFonts(ImGuiContext* context)
 	return true;
 }
 
+void LoadSettings(ImGuiContext* context);
 extern "C" int ModInit(ImGuiContext* context)
 {
 	boost::unique_lock<boost::mutex> l(font_mutex);
@@ -732,12 +741,12 @@ extern "C" int ModInit(ImGuiContext* context)
 
 		//opacity
 		global_opacity = 1.0f;
-		title_background_opacity = 1.0f;
+		title_background_opacity = 0.2f;
 		resizegrip_opacity = 1.0f;
-		background_opacity = 1.0f;
+		background_opacity = 0.2f;
 		text_opacity = 1.0f;
 		graph_opacity = 1.0f;
-		toolbar_opacity = 1.0f;
+		toolbar_opacity = 0.2f;
 
 		//combatant attributes
 		combatant_attribute_names = {
@@ -806,149 +815,7 @@ extern "C" int ModInit(ImGuiContext* context)
 		movable = true;
 		show_status = true;
 
-		{
-			GetModuleFileNameW(NULL, result, MAX_PATH);
-			boost::filesystem::path m = result;
-
-			Json::Reader r;
-			Json::Value setting;
-			try {
-				std::ifstream fin((m.parent_path() / "mod.json").wstring());
-				if (r.parse(fin, setting))
-				{
-					show_name = setting.get("show_name", true).asBool();
-					default_pet_job = setting.get("default_pet_job", default_pet_job).asString();
-					strcpy(websocket_host, setting.get("websocket_host", "localhost").asCString());
-					if (strcmp(websocket_host, "127.0.0.1") == 0)
-					{
-						// for ipv6
-						strcpy(websocket_host, "localhost");
-					}
-					strcpy(websocket_port, setting.get("websocket_port", "10501").asCString());
-					Json::Value color = setting.get("color_map", Json::Value());
-					for (auto i = color.begin(); i != color.end(); ++i)
-					{
-						color_map[i.key().asString()] = htmlCodeToImVec4(i->asString());
-					}
-					// for lua version compat
-					Json::Value color2 = setting["overlays"]["AWIO"].get("color_map", Json::Value());
-					for (auto i = color2.begin(); i != color2.end(); ++i)
-					{
-						color_map[i.key().asString()] = htmlCodeToImVec4(i->asString());
-					}
-					Json::Value opacity = setting.get("opacity_map", Json::Value());
-					for (auto i = opacity.begin(); i != opacity.end(); ++i)
-					{
-						opacity_map[i.key().asString()] = i->asFloat();
-					}
-					Json::Value boolean = setting.get("boolean_map", Json::Value());
-					for (auto i = boolean.begin(); i != boolean.end(); ++i)
-					{
-						boolean_map[i.key().asString()] = i->asFloat();
-					}
-					Json::Value nameToJob = setting.get("name_to_job", Json::nullValue);
-					std::string name_to_job_str = "name_to_job";
-					if (nameToJob.find(&*name_to_job_str.begin(), &*name_to_job_str.begin() + name_to_job_str.size()) != nullptr)
-					{
-						name_to_job_map.clear();
-						for (auto i = nameToJob.begin();
-							i != nameToJob.end();
-							++i)
-						{
-							name_to_job_map[i.key().asString()] = i->asString();
-						}
-					}
-					Json::Value dealer_columns = setting.get("dealer_columns", Json::nullValue);
-					std::string dealer_columns_str = "dealer_columns";
-					if (setting.find(&*dealer_columns_str.begin(), &*dealer_columns_str.begin() + dealer_columns_str.size()) != nullptr)
-					{
-						dealerTable.columns.resize(3);
-						for (auto i = dealer_columns.begin();
-							i != dealer_columns.end();
-							++i)
-						{
-							Table::Column col;
-							col.FromJson(*i);
-							dealerTable.columns.push_back(col);
-						}
-					}
-					Json::Value fonts = setting.get("fonts", Json::nullValue);
-					std::string fonts_str = "fonts";
-					if (setting.find(&*fonts_str.begin(), &*fonts_str.begin() + fonts_str.size()) != nullptr)
-					{
-						if (fonts.size() > 0)
-						{
-							::fonts.clear();
-							for (auto i = fonts.begin();
-								i != fonts.end();
-								++i)
-							{
-								Font font;
-								font.FromJson(*i);
-								::fonts.push_back(font);
-							}
-						}
-					}
-					Json::Value windows  = setting.get("windows", Json::nullValue);
-					std::string windows_str = "windows";
-					if (setting.find(&*windows_str.begin(), &*windows_str.begin() + windows_str.size()) != nullptr)
-					{
-						if (windows.size() > 0)
-						{
-							Json::Value;
-							for (auto i = windows.begin();
-								i != windows.end();
-								++i)
-							{
-								Json::Value& win = *i;
-								std::string name = win["name"].asString();
-								if (name.empty())
-									continue;
-								ImVec2 pos = ImVec2(win["x"].asFloat(), win["y"].asFloat());
-								ImVec2 size = ImVec2(win["width"].asFloat(), win["height"].asFloat());
-								windows_default_sizes[name] = size;
-								ImGuiContext & g = *ImGui::GetCurrentContext();
-								g.Initialized = true;
-								size = ImMax(size, g.Style.WindowMinSize);
-								ImGuiIniData* settings = nullptr;
-								ImGuiID id = ImHash(name.c_str(), 0);
-								{
-									for (int i = 0; i != g.Settings.Size; i++)
-									{
-										ImGuiIniData* ini = &g.Settings[i];
-										if (ini->Id == id)
-										{
-											settings = ini;
-											break;
-										}
-									}
-									if (settings == nullptr)
-									{
-										GImGui->Settings.resize(GImGui->Settings.Size + 1);
-										ImGuiIniData* ini = &GImGui->Settings.back();
-										ini->Name = ImStrdup(name.c_str());
-										ini->Id = ImHash(name.c_str(), 0);
-										ini->Collapsed = false;
-										ini->Pos = ImVec2(FLT_MAX, FLT_MAX);
-										ini->Size = ImVec2(0, 0);
-										settings = ini;
-									}
-								}
-								if (settings)
-								{
-									settings->Pos = pos;
-									settings->Size = size;
-								}
-							}
-						}
-					}
-				}
-				fin.close();
-			}
-			catch (...)
-			{
-			}
-		}
+		LoadSettings(context);
 		initialized = true;
 
 		if (windows_default_sizes.empty())
@@ -969,7 +836,162 @@ extern "C" int ModInit(ImGuiContext* context)
 	}
 	return 0;
 }
+void LoadSettings(ImGuiContext* context)
+{
+	{
+		WCHAR result[MAX_PATH] = {};
+		GetModuleFileNameW(NULL, result, MAX_PATH);
+		boost::filesystem::path m = result;
 
+		Json::Reader r;
+		Json::Value setting;
+		try {
+			std::ifstream fin((m.parent_path() / "mod.json").wstring());
+			if (r.parse(fin, setting))
+			{
+				show_name = setting.get("show_name", true).asBool();
+				default_pet_job = setting.get("default_pet_job", default_pet_job).asString();
+				strcpy(websocket_host, setting.get("websocket_host", "localhost").asCString());
+				if (strcmp(websocket_host, "127.0.0.1") == 0)
+				{
+					// for ipv6
+					strcpy(websocket_host, "localhost");
+				}
+				strcpy(websocket_port, setting.get("websocket_port", "10501").asCString());
+				Json::Value color = setting.get("color_map", Json::Value());
+				for (auto i = color.begin(); i != color.end(); ++i)
+				{
+					color_map[i.key().asString()] = htmlCodeToImVec4(i->asString());
+				}
+				Json::Value opacity = setting.get("opacity_map", Json::Value());
+				for (auto i = opacity.begin(); i != opacity.end(); ++i)
+				{
+					opacity_map[i.key().asString()] = i->asFloat();
+				}
+				// for lua version compat
+				Json::Value color2 = setting["overlays"]["AWIO"].get("color_map", Json::Value());
+				for (auto i = color2.begin(); i != color2.end(); ++i)
+				{
+					color_map[i.key().asString()] = htmlCodeToImVec4(i->asString());
+				}
+				// for lua version compat
+				Json::Value opacity2 = setting["overlays"]["AWIO"].get("float_map", Json::Value());
+				for (auto i = opacity2.begin(); i != opacity2.end(); ++i)
+				{
+					opacity2[i.key().asString()] = i->asFloat();
+				}
+				Json::Value boolean = setting.get("boolean_map", Json::Value());
+				for (auto i = boolean.begin(); i != boolean.end(); ++i)
+				{
+					boolean_map[i.key().asString()] = i->asFloat();
+				}
+				Json::Value nameToJob = setting.get("name_to_job", Json::nullValue);
+				std::string name_to_job_str = "name_to_job";
+				if (nameToJob.find(&*name_to_job_str.begin(), &*name_to_job_str.begin() + name_to_job_str.size()) != nullptr)
+				{
+					name_to_job_map.clear();
+					for (auto i = nameToJob.begin();
+						i != nameToJob.end();
+						++i)
+					{
+						name_to_job_map[i.key().asString()] = i->asString();
+					}
+				}
+				Json::Value dealer_columns = setting.get("dealer_columns", Json::nullValue);
+				std::string dealer_columns_str = "dealer_columns";
+				if (setting.find(&*dealer_columns_str.begin(), &*dealer_columns_str.begin() + dealer_columns_str.size()) != nullptr)
+				{
+					dealerTable.columns.resize(3);
+					for (auto i = dealer_columns.begin();
+						i != dealer_columns.end();
+						++i)
+					{
+						Table::Column col;
+						col.FromJson(*i);
+						dealerTable.columns.push_back(col);
+					}
+				}
+				Json::Value fonts = setting.get("fonts", Json::nullValue);
+				std::string fonts_str = "fonts";
+				if (setting.find(&*fonts_str.begin(), &*fonts_str.begin() + fonts_str.size()) != nullptr)
+				{
+					if (fonts.size() > 0)
+					{
+						::fonts.clear();
+						for (auto i = fonts.begin();
+							i != fonts.end();
+							++i)
+						{
+							Font font;
+							font.FromJson(*i);
+							::fonts.push_back(font);
+						}
+					}
+				}
+				Json::Value windows = setting.get("windows", Json::nullValue);
+				std::string windows_str = "windows";
+				if (setting.find(&*windows_str.begin(), &*windows_str.begin() + windows_str.size()) != nullptr)
+				{
+					if (windows.size() > 0)
+					{
+						Json::Value;
+						for (auto i = windows.begin();
+							i != windows.end();
+							++i)
+						{
+							Json::Value& win = *i;
+							std::string name = win["name"].asString();
+							if (name.empty())
+								continue;
+							ImVec2 pos = ImVec2(win["x"].asFloat(), win["y"].asFloat());
+							ImVec2 size = ImVec2(win["width"].asFloat(), win["height"].asFloat());
+							windows_default_sizes[name] = size;
+							ImGuiIniData* settings = nullptr;
+							if (context)
+							{
+								ImGuiContext & g = *context;
+								g.Initialized = true;
+								size = ImMax(size, g.Style.WindowMinSize);
+								ImGuiID id = ImHash(name.c_str(), 0);
+								{
+									for (int i = 0; i != g.Settings.Size; i++)
+									{
+										ImGuiIniData* ini = &g.Settings[i];
+										if (ini->Id == id)
+										{
+											settings = ini;
+											break;
+										}
+									}
+									if (settings == nullptr)
+									{
+										context->Settings.resize(context->Settings.Size + 1);
+										ImGuiIniData* ini = &context->Settings.back();
+										ini->Name = ImStrdup(name.c_str());
+										ini->Id = ImHash(name.c_str(), 0);
+										ini->Collapsed = false;
+										ini->Pos = ImVec2(FLT_MAX, FLT_MAX);
+										ini->Size = ImVec2(0, 0);
+										settings = ini;
+									}
+								}
+							}
+							if (settings)
+							{
+								settings->Pos = pos;
+								settings->Size = size;
+							}
+						}
+					}
+				}
+			}
+			fin.close();
+		}
+		catch (...)
+		{
+		}
+	}
+}
 void SaveSettings()
 {
 	WCHAR result[MAX_PATH] = {};
@@ -1096,7 +1118,6 @@ extern "C" void ModSetTexture(void* texture)
 void FontsPreferences() {
 	if (ImGui::TreeNode("Fonts"))
 	{
-		ImGui::Text("The font settings are applied at the next start.");
 		ImGui::Text("Default font is \'Default\' with fixed font size 13.0");
 		{
 			std::vector<const char*> data;
@@ -1115,6 +1136,7 @@ void FontsPreferences() {
 			static int index = -1;
 			bool decIndex = false;
 			bool incIndex = false;
+			static std::vector<const char *> font_cstr_filenames_prefix = font_cstr_filenames;
 			if (ImGui::ListBox("Fonts", &index_, data.data(), data.size()))
 			{
 				index = index_;
@@ -1125,9 +1147,17 @@ void FontsPreferences() {
 				{
 					glyph_range = ri - glyph_range_key.begin();
 				}
-				std::string val = boost::to_lower_copy(fonts[index].fontname);
-				auto fi = std::find_if(font_cstr_filenames.begin(), font_cstr_filenames.end(), [&val](const std::string& a) {
-					return val == boost::to_lower_copy(a);
+				const std::string val = boost::to_lower_copy(fonts[index].fontname);
+				const std::string val2 = val + ".ttc";
+				const std::string val3 = val + ".ttf";
+				font_cstr_filenames_prefix.clear();
+				for (auto k = font_cstr_filenames.begin(); k != font_cstr_filenames.end(); ++k)
+				{
+					if (boost::starts_with(boost::to_lower_copy(std::string(*k)), val))
+						font_cstr_filenames_prefix.push_back(*k);
+				}
+				auto fi = std::find_if(font_cstr_filenames.begin(), font_cstr_filenames.end(), [&val, &val2, &val3](const std::string& a) {
+					return val == boost::to_lower_copy(a) || val2 == boost::to_lower_copy(a) || val3 == boost::to_lower_copy(a);
 				});
 				if (fi != font_cstr_filenames.end())
 				{
@@ -1137,7 +1167,6 @@ void FontsPreferences() {
 				{
 					fontname_idx = -1;
 				}
-				font_setting_dirty = true;
 			}
 			if (ImGui::Button("Up"))
 			{
@@ -1146,7 +1175,6 @@ void FontsPreferences() {
 					std::swap(fonts[index], fonts[index - 1]);
 					SaveSettings();
 					decIndex = true;
-					font_setting_dirty = true;
 				}
 			}
 			ImGui::SameLine();
@@ -1157,7 +1185,6 @@ void FontsPreferences() {
 					std::swap(fonts[index], fonts[index + 1]);
 					SaveSettings();
 					incIndex = true;
-					font_setting_dirty = true;
 				}
 			}
 			ImGui::SameLine();
@@ -1173,7 +1200,6 @@ void FontsPreferences() {
 				if (index >= 0)
 				{
 					fonts.erase(fonts.begin() + index);
-					font_setting_dirty = true;
 					SaveSettings();
 				}
 				if (index >= fonts.size())
@@ -1194,7 +1220,6 @@ void FontsPreferences() {
 					{
 						glyph_range = ri - glyph_range_key.begin();
 					}
-					font_setting_dirty = true;
 				}
 				else
 				{
@@ -1216,7 +1241,6 @@ void FontsPreferences() {
 					{
 						glyph_range = ri - glyph_range_key.begin();
 					}
-					font_setting_dirty = true;
 				}
 				else
 				{
@@ -1231,23 +1255,30 @@ void FontsPreferences() {
 				font_size = font_sizes;
 				ImGui::OpenPopup("Append Column");
 			}
+			ImGui::SameLine();
+			if (ImGui::Button("Apply"))
+			{
+				font_setting_dirty = true;
+			}
 			if (ImGui::BeginPopup("Append Column"))
 			{
 				static char buf[100] = { 0, };
 				static int glyph_range = 0;
 				static int fontname_idx = -1;
-				if (ImGui::Combo("FontName", &fontname_idx, font_cstr_filenames.data(), font_cstr_filenames.size()))
-				{
-					if (fontname_idx >= 0)
-					{
-						strcpy(buf, font_cstr_filenames[fontname_idx]);
-					}
-				}
+				static std::vector<const char *> font_cstr_filenames_prefix = font_cstr_filenames;
 				if (ImGui::InputText("FontName", buf, 99))
 				{
 					std::string val = boost::to_lower_copy(std::string(buf));
-					auto fi = std::find_if(font_cstr_filenames.begin(), font_cstr_filenames.end(), [&val](const std::string& a) {
-						return val == boost::to_lower_copy(a);
+					const std::string val2 = val + ".ttc";
+					const std::string val3 = val + ".ttf";
+					font_cstr_filenames_prefix.clear();
+					for (auto k = font_cstr_filenames.begin(); k != font_cstr_filenames.end(); ++k)
+					{
+						if (boost::starts_with(boost::to_lower_copy(std::string(*k)), val))
+							font_cstr_filenames_prefix.push_back(*k);
+					}
+					auto fi = std::find_if(font_cstr_filenames.begin(), font_cstr_filenames.end(), [&val, &val2, &val3](const std::string& a) {
+						return val == boost::to_lower_copy(a) || val2 == boost::to_lower_copy(a) || val3 == boost::to_lower_copy(a);
 					});
 					if (fi != font_cstr_filenames.end())
 					{
@@ -1257,7 +1288,13 @@ void FontsPreferences() {
 					{
 						fontname_idx = -1;
 					}
-					SaveSettings();
+				}
+				if (ImGui::ListBox("FontName", &fontname_idx, font_cstr_filenames_prefix.data(), font_cstr_filenames_prefix.size(), 10))
+				{
+					if (fontname_idx >= 0)
+					{
+						strcpy(buf, font_cstr_filenames_prefix[fontname_idx]);
+					}
 				}
 				if (ImGui::Combo("GlyphRange", &glyph_range, glyph_range_key.data(), glyph_range_key.size()))
 				{
@@ -1279,14 +1316,13 @@ void FontsPreferences() {
 						strcpy(buf, "");
 						current_item = -1;
 						font_size = font_sizes;
-						font_setting_dirty = true;
 						SaveSettings();
 					}
 				}
 				ImGui::EndPopup();
 			}
-			ImGui::SameLine();
-			if (ImGui::Button("Default"))
+			ImGui::SameLine(0,100);
+			if (ImGui::Button("Reset"))
 			{
 				font_sizes = 13;
 				fonts = {
@@ -1296,7 +1332,6 @@ void FontsPreferences() {
 					Font("NanumBarunGothic.ttf", "Korean", font_sizes),
 					Font("gulim.ttc", "Korean", font_sizes),
 				};
-				font_setting_dirty = true;
 			}
 
 			//if (ImGui::BeginPopup("Edit Column"))
@@ -1306,22 +1341,20 @@ void FontsPreferences() {
 				ImGui::Text("Edit");
 				ImGui::Separator();
 				//font_cstr_filenames;
-				if (ImGui::Combo("FontName", &fontname_idx, font_cstr_filenames.data(), font_cstr_filenames.size()))
-				{
-					if (fontname_idx >= 0)
-					{
-						fonts[index].fontname = font_cstr_filenames[fontname_idx];
-						strcpy(buf, font_cstr_filenames[fontname_idx]);
-						SaveSettings();
-						font_setting_dirty = true;
-					}
-				}
 				if (ImGui::InputText("FontName", buf, 99))
 				{
 					fonts[index].fontname = buf;
 					std::string val = boost::to_lower_copy(fonts[index].fontname);
-					auto fi = std::find_if(font_cstr_filenames.begin(), font_cstr_filenames.end(), [&val](const std::string& a) {
-						return val == boost::to_lower_copy(a);
+					const std::string val2 = val + ".ttc";
+					const std::string val3 = val + ".ttf";
+					font_cstr_filenames_prefix.clear();
+					for (auto k = font_cstr_filenames.begin(); k != font_cstr_filenames.end(); ++k)
+					{
+						if (boost::starts_with(boost::to_lower_copy(std::string(*k)), val))
+							font_cstr_filenames_prefix.push_back(*k);
+					}
+					auto fi = std::find_if(font_cstr_filenames.begin(), font_cstr_filenames.end(), [&val, &val2, &val3](const std::string& a) {
+						return val == boost::to_lower_copy(a) || val2 == boost::to_lower_copy(a) || val3 == boost::to_lower_copy(a);
 					});
 					if (fi != font_cstr_filenames.end())
 					{
@@ -1331,15 +1364,23 @@ void FontsPreferences() {
 					{
 						fontname_idx = -1;
 					}
-					font_setting_dirty = true;
 					SaveSettings();
+				}
+
+				if (ImGui::ListBox("FontName", &fontname_idx, font_cstr_filenames_prefix.data(), font_cstr_filenames_prefix.size(), 10))
+				{
+					if (fontname_idx >= 0)
+					{
+						fonts[index].fontname = font_cstr_filenames_prefix[fontname_idx];
+						strcpy(buf, font_cstr_filenames_prefix[fontname_idx]);
+						SaveSettings();
+					}
 				}
 				if (ImGui::Combo("GlyphRange", &glyph_range, glyph_range_key.data(), glyph_range_key.size()))
 				{
 					if (glyph_range >= 0)
 					{
 						fonts[index].glyph_range = glyph_range_key[glyph_range];
-						font_setting_dirty = true;
 						SaveSettings();
 					}
 				}
@@ -1347,7 +1388,6 @@ void FontsPreferences() {
 				{
 					font_size = std::min(std::max(font_size, 6.0f), 30.0f);
 					fonts[index].font_size = font_size;
-					font_setting_dirty = true;
 					SaveSettings();
 				}
 				ImGui::Separator();
@@ -1361,7 +1401,6 @@ void FontsPreferences() {
 					i->font_size = font_sizes;
 				}
 				font_size = font_sizes;
-				font_setting_dirty = true;
 				SaveSettings();
 			}
 		}
@@ -1731,6 +1770,12 @@ extern "C" int ModRender(ImGuiContext* context)
 	bool use_input = movable || show_preferences || move_key_pressed;
 	try {
 		ImGui::SetCurrentContext(context);
+		static ImGuiContext* c = context;
+		if (c != context)
+		{
+			LoadSettings(context);
+			c = context;
+		}
 
 		{
 			ImVec2 padding(0, 0);
@@ -1752,36 +1797,46 @@ extern "C" int ModRender(ImGuiContext* context)
 
 			mutex.lock();
 
-			auto &io = ImGui::GetIO();
-			Image& cog = overlay_images["cog"];
-			Image& resize = overlay_images["resize"];
-			float icon_color_change = (cosf(GetTickCount() / 500.0f) + 1.0f) / 2.0f;
-			ImVec4 color = ColorWithAlpha(color_map["TitleText"], text_opacity * global_opacity);
-			color.x *= icon_color_change;
-			color.y *= icon_color_change;
-			color.z *= icon_color_change;
 			auto p = ImGui::GetCursorPos();
-			ImGui::BeginChild("Btn",
-				//ImVec2(100,100),
-				ImVec2((cog.width+resize.width+36) * io.FontGlobalScale / 6, (cog.height + 18) * io.FontGlobalScale /6),
-				false,
-				ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
-			if (ImGui::ImageButton(overlay_texture, ImVec2(resize.width * io.FontGlobalScale / 6, resize.height * io.FontGlobalScale / 6), resize.uv0, resize.uv1, 2, ImVec4(0, 0, 0, 0), color))
+			auto &io = ImGui::GetIO();
 			{
-				movable = !movable;
+				auto cog_img = overlay_images.find("cog");
+				auto resize_img = overlay_images.find("resize");
+				if (cog_img != overlay_images.end() && resize_img != overlay_images.end())
+				{
+					double scale = (io.Fonts->Fonts[0]->FontSize* io.FontGlobalScale) / cog_img->second.height / 1.5f;
+					ImGui::PushStyleColor(ImGuiCol_ChildWindowBg, ImVec4(0, 0, 0, 0));
+					float icon_color_change = (cosf(GetTickCount() / 500.0f) + 1.0f) / 2.0f;
+					ImVec4 color = ColorWithAlpha(color_map["TitleText"], text_opacity * global_opacity);
+					color.x *= icon_color_change;
+					color.y *= icon_color_change;
+					color.z *= icon_color_change;
+					ImGui::BeginChild("Btn",
+						//ImVec2(100,100),
+						ImVec2((cog_img->second.width + 18) * scale, (cog_img->second.height + 18) * scale),
+						false,
+						ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+					if (ImGui::ImageButton(overlay_texture, ImVec2(resize_img->second.width * scale, resize_img->second.height * scale), resize_img->second.uv0, resize_img->second.uv1, 2, ImVec4(0, 0, 0, 0), color))
+					{
+						movable = !movable;
+					}
+					ImGui::EndChild();
+					ImGui::SameLine((cog_img->second.width + 18) * scale);
+					ImGui::BeginChild("Btn1",
+						//ImVec2(100,100),
+						ImVec2((resize_img->second.width + 18) * scale, (cog_img->second.height + 18) * scale),
+						false,
+						ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+					if (ImGui::ImageButton(overlay_texture, ImVec2(cog_img->second.width * scale, cog_img->second.height * scale), cog_img->second.uv0, cog_img->second.uv1, 2, ImVec4(0, 0, 0, 0), color))
+					{
+						show_preferences = !show_preferences;
+					}
+					ImGui::EndChild();
+					ImGui::SameLine();
+					ImGui::SetCursorPos(p);
+					ImGui::PopStyleColor(1);
+				}
 			}
-			ImGui::EndChild();
-			ImGui::SameLine((cog.width + 18) * io.FontGlobalScale / 6);
-			ImGui::BeginChild("Btn1",
-				//ImVec2(100,100),
-				ImVec2((cog.width + resize.width + 36) * io.FontGlobalScale / 6, (cog.height + 18) * io.FontGlobalScale / 6),
-				false,
-				ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
-			if (ImGui::ImageButton(overlay_texture, ImVec2(cog.width * io.FontGlobalScale / 6, cog.height * io.FontGlobalScale / 6), cog.uv0, cog.uv1, 2, ImVec4(0, 0, 0, 0), color))
-			{
-				show_preferences = !show_preferences;
-			}
-			ImGui::EndChild();
 			ImGui::SameLine();
 			ImGui::SetCursorPos(p);
 
@@ -1871,3 +1926,14 @@ extern "C" bool ModMenu(bool* show)
 		show_preferences = !show_preferences;
 	return show_preferences;
 }
+
+extern "C" bool ModUpdateFont(ImGuiContext* context)
+{
+	if (font_setting_dirty)
+	{
+		bool ret = LoadFonts(context);
+		return ret;
+	}
+	return false;
+}
+

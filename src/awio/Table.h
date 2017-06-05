@@ -57,7 +57,7 @@ public:
 	};
 
 	int column_margin = 2;
-
+	bool ButtonCustom(const char* label, const ImVec2& size_arg, ImGuiButtonFlags flags);
 	void UpdateColumnWidth(int width, int height, int column_max, float scale)
 	{
 		if (columns.size() > 0)

@@ -50,6 +50,16 @@ struct OverlayOption
 	bool movable;
 	bool show_preferences;
 	std::map<std::string, ImVec2> windows_default_sizes;
+	ImVec2& GetDefaultSize(const std::string& name, ImVec2 default)
+	{
+		auto it = windows_default_sizes.find(name);
+		if (it != windows_default_sizes.end())
+		{
+			return it->second;
+		}
+		it->second = default;
+		return default;
+	}
 };
 
 class Image : public Serializable

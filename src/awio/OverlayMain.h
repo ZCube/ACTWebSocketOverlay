@@ -71,6 +71,7 @@ public:
 	std::vector<std::string> font_filenames;
 	std::vector<const char *> font_cstr_filenames;
 	PreferenceStorage* current_storage = nullptr;
+	ImGuiContext* context;
 
 	ImGuiStyle imgui_style;
 	bool font_setting_dirty = false;

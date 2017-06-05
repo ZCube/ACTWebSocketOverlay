@@ -84,7 +84,7 @@ public:
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3, 0.3, 0.3, background_opacity * global_opacity));
 			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0, 0.0, 0.0, 0.0f));
 			ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(preference_storage.color_map["TitleText"], text_opacity * global_opacity));
-			ImGui::Begin("AWIO", nullptr, options->windows_default_sizes["AWIO"], -1,
+			ImGui::Begin("AWIO", nullptr, options->GetDefaultSize("AWIO",ImVec2(500,200)), -1,
 				ImGuiWindowFlags_NoTitleBar | (use_input ? NULL : ImGuiWindowFlags_NoInputs));
 			options->windows_default_sizes["AWIO"] = ImGui::GetWindowSize();
 
@@ -97,6 +97,7 @@ public:
 				auto resize_img = images->find("resize");
 				if (cog_img != images->end() && resize_img != images->end())
 				{
+					double scale = (io.Fonts->Fonts[0]->FontSize* io.FontGlobalScale) / cog_img->second.height / 1.5f;
 					ImGui::PushStyleColor(ImGuiCol_ChildWindowBg, ImVec4(0,0,0,0));
 					float icon_color_change = (cosf(GetTickCount() / 500.0f) + 1.0f) / 2.0f;
 					ImVec4 color = ColorWithAlpha(preference_storage.color_map["TitleText"], text_opacity * global_opacity);
@@ -106,21 +107,21 @@ public:
 					auto p = ImGui::GetCursorPos();
 					ImGui::BeginChild("Btn",
 						//ImVec2(100,100),
-						ImVec2((cog_img->second.width + resize_img->second.width + 36) * io.FontGlobalScale / 6, (cog_img->second.height + 18) * io.FontGlobalScale / 6),
+						ImVec2((cog_img->second.width + 18) * scale, (cog_img->second.height + 18) * scale),
 						false,
 						ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
-					if (ImGui::ImageButton(texture, ImVec2(resize_img->second.width * io.FontGlobalScale / 6, resize_img->second.height * io.FontGlobalScale / 6), resize_img->second.uv0, resize_img->second.uv1, 2, ImVec4(0, 0, 0, 0), color))
+					if (ImGui::ImageButton(texture, ImVec2(resize_img->second.width * scale, resize_img->second.height * scale), resize_img->second.uv0, resize_img->second.uv1, 2, ImVec4(0, 0, 0, 0), color))
 					{
 						options->movable = !options->movable;
 					}
 					ImGui::EndChild();
-					ImGui::SameLine((cog_img->second.width + 18) * io.FontGlobalScale / 6);
+					ImGui::SameLine((cog_img->second.width + 18) * scale);
 					ImGui::BeginChild("Btn1",
 						//ImVec2(100,100),
-						ImVec2((cog_img->second.width + resize_img->second.width + 36) * io.FontGlobalScale / 6, (cog_img->second.height + 18) * io.FontGlobalScale / 6),
+						ImVec2((resize_img->second.width + 36) * scale, (cog_img->second.height + 18) * scale),
 						false,
 						ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
-					if (ImGui::ImageButton(texture, ImVec2(cog_img->second.width * io.FontGlobalScale / 6, cog_img->second.height * io.FontGlobalScale / 6), cog_img->second.uv0, cog_img->second.uv1, 2, ImVec4(0, 0, 0, 0), color))
+					if (ImGui::ImageButton(texture, ImVec2(cog_img->second.width * scale, cog_img->second.height * scale), cog_img->second.uv0, cog_img->second.uv1, 2, ImVec4(0, 0, 0, 0), color))
 					{
 						options->show_preferences = !options->show_preferences;
 					}

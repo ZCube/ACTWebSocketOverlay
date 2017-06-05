@@ -13,3 +13,4 @@ dist/*
 textures/out/*
 src/version
 prebuilt/*
+/test/config.bat

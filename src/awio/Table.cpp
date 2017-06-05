@@ -13,6 +13,68 @@ ImVec4 ColorWithAlpha(ImVec4 col, float alpha)
 	return col;
 }
 
+#include <imgui_internal.h>
+
+bool Table::ButtonCustom(const char* label, const ImVec2& size_arg, ImGuiButtonFlags flags)
+{
+	using namespace ImGui;
+	ImGuiWindow* window = GetCurrentWindow();
+	if (window->SkipItems)
+		return false;
+
+	ImGuiContext& g = *GImGui;
+	const ImGuiStyle& style = g.Style;
+	const ImGuiID id = window->GetID(label);
+	const ImVec2 label_size = CalcTextSize(label, NULL, true);
+
+	ImVec2 pos = window->DC.CursorPos;
+	if ((flags & ImGuiButtonFlags_AlignTextBaseLine) && style.FramePadding.y < window->DC.CurrentLineTextBaseOffset) // Try to vertically align buttons that are smaller/have no padding so that text baseline matches (bit hacky, since it shouldn't be a flag)
+		pos.y += window->DC.CurrentLineTextBaseOffset - style.FramePadding.y;
+	ImVec2 size = size_arg;
+	//size = ImVec2(std::min(label_size.x, size.x), size.y);
+
+	const ImRect bb(pos, ImVec2(pos.x + size.x, pos.y + size.y));
+	ItemSize(bb, style.FramePadding.y);
+	if (!ItemAdd(bb, &id))
+		return false;
+
+	if (window->DC.ButtonRepeat) flags |= ImGuiButtonFlags_Repeat;
+	bool hovered, held;
+	bool pressed = ButtonBehavior(bb, id, &hovered, &held, flags);
+
+	// Render
+	const ImU32 col = GetColorU32((hovered && held) ? ImGuiCol_ButtonActive : hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button);
+	RenderFrame(bb.Min, bb.Max, col, true, style.FrameRounding);
+	//RenderTextClipped(bb.Min + style.FramePadding, bb.Max - style.FramePadding, label, NULL, &label_size, style.ButtonTextAlign, &bb);
+	{
+		const ImGuiIO& io = ImGui::GetIO();
+		ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(ImVec4(0, 0, 0, 1), text_opacity * global_opacity));
+		ImGui::RenderTextClipped(ImVec2(pos.x + 1, pos.y + 1), ImVec2(pos.x + size.x + io.FontGlobalScale, pos.y + size.y + 1),
+			label,
+			NULL,
+			nullptr,
+			ImVec2(0.2f, 0.5f),
+			//columns[i].align,
+			nullptr);
+		ImGui::PopStyleColor();
+		ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(graph_text_color, text_opacity * global_opacity));
+		ImGui::RenderTextClipped(pos, ImVec2(pos.x + (size.x), pos.y + size.y ),
+			label,
+			NULL,
+			nullptr,
+			ImVec2(0.2f, 0.5f),
+			//columns[i].align,
+			nullptr);
+		ImGui::PopStyleColor();
+	}
+
+	// Automatically close popups
+	//if (pressed && !(flags & ImGuiButtonFlags_DontClosePopups) && (window->Flags & ImGuiWindowFlags_Popup))
+	//    CloseCurrentPopup();
+
+	return pressed;
+}
+
 void Table::RenderTableColumnHeader(int height, ImTextureID table_texture, const std::unordered_map<std::string, Image>* table_images)
 {
 	const ImGuiStyle& style = ImGui::GetStyle();
@@ -39,7 +101,10 @@ void Table::RenderTableColumnHeader(int height, ImTextureID table_texture, const
 			std::string text = columns[i].Title;
 			if (i == 1)
 			{
-				if (ImGui::Button("Name")) show_name = !show_name;
+				ImVec2 size((columns[i].size + 1) * io.FontGlobalScale, height);
+				ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+				if (ButtonCustom("Name", size, 0)) show_name = !show_name;
+				ImGui::PopStyleVar(1);
 			}
 			else
 			{
@@ -175,7 +240,7 @@ void Table::RenderTable(ImTextureID table_texture, const std::unordered_map<std:
 	const ImGuiIO& io = ImGui::GetIO();
 	int windowWidth = ImGui::GetWindowContentRegionWidth();
 	int column_max = columns.size();
-	const int height = 20 * io.FontGlobalScale;
+	const int height = io.Fonts->Fonts[0]->FontSize*1.2 * io.FontGlobalScale;
 	UpdateColumnWidth(windowWidth, height, column_max, io.FontGlobalScale);
 
 	ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(graph_text_color, text_opacity * global_opacity));
