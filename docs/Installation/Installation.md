@@ -26,6 +26,7 @@ Add "ACTWebSocket.DLL" to Advanced Combat Tracker.
         * If you do not understand this, do not use this. This opens the port to the outside.
     * Server Port 10501
     * Use MiniParse Only
+        * BeforeLogLineRead and OnLogLineRead transfer the ACT's logs. If you do not use this option, use loopback (localhost) and uncheck options for privacy. There is an option to decide whether to send chat log, but it does not work properly. At this point it is recommended that you turn off the option unless you intend to use it.
     * And turn on.
 
 ## Install Overlay to app
