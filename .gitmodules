@@ -5,12 +5,14 @@
 [submodule "external/beast"]
 	path = external/beast
 	url = https://github.com/vinniefalco/Beast.git
+	ignore = dirty
 [submodule "external/reshade"]
 	path = external/reshade
 	url = https://github.com/ZCube/reshade
 [submodule "external/zlib"]
 	path = external/zlib
 	url = https://github.com/madler/zlib.git
+	ignore = dirty
 [submodule "external/boost"]
 	path = external/boost
 	url = https://github.com/ZCube/boost-cmake.git

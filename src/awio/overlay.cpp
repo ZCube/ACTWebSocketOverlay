@@ -34,6 +34,7 @@
 static boost::mutex font_mutex;
 static boost::mutex mutex;
 static bool initialized = false;
+static bool font_setting_dirty = false;
 std::unordered_map<ImGuiContext*, bool> font_inited;
 
 static bool show_name = true;
@@ -51,6 +52,10 @@ static ImFont* korFont = nullptr;
 static ImFont* japFont = nullptr;
 static bool need_font_init = true;
 static std::map<std::string, ImVec2> windows_default_sizes;
+static float font_sizes = 12.0f;
+std::vector<boost::filesystem::path> font_paths;
+std::vector<std::string> font_filenames;
+std::vector<const char *> font_cstr_filenames;
 std::string your_name = "YOU";
 
 static std::vector<Font> fonts;
@@ -352,6 +357,142 @@ inline static void websocketThread()
 	// only one.
 	if(!websocket.websocket_thread)
 		websocket.Run();
+}
+
+bool LoadFonts(ImGuiContext* context)
+{
+	if (!context)
+		return false;
+
+	{
+		// Changing or adding fonts at runtime causes a crash.
+		// TODO: is it possible ?...
+
+		ImGuiIO& io = context->IO;
+
+		WCHAR result[MAX_PATH] = {};
+		GetWindowsDirectoryW(result, MAX_PATH);
+		boost::filesystem::path p = result;
+
+		GetModuleFileNameW(NULL, result, MAX_PATH);
+		boost::filesystem::path m = result;
+
+		// font
+		io.Fonts->Clear();
+		io.Fonts->TexID = 0;
+
+		std::map<std::string, const ImWchar*> glyph_range_map = {
+			{ "Default", io.Fonts->GetGlyphRangesDefault() },
+			{ "Chinese", io.Fonts->GetGlyphRangesChinese() },
+			{ "Cyrillic", io.Fonts->GetGlyphRangesCyrillic() },
+			{ "Japanese", io.Fonts->GetGlyphRangesJapanese() },
+			{ "Korean", io.Fonts->GetGlyphRangesKorean() },
+			{ "Thai", io.Fonts->GetGlyphRangesThai() },
+		};
+
+		// Add fonts in this order.
+		glyph_range_key = {
+			"Default",
+			"Chinese",
+			"Cyrillic",
+			"Japanese",
+			"Korean",
+			"Thai",
+		};
+
+		std::vector<boost::filesystem::path> font_find_folders = {
+			m.parent_path(), // dll path
+			p / "Fonts", // windows fonts
+		};
+		font_paths.clear();
+		font_filenames.clear();
+		boost::filesystem::directory_iterator itr, end_itr;
+
+
+		font_filenames.push_back("Default");
+		for (auto i = font_find_folders.begin(); i != font_find_folders.end(); ++i)
+		{
+			if (boost::filesystem::exists(*i))
+			{
+				for (boost::filesystem::directory_iterator itr(*i); itr != end_itr; ++itr)
+				{
+					if (is_regular_file(itr->path())) {
+						std::string extension = boost::to_lower_copy(itr->path().extension().string());
+						if (extension == ".ttc" || extension == ".ttf")
+						{
+							font_paths.push_back(itr->path());
+							font_filenames.push_back(itr->path().filename().string());
+						}
+					}
+				}
+			}
+		}
+		{
+			for (auto i = font_filenames.begin(); i != font_filenames.end(); ++i)
+			{
+				font_cstr_filenames.push_back(i->c_str());
+			}
+		}
+
+
+		ImFontConfig config;
+		config.MergeMode = false;
+		for (auto i = glyph_range_key.begin(); i != glyph_range_key.end(); ++i)
+		{
+			bool is_loaded = false;
+
+			for (auto j = fonts.begin(); j != fonts.end() && !is_loaded; ++j)
+			{
+				if (j->glyph_range == *i)
+				{
+					if (j->fontname == "Default")
+					{
+						io.Fonts->AddFontDefault(&config);
+						is_loaded = true;
+						config.MergeMode = true;
+					}
+					else
+					{
+						for (auto k = font_find_folders.begin(); k != font_find_folders.end(); ++k)
+						{
+							// ttf, ttc only
+							auto fontpath = (*k) / j->fontname;
+							if (boost::filesystem::exists(fontpath))
+							{
+								io.Fonts->AddFontFromFileTTF((fontpath).string().c_str(), j->font_size, &config, glyph_range_map[j->glyph_range]);
+								is_loaded = true;
+								config.MergeMode = true;
+							}
+						}
+					}
+				}
+			}
+
+			if (*i == "Default" && !is_loaded)
+			{
+				io.Fonts->AddFontDefault(&config);
+				is_loaded = true;
+				config.MergeMode = true;
+			}
+
+		}
+		// do not remove
+		io.Fonts->AddFontDefault();
+	}
+	if (fonts.empty())
+	{
+		font_sizes = 13;
+	}
+	else
+	{
+		font_sizes = fonts[0].font_size;
+		for (auto i = fonts.begin(); i != fonts.end(); ++i)
+		{
+			font_sizes = std::min(font_sizes, i->font_size);
+		}
+	}
+	font_setting_dirty = false;
+	return true;
 }
 
 extern "C" int ModInit(ImGuiContext* context)
@@ -689,6 +830,12 @@ extern "C" int ModInit(ImGuiContext* context)
 					{
 						color_map[i.key().asString()] = htmlCodeToImVec4(i->asString());
 					}
+					// for lua version compat
+					Json::Value color2 = setting["overlays"]["AWIO"].get("color_map", Json::Value());
+					for (auto i = color2.begin(); i != color2.end(); ++i)
+					{
+						color_map[i.key().asString()] = htmlCodeToImVec4(i->asString());
+					}
 					Json::Value opacity = setting.get("opacity_map", Json::Value());
 					for (auto i = opacity.begin(); i != opacity.end(); ++i)
 					{
@@ -814,88 +961,7 @@ extern "C" int ModInit(ImGuiContext* context)
 
 		websocketThread();
 
-		{
-			// Changing or adding fonts at runtime causes a crash.
-			// TODO: is it possible ?...
-
-			ImGuiIO& io = ImGui::GetIO();
-
-			WCHAR result[MAX_PATH] = {};
-			GetWindowsDirectoryW(result, MAX_PATH);
-			boost::filesystem::path p = result;
-
-			GetModuleFileNameW(NULL, result, MAX_PATH);
-			boost::filesystem::path m = result;
-
-			// font
-			ImGui::GetIO().Fonts->Clear();
-			
-			std::map<std::string, const ImWchar*> glyph_range_map = {
-				{ "Default", io.Fonts->GetGlyphRangesDefault() },
-				{ "Chinese", io.Fonts->GetGlyphRangesChinese() },
-				{ "Cyrillic", io.Fonts->GetGlyphRangesCyrillic() },
-				{ "Japanese", io.Fonts->GetGlyphRangesJapanese() },
-				{ "Korean", io.Fonts->GetGlyphRangesKorean() },
-				{ "Thai", io.Fonts->GetGlyphRangesThai() },
-			};
-
-			// Add fonts in this order.
-			glyph_range_key = {
-				"Default",
-				"Chinese",
-				"Cyrillic",
-				"Japanese",
-				"Korean",
-				"Thai",
-			};
-
-			std::vector<boost::filesystem::path> font_find_folders = {
-				m.parent_path(), // dll path
-				p / "Fonts", // windows fonts
-			};
-
-			ImFontConfig config;
-			config.MergeMode = false;
-			for (auto i = glyph_range_key.begin(); i != glyph_range_key.end(); ++i)
-			{
-				bool is_loaded = false;
-
-				for (auto j = fonts.begin(); j != fonts.end() && !is_loaded; ++j)
-				{
-					if (j->glyph_range == *i)
-					{
-						if (j->fontname == "Default")
-						{
-							io.Fonts->AddFontDefault(&config);
-							is_loaded = true;
-							config.MergeMode = true;
-						}
-						else
-						{
-							for (auto k = font_find_folders.begin(); k != font_find_folders.end(); ++k)
-							{
-								// ttf, ttc only
-								auto fontpath = (*k) / j->fontname;
-								if (boost::filesystem::exists(fontpath))
-								{
-									io.Fonts->AddFontFromFileTTF((fontpath).string().c_str(), j->font_size, &config, glyph_range_map[j->glyph_range]);
-									is_loaded = true;
-									config.MergeMode = true;
-								}
-							}
-						}
-					}
-				}
-
-				if (*i == "Default" && !is_loaded)
-				{
-					io.Fonts->AddFontDefault(&config);
-					is_loaded = true;
-					config.MergeMode = true;
-				}
-
-			}
-		}
+		LoadFonts(context);
 	}
 	catch (std::exception& e)
 	{
@@ -1023,6 +1089,283 @@ extern "C" void ModSetTexture(void* texture)
 	{
 		need_font_init = true;
 		// TODO: deinit texture;
+	}
+}
+
+
+void FontsPreferences() {
+	if (ImGui::TreeNode("Fonts"))
+	{
+		ImGui::Text("The font settings are applied at the next start.");
+		ImGui::Text("Default font is \'Default\' with fixed font size 13.0");
+		{
+			std::vector<const char*> data;
+			data.reserve(fonts.size());
+			for (int i = 0; i < fonts.size(); ++i)
+			{
+				data.push_back(fonts[i].fontname.c_str());
+			}
+
+			static int index_ = -1;
+			static char buf[100] = { 0, };
+			static int current_item = -1;
+			static float font_size = 12.0f;
+			static int glyph_range = 0;
+			static int fontname_idx = -1;
+			static int index = -1;
+			bool decIndex = false;
+			bool incIndex = false;
+			if (ImGui::ListBox("Fonts", &index_, data.data(), data.size()))
+			{
+				index = index_;
+				strcpy(buf, fonts[index].fontname.c_str());
+				font_size = fonts[index].font_size;
+				auto ri = std::find(glyph_range_key.begin(), glyph_range_key.end(), fonts[index].glyph_range);
+				if (ri != glyph_range_key.end())
+				{
+					glyph_range = ri - glyph_range_key.begin();
+				}
+				std::string val = boost::to_lower_copy(fonts[index].fontname);
+				auto fi = std::find_if(font_cstr_filenames.begin(), font_cstr_filenames.end(), [&val](const std::string& a) {
+					return val == boost::to_lower_copy(a);
+				});
+				if (fi != font_cstr_filenames.end())
+				{
+					fontname_idx = fi - font_cstr_filenames.begin();
+				}
+				else
+				{
+					fontname_idx = -1;
+				}
+				font_setting_dirty = true;
+			}
+			if (ImGui::Button("Up"))
+			{
+				if (index > 0)
+				{
+					std::swap(fonts[index], fonts[index - 1]);
+					SaveSettings();
+					decIndex = true;
+					font_setting_dirty = true;
+				}
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Down"))
+			{
+				if (index + 1 < fonts.size())
+				{
+					std::swap(fonts[index], fonts[index + 1]);
+					SaveSettings();
+					incIndex = true;
+					font_setting_dirty = true;
+				}
+			}
+			ImGui::SameLine();
+			//if (ImGui::Button("Edit"))
+			//{
+			//	if(index_ >= 0)
+			//		ImGui::OpenPopup("Edit Column");
+			//}
+			//ImGui::SameLine();
+
+			if (ImGui::Button("Remove"))
+			{
+				if (index >= 0)
+				{
+					fonts.erase(fonts.begin() + index);
+					font_setting_dirty = true;
+					SaveSettings();
+				}
+				if (index >= fonts.size())
+				{
+					decIndex = true;
+				}
+			}
+			if (decIndex)
+			{
+				--index_;
+				index = index_;
+				if (index >= 0)
+				{
+					strcpy(buf, fonts[index].fontname.c_str());
+					font_size = fonts[index].font_size;
+					auto ri = std::find(glyph_range_key.begin(), glyph_range_key.end(), fonts[index].glyph_range);
+					if (ri != glyph_range_key.end())
+					{
+						glyph_range = ri - glyph_range_key.begin();
+					}
+					font_setting_dirty = true;
+				}
+				else
+				{
+					strcpy(buf, "");
+					font_size = 15.0f;
+					glyph_range = 0;
+				}
+			}
+			if (incIndex)
+			{
+				++index_;
+				index = index_;
+				if (index < fonts.size())
+				{
+					strcpy(buf, fonts[index].fontname.c_str());
+					font_size = fonts[index].font_size;
+					auto ri = std::find(glyph_range_key.begin(), glyph_range_key.end(), fonts[index].glyph_range);
+					if (ri != glyph_range_key.end())
+					{
+						glyph_range = ri - glyph_range_key.begin();
+					}
+					font_setting_dirty = true;
+				}
+				else
+				{
+					strcpy(buf, "");
+					font_size = 15.0f;
+					glyph_range = 0;
+				}
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Append"))
+			{
+				font_size = font_sizes;
+				ImGui::OpenPopup("Append Column");
+			}
+			if (ImGui::BeginPopup("Append Column"))
+			{
+				static char buf[100] = { 0, };
+				static int glyph_range = 0;
+				static int fontname_idx = -1;
+				if (ImGui::Combo("FontName", &fontname_idx, font_cstr_filenames.data(), font_cstr_filenames.size()))
+				{
+					if (fontname_idx >= 0)
+					{
+						strcpy(buf, font_cstr_filenames[fontname_idx]);
+					}
+				}
+				if (ImGui::InputText("FontName", buf, 99))
+				{
+					std::string val = boost::to_lower_copy(std::string(buf));
+					auto fi = std::find_if(font_cstr_filenames.begin(), font_cstr_filenames.end(), [&val](const std::string& a) {
+						return val == boost::to_lower_copy(a);
+					});
+					if (fi != font_cstr_filenames.end())
+					{
+						fontname_idx = fi - font_cstr_filenames.begin();
+					}
+					else
+					{
+						fontname_idx = -1;
+					}
+					SaveSettings();
+				}
+				if (ImGui::Combo("GlyphRange", &glyph_range, glyph_range_key.data(), glyph_range_key.size()))
+				{
+				}
+				if (ImGui::InputFloat("Size", &font_size, 0.5f))
+				{
+					font_size = std::min(std::max(font_size, 6.0f), 30.0f);
+				}
+				if (ImGui::Button("Append"))
+				{
+					if (glyph_range >= 0)
+					{
+						Font font;
+						font.fontname = buf;
+						font.font_size = font_size;
+						font.glyph_range = glyph_range_key[glyph_range];
+						fonts.push_back(font);
+						ImGui::CloseCurrentPopup();
+						strcpy(buf, "");
+						current_item = -1;
+						font_size = font_sizes;
+						font_setting_dirty = true;
+						SaveSettings();
+					}
+				}
+				ImGui::EndPopup();
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Default"))
+			{
+				font_sizes = 13;
+				fonts = {
+					Font("consolab.ttf", "Default", font_sizes),
+					Font("Default", "Default", font_sizes), // Default will ignore font size.
+					Font("ArialUni.ttf", "Japanese", font_sizes),
+					Font("NanumBarunGothic.ttf", "Korean", font_sizes),
+					Font("gulim.ttc", "Korean", font_sizes),
+				};
+				font_setting_dirty = true;
+			}
+
+			//if (ImGui::BeginPopup("Edit Column"))
+			if (index >= 0)
+			{
+				ImGui::BeginGroup();
+				ImGui::Text("Edit");
+				ImGui::Separator();
+				//font_cstr_filenames;
+				if (ImGui::Combo("FontName", &fontname_idx, font_cstr_filenames.data(), font_cstr_filenames.size()))
+				{
+					if (fontname_idx >= 0)
+					{
+						fonts[index].fontname = font_cstr_filenames[fontname_idx];
+						strcpy(buf, font_cstr_filenames[fontname_idx]);
+						SaveSettings();
+						font_setting_dirty = true;
+					}
+				}
+				if (ImGui::InputText("FontName", buf, 99))
+				{
+					fonts[index].fontname = buf;
+					std::string val = boost::to_lower_copy(fonts[index].fontname);
+					auto fi = std::find_if(font_cstr_filenames.begin(), font_cstr_filenames.end(), [&val](const std::string& a) {
+						return val == boost::to_lower_copy(a);
+					});
+					if (fi != font_cstr_filenames.end())
+					{
+						fontname_idx = fi - font_cstr_filenames.begin();
+					}
+					else
+					{
+						fontname_idx = -1;
+					}
+					font_setting_dirty = true;
+					SaveSettings();
+				}
+				if (ImGui::Combo("GlyphRange", &glyph_range, glyph_range_key.data(), glyph_range_key.size()))
+				{
+					if (glyph_range >= 0)
+					{
+						fonts[index].glyph_range = glyph_range_key[glyph_range];
+						font_setting_dirty = true;
+						SaveSettings();
+					}
+				}
+				if (ImGui::InputFloat("Size", &font_size, 0.5f))
+				{
+					font_size = std::min(std::max(font_size, 6.0f), 30.0f);
+					fonts[index].font_size = font_size;
+					font_setting_dirty = true;
+					SaveSettings();
+				}
+				ImGui::Separator();
+				ImGui::EndGroup();
+			}
+			if (ImGui::InputFloat("FontSizes (for all)", &font_sizes, 0.5f))
+			{
+				font_sizes = std::min(std::max(font_sizes, 6.0f), 30.0f);
+				for (auto i = fonts.begin(); i != fonts.end(); ++i)
+				{
+					i->font_size = font_sizes;
+				}
+				font_size = font_sizes;
+				font_setting_dirty = true;
+				SaveSettings();
+			}
+		}
+		ImGui::TreePop();
 	}
 }
 
@@ -1304,188 +1647,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 			}
 			ImGui::TreePop();
 		}
-		if (ImGui::TreeNode("Fonts"))
-		{
-			ImGui::Text("The font settings are applied at the next start.");
-			ImGui::Text("Default font is \'Default\'");
-			{
-				std::vector<const char*> data;
-				data.reserve(fonts.size());
-				for (int i = 0; i < fonts.size(); ++i)
-				{
-					data.push_back(fonts[i].fontname.c_str());
-				}
-
-				static int index_ = -1;
-				static char buf[100] = { 0, };
-				static int current_item = -1;
-				static float font_size = 12.0f;
-				static int glyph_range = 0;
-				static int index = -1;
-				bool decIndex = false;
-				bool incIndex = false;
-				static float font_size_default = 12.0f;
-				if (ImGui::InputFloat("FontSizes", &font_size_default, 0.5f))
-				{
-					for (auto i = fonts.begin(); i != fonts.end(); ++i)
-					{
-						i->font_size = font_size_default;
-					}
-					SaveSettings();
-				}
-				if (ImGui::ListBox("Fonts", &index_, data.data(), data.size()))
-				{
-					index = index_;
-					strcpy(buf, fonts[index].fontname.c_str());
-					font_size = fonts[index].font_size;
-					auto ri = std::find(glyph_range_key.begin(), glyph_range_key.end(), fonts[index].glyph_range);
-					if (ri != glyph_range_key.end())
-					{
-						glyph_range = ri - glyph_range_key.begin();
-					}
-				}
-				if (ImGui::Button("Up"))
-				{
-					if (index > 0)
-					{
-						std::swap(fonts[index], fonts[index - 1]);
-						SaveSettings();
-						decIndex = true;
-					}
-				}
-				ImGui::SameLine();
-				if (ImGui::Button("Down"))
-				{
-					if (index + 1 < fonts.size())
-					{
-						std::swap(fonts[index], fonts[index + 1]);
-						SaveSettings();
-						incIndex = true;
-					}
-				}
-				ImGui::SameLine();
-				if (ImGui::Button("Edit"))
-				{
-					ImGui::OpenPopup("Edit Column");
-				}
-				if (ImGui::BeginPopup("Edit Column"))
-				{
-					if (ImGui::InputText("FontName", buf, 99))
-					{
-						fonts[index].fontname = buf;
-						SaveSettings();
-					}
-					if (ImGui::Combo("GlyphRange", &glyph_range, glyph_range_key.data(), glyph_range_key.size()))
-					{
-						if (glyph_range >= 0)
-						{
-							fonts[index].glyph_range = glyph_range_key[glyph_range];
-							SaveSettings();
-						}
-					}
-					if (ImGui::InputFloat("Size", &font_size, 0.5f))
-					{
-						fonts[index].font_size = font_size;
-						SaveSettings();
-					}
-					ImGui::EndPopup();
-				}
-				ImGui::SameLine();
-
-				if (ImGui::Button("Remove"))
-				{
-					if (index > 0)
-					{
-						fonts.erase(fonts.begin() + index);
-						SaveSettings();
-					}
-					if (index >= fonts.size())
-					{
-						decIndex = true;
-					}
-				}
-				if (decIndex)
-				{
-					--index_;
-					index = index_;
-					if (index >= 0)
-					{
-						strcpy(buf, fonts[index].fontname.c_str());
-						font_size = fonts[index].font_size;
-						auto ri = std::find(glyph_range_key.begin(), glyph_range_key.end(), fonts[index].glyph_range);
-						if (ri != glyph_range_key.end())
-						{
-							glyph_range = ri - glyph_range_key.begin();
-						}
-					}
-					else
-					{
-						strcpy(buf, "");
-						font_size = 15.0f;
-						glyph_range = 0;
-					}
-				}
-				if (incIndex)
-				{
-					++index_;
-					index = index_;
-					if (index < fonts.size())
-					{
-						strcpy(buf, fonts[index].fontname.c_str());
-						font_size = fonts[index].font_size;
-						auto ri = std::find(glyph_range_key.begin(), glyph_range_key.end(), fonts[index].glyph_range);
-						if (ri != glyph_range_key.end())
-						{
-							glyph_range = ri - glyph_range_key.begin();
-						}
-					}
-					else
-					{
-						strcpy(buf, "");
-						font_size = 15.0f;
-						glyph_range = 0;
-					}
-				}
-				ImGui::SameLine();
-				if (ImGui::Button("Append"))
-				{
-					font_size = font_size_default;
-					ImGui::OpenPopup("Append Column");
-				}
-				if (ImGui::BeginPopup("Append Column"))
-				{
-					static char buf[100] = { 0, };
-					static int glyph_range = -1;
-					if (ImGui::InputText("FontName", buf, 99))
-					{
-					}
-					if (ImGui::Combo("GlyphRange", &glyph_range, glyph_range_key.data(), glyph_range_key.size()))
-					{
-					}
-					if (ImGui::InputFloat("Size", &font_size, 0.5f))
-					{
-					}
-					if (ImGui::Button("Append"))
-					{
-						if (glyph_range >= 0)
-						{
-							Font font;
-							font.fontname = buf;
-							font.font_size = font_size;
-							font.glyph_range = glyph_range_key[glyph_range];
-							fonts.push_back(font);
-							ImGui::CloseCurrentPopup();
-							strcpy(buf, "");
-							current_item = -1;
-							font_size = font_size_default;
-							SaveSettings();
-						}
-					}
-					ImGui::EndPopup();
-				}
-			}
-			ImGui::TreePop();
-		}
+		FontsPreferences();
 		if (ImGui::TreeNode("Colors"))
 		{
 			if (ImGui::TreeNode("Group"))
