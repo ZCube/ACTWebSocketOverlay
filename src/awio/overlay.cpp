@@ -952,6 +952,7 @@ void LoadSettings(ImGuiContext* context)
 								ImGuiContext & g = *context;
 								g.Initialized = true;
 								size = ImMax(size, g.Style.WindowMinSize);
+								size = ImMax(size, ImVec2(100,50));
 								ImGuiID id = ImHash(name.c_str(), 0);
 								{
 									for (int i = 0; i != g.Settings.Size; i++)

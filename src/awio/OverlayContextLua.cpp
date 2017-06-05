@@ -205,6 +205,7 @@ void OverlayContextLua::SetTexture(ImTextureID texture, const std::unordered_map
 }
 
 extern "C" int getImage(lua_State* L);
+extern "C" int saveWindowPos(lua_State* L);
 extern "C" int getWindowSize(lua_State* L);
 extern "C" int setWindowSize(lua_State* L);
 extern "C" int getColor4(lua_State* L);
@@ -334,6 +335,7 @@ bool OverlayContextLua::Init(boost::filesystem::path path) {
 				lua_register(L_render, "jsonEncodePretty", jsonEncodePretty);
 				lua_register(L_render, "jsonDecode", jsonDecode);
 				lua_register(L_render, "getImage", getImage);
+				lua_register(L_render, "saveWindowPos", saveWindowPos);
 				lua_register(L_render, "getWindowSize", getWindowSize);
 				lua_register(L_render, "setWindowSize", setWindowSize);
 				

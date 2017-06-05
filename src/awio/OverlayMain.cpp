@@ -36,6 +36,15 @@ void ClearUniqueValues();
 boost::recursive_mutex instanceLock;
 static OverlayInstance instance;
 
+extern "C" int saveWindowPos(lua_State* L)
+{
+	boost::recursive_mutex::scoped_lock l(instanceLock);
+	{
+		instance.options.SaveWindowPos();
+	}
+	return 0;
+}
+
 extern "C" int getWindowSize(lua_State* L)
 {
 	boost::recursive_mutex::scoped_lock l(instanceLock);
@@ -62,6 +71,7 @@ extern "C" int getWindowSize(lua_State* L)
 	}
 	return 2;
 }
+
 extern "C" int setWindowSize(lua_State* L)
 {
 	boost::recursive_mutex::scoped_lock l(instanceLock);
@@ -367,7 +377,7 @@ extern "C" int ModUnInit(ImGuiContext* context)
 {
 	boost::recursive_mutex::scoped_lock l(instanceLock);
 	try {
-		instance.UnloadScripts();
+		//instance.UnloadScripts();
 	}
 	catch (...)
 	{
@@ -430,8 +440,13 @@ extern "C" bool ModMenu(bool* show)
 
 extern "C" bool ModUpdateFont(ImGuiContext* context)
 {
+	boost::recursive_mutex::scoped_lock l(instanceLock);
 	if (instance.font_setting_dirty)
+	{
+		instance.context = context;
 		instance.LoadFonts();
+		return true;
+	}
 	return false;
 }
 
@@ -448,7 +463,7 @@ void OverlayInstance::SetTexture(ImTextureID texture)
 
 OverlayInstance::OverlayInstance()
 {
-	options.show_preferences = true;
+	options.show_preferences = false;
 	style_colors = {
 		{ "Text",                  &imgui_style.Colors[ImGuiCol_Text] },
 		{ "TextDisabled",          &imgui_style.Colors[ImGuiCol_TextDisabled] },
@@ -854,6 +869,7 @@ void OverlayInstance::Preferences() {
 	char buf[256] = { 0, };
 	sprintf_s(buf, 256, "Preferences");
 	options.show_preferences = true;
+	ImGui::SetNextWindowPosCenter(ImGuiSetCond_Appearing);
 	if (ImGui::Begin(buf, &options.show_preferences, options.GetDefaultSize("Preferences", ImVec2(300,300)), -1, ImGuiWindowFlags_NoCollapse))
 	{
 		ImGui::Text("ACTWebSocketOverlay - %s", VERSION_LONG_STRING);
@@ -925,8 +941,16 @@ void OverlayInstance::Render(ImGuiContext * context)
 {
 	if (context != this->context)
 	{
-		this->context;
-		Load();
+		ImGui::SetCurrentContext(context);
+		this->context = context;
+		if (!initialized)
+		{
+			Init(context, root_path);
+		}
+		else
+		{
+			Load();
+		}
 	}
 	bool move_key_pressed = GetAsyncKeyState(VK_SHIFT) && GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_MENU);
 	bool use_input = options.movable || options.show_preferences || move_key_pressed;
@@ -971,8 +995,10 @@ void OverlayInstance::Load() {
 	Json::Value setting;
 	try {
 		std::ifstream fin(setting_path.wstring());
+		options.show_preferences = true;
 		if (r.parse(fin, setting))
 		{
+			options.show_preferences = false;
 			preference_storage.FromJson(setting);
 
 			{
@@ -1047,40 +1073,59 @@ void OverlayInstance::Load() {
 						ImVec2 pos = ImVec2(win["x"].asFloat(), win["y"].asFloat());
 						ImVec2 size = ImVec2(win["width"].asFloat(), win["height"].asFloat());
 						options.windows_default_sizes[name] = size;
-						ImGuiIniData* settings = nullptr;
-						if (context)
+						size = ImMax(size, context->Style.WindowMinSize);
+						size = ImMax(size, ImVec2(100, 50));
+						if (pos.x < 0)
+							pos.x = 0;
+						if (pos.y < 0)
+							pos.y = 0;
+
+						ImGuiWindow* window = ImGui::FindWindowByName(name.c_str());
+						if (window)
 						{
-							ImGuiContext & g = *context;
-							g.Initialized = true;
-							size = ImMax(size, g.Style.WindowMinSize);
-							ImGuiID id = ImHash(name.c_str(), 0);
+							ImGui::SetWindowPos(name.c_str(), ImVec2(pos.x, pos.y), ImGuiSetCond_Always);
+							ImGui::SetWindowSize(name.c_str(), ImVec2(size.x, size.y), ImGuiSetCond_Always);
+						}
+						else
+						{
+							if (context)
 							{
-								for (int i = 0; i != g.Settings.Size; i++)
+								ImGuiIniData * settings = nullptr;
+								ImGuiContext & g = *context;
+								g.Initialized = true;
+								ImGuiID id = ImHash(name.c_str(), 0);
 								{
-									ImGuiIniData* ini = &g.Settings[i];
-									if (ini->Id == id)
+									for (int i = 0; i != g.Settings.Size; i++)
 									{
+										ImGuiIniData* ini = &g.Settings[i];
+										if (ini->Id == id)
+										{
+											settings = ini;
+											break;
+										}
+									}
+									if (settings == nullptr)
+									{
+										context->Settings.resize(context->Settings.Size + 1);
+										ImGuiIniData* ini = &context->Settings.back();
+										ini->Name = ImStrdup(name.c_str());
+										ini->Id = ImHash(name.c_str(), 0);
+										ini->Collapsed = false;
+										ini->Pos = ImVec2(FLT_MAX, FLT_MAX);
+										ini->Size = ImVec2(0, 0);
 										settings = ini;
-										break;
 									}
 								}
-								if (settings == nullptr)
+								if (settings)
 								{
-									context->Settings.resize(context->Settings.Size + 1);
-									ImGuiIniData* ini = &context->Settings.back();
-									ini->Name = ImStrdup(name.c_str());
-									ini->Id = ImHash(name.c_str(), 0);
-									ini->Collapsed = false;
-									ini->Pos = ImVec2(FLT_MAX, FLT_MAX);
-									ini->Size = ImVec2(0, 0);
-									settings = ini;
+									if (pos.x < 0)
+										pos.x = 0;
+									if (pos.y < 0)
+										pos.y = 0;
+									settings->Pos = pos;
+									settings->Size = size;
 								}
 							}
-						}
-						if (settings)
-						{
-							settings->Pos = pos;
-							settings->Size = size;
 						}
 					}
 				}
@@ -1122,24 +1167,37 @@ void OverlayInstance::Save() {
 	setting["fonts"] = fonts;
 
 	Json::Value windows;
-	if(context)
+	//if(context)
+	//{
+	//	ImGuiContext& g = *context;
+	//	{
+	//		for (int i = 0; i != g.Windows.Size; i++)
+	//		{
+	//			ImGuiWindow* window = g.Windows[i];
+	//			if (window->Flags & ImGuiWindowFlags_NoSavedSettings)
+	//				continue;
+	//			Json::Value win;
+	//			win["name"] = window->Name;
+	//			win["x"] = window->Pos.x;
+	//			win["y"] = window->Pos.y;
+	//			win["width"] = window->SizeFull.x;
+	//			win["height"] = window->SizeFull.y;
+	//			windows[window->Name] = win;
+	//		}
+	//	}
+	//}
+	for (auto pos = options.windows_default_pos.begin(); pos != options.windows_default_pos.end();++pos)
 	{
-		ImGuiContext& g = *context;
-		{
-			for (int i = 0; i != g.Windows.Size; i++)
-			{
-				ImGuiWindow* window = g.Windows[i];
-				if (window->Flags & ImGuiWindowFlags_NoSavedSettings)
-					continue;
-				Json::Value win;
-				win["name"] = window->Name;
-				win["x"] = window->Pos.x;
-				win["y"] = window->Pos.y;
-				win["width"] = window->SizeFull.x;
-				win["height"] = window->SizeFull.y;
-				windows[window->Name] = win;
-			}
-		}
+		const std::string name = pos->first;
+		Json::Value win;
+		win["name"] = name;
+		win["x"] = pos->second.x;
+		win["y"] = pos->second.y;
+		ImVec2& size = options.windows_default_sizes[name];
+		size = ImMax(size, context->Style.WindowMinSize);
+		win["width"] = size.x;
+		win["height"] = size.y;
+		windows[name] = win;
 	}
 	setting["windows"] = windows;
 
@@ -1150,7 +1208,6 @@ void OverlayInstance::Save() {
 	fout << w.write(setting);
 	fout.close();
 }
-
 
 void OverlayInstance::Init(ImGuiContext * context, const boost::filesystem::path & path) {
 	root_path = path;
@@ -1282,8 +1339,9 @@ void OverlayInstance::LoadFonts()
 {
 	// Changing or adding fonts at runtime causes a crash.
 	// TODO: is it possible ?...
-
-	ImGuiIO& io = ImGui::GetIO();
+	if (!context)
+		return;
+	ImGuiIO& io = context->IO;
 
 	WCHAR result[MAX_PATH] = {};
 	GetWindowsDirectoryW(result, MAX_PATH);

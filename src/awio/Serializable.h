@@ -47,8 +47,9 @@ public:
 
 struct OverlayOption
 {
-	bool movable;
-	bool show_preferences;
+	bool& movable;
+	bool& show_preferences;
+	std::map<std::string, ImVec2> windows_default_pos;
 	std::map<std::string, ImVec2> windows_default_sizes;
 	ImVec2& GetDefaultSize(const std::string& name, ImVec2 default)
 	{
@@ -60,6 +61,7 @@ struct OverlayOption
 		windows_default_sizes[name] = default;
 		return windows_default_sizes[name];
 	}
+	void SaveWindowPos();
 };
 
 class Image : public Serializable

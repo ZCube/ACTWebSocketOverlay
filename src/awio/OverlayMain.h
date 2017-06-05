@@ -23,7 +23,10 @@
 class OverlayInstance : public PreferenceBase
 {
 public:
-	OverlayOption options = { true, true };
+	OverlayOption options = {
+		preference_storage.boolean_map["Movable"],
+		preference_storage.boolean_map["ShowPreferences"],
+	};
 protected:
 	boost::mutex m;
 	std::unordered_map<std::string, std::shared_ptr<OverlayContextBase> > overlays;

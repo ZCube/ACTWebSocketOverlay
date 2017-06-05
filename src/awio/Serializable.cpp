@@ -6,6 +6,8 @@
 #include <imgui.h>
 #include <string>
 #include <boost/algorithm/hex.hpp>
+#include "Serializable.h"
+#include <imgui_internal.h>
 
 ImVec4 htmlCodeToImVec4(const std::string hex)
 {
@@ -27,3 +29,24 @@ const std::string ImVec4TohtmlCode(ImVec4 val)
 	boost::algorithm::hex(dat, dat + 4, std::back_inserter(ret));
 	return ret;
 }
+
+void OverlayOption::SaveWindowPos()
+{
+	if (ImGui::GetCurrentContext())
+	{
+		ImVec2 pos = ImGui::GetWindowPos();
+		ImVec2 size = ImGui::GetWindowSize();
+		if (auto window = ImGui::GetCurrentWindow())
+		{
+			windows_default_pos[window->Name] = pos;
+			//ImVec2(
+			//	pos.x / ImGui::GetIO().DisplaySize.x,
+			//	pos.y / ImGui::GetIO().DisplaySize.y);
+			windows_default_sizes[window->Name] = size;
+			//ImVec2(
+			//	size.x / ImGui::GetIO().DisplaySize.x,
+			//	size.y / ImGui::GetIO().DisplaySize.y);
+		}
+	}
+}
+

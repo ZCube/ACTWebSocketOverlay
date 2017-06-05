@@ -86,7 +86,8 @@ public:
 			ImGui::PushStyleColor(ImGuiCol_Text, ColorWithAlpha(preference_storage.color_map["TitleText"], text_opacity * global_opacity));
 			ImGui::Begin("AWIO", nullptr, options->GetDefaultSize("AWIO",ImVec2(500,200)), -1,
 				ImGuiWindowFlags_NoTitleBar | (use_input ? NULL : ImGuiWindowFlags_NoInputs));
-			options->windows_default_sizes["AWIO"] = ImGui::GetWindowSize();
+			if(options)
+				options->SaveWindowPos();
 
 			processed_data_mutex.lock();
 

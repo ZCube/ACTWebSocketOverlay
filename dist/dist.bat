@@ -9,10 +9,10 @@ SET OWNER=ZCube
 SET REPO=ACTWebSocketOverlay
 
 echo ==========================================================================================
-@py -2 github_uploader.py %GITHUB_TOKEN% %OWNER% %REPO% %tag% ACTWebSocketOverlay_nonssl_%version%.zip
-REM @py -2 github_uploader.py %GITHUB_TOKEN% %OWNER% %REPO% %tag% ACTWebSocketOverlay_lua_nonssl_%version%.zip
-@py -2 github_uploader.py %GITHUB_TOKEN% %OWNER% %REPO% %tag% ACTWebSocketOverlay_ffxiv_nonssl_%version%.zip
-REM @py -2 github_uploader.py %GITHUB_TOKEN% %OWNER% %REPO% %tag% ACTWebSocketOverlay_ffxiv_lua_nonssl_%version%.zip
+REM @py -2 github_uploader.py %GITHUB_TOKEN% %OWNER% %REPO% %tag% ACTWebSocketOverlay_nonssl_%version%.zip
+@py -2 github_uploader.py %GITHUB_TOKEN% %OWNER% %REPO% %tag% ACTWebSocketOverlay_lua_nonssl_%version%.zip
+REM @py -2 github_uploader.py %GITHUB_TOKEN% %OWNER% %REPO% %tag% ACTWebSocketOverlay_ffxiv_nonssl_%version%.zip
+@py -2 github_uploader.py %GITHUB_TOKEN% %OWNER% %REPO% %tag% ACTWebSocketOverlay_ffxiv_lua_nonssl_%version%.zip
 echo ==========================================================================================
 
 :SetVariables
@@ -24,9 +24,9 @@ echo %dropBoxRoot%
 
 if not exist "%dropBoxRoot%\share" mkdir "%dropBoxRoot%\share"
 if %errorlevel% neq 0 exit /b %errorlevel%
-xcopy /hrkysd  "%CD%\ACTWebSocketOverlay_nonssl_latest.zip" /exclude:exclude_files.txt "%dropBoxRoot%\share\ACTWebSocketOverlay_latest.zip"
+xcopy /hrkysd  "%CD%\ACTWebSocketOverlay_lua_nonssl_latest.zip" /exclude:exclude_files.txt "%dropBoxRoot%\share\ACTWebSocketOverlay_latest.zip"
 if %errorlevel% neq 0 exit /b %errorlevel%
-xcopy /hrkysd  "%CD%\ACTWebSocketOverlay_ffxiv_nonssl_latest.zip" /exclude:exclude_files.txt "%dropBoxRoot%\share\ACTWebSocketOverlay_ffxiv_latest.zip"
+xcopy /hrkysd  "%CD%\ACTWebSocketOverlay_ffxiv_lua_nonssl_latest.zip" /exclude:exclude_files.txt "%dropBoxRoot%\share\ACTWebSocketOverlay_ffxiv_latest.zip"
 if %errorlevel% neq 0 exit /b %errorlevel%
 copy /y "%CD%\..\src\version" "%dropBoxRoot%\share\ACTWebSocketOverlay_version"
 if %errorlevel% neq 0 exit /b %errorlevel%
