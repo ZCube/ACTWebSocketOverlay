@@ -280,8 +280,9 @@ PreferenceNode OverlayContextLua::LoadPreferenceNode(const std::string& name, co
 	return node;
 }
 
-bool OverlayContextLua::Init(boost::filesystem::path path) {
-	path = boost::filesystem::absolute(path);
+bool OverlayContextLua::Init(const boost::filesystem::path& path_) {
+	boost::filesystem::path path = boost::filesystem::absolute(path_);
+	root_path = path;
 	auto script_path = path / "script.json";
 
 	if (boost::filesystem::exists(script_path))
@@ -458,7 +459,7 @@ bool OverlayContextLua::Init(boost::filesystem::path path) {
 	return true;
 }
 
-void OverlayContextLua::Render(bool use_input, struct OverlayOption* options)
+void OverlayContextLua::Render(bool use_input, class OverlayOption* options)
 {
 	if (IsLoaded() && L_render)
 	{

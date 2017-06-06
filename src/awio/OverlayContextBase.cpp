@@ -11,6 +11,17 @@
 
 void OverlayContextBase::Process(const std::string & message_str) {}
 
+OverlayContextBase::OverlayContextBase() {
+	websocket_ssl = false;
+	websocket_host = "localhost";
+	websocket_port = 0;
+	websocket_path = "/";
+}
+
+boost::filesystem::path OverlayContextBase::GetImagesPath() {
+	return root_path / "images";
+}
+
 void OverlayContextBase::WebSocketRun()
 {
 	auto func = [this]()
@@ -106,5 +117,99 @@ void OverlayContextBase::WebSocketRun()
 		websocket_thread->join();
 	loop = true;
 	websocket_thread = std::make_shared<std::thread>(func);
+}
+
+void OverlayContextBase::WebSocketStop()
+{
+	loop = false;
+	if (websocket_thread)
+	{
+		websocket_thread->join();
+		websocket_thread.reset();
+	}
+}
+
+void OverlayContextBase::Preferences()
+{
+	ImGui::PushID(name.c_str());
+	if (ImGui::TreeNode(name.c_str(), "%s : %s", name.c_str(), websocket_message))
+	{
+		ImGui::Separator();
+		if (ImGui::TreeNode("WebSocket", "WebSocket : %s://%s:%d%s",
+#if defined(USE_SSL)
+			websocket_ssl ? "wss" :
+#endif
+			"ws", websocket_host.c_str(), websocket_port, websocket_path.c_str()))
+		{
+#if defined(USE_SSL)
+			if (ImGui::Checkbox("Use SSL", &websocket_ssl))
+			{
+				websocket_reconnect = true;
+				if (websocket)
+				{
+					websocket->close(beast::websocket::close_reason(0));
+				}
+				strcpy_s(websocket_message, 1023, "Connecting...");
+				Save();
+			}
+#endif
+			{
+				websocket_host.reserve(65);
+				if (ImGui::InputText("Host", (char*)websocket_host.data(), 64))
+				{
+					int len = strnlen_s(websocket_host.data(), 64);
+					websocket_host.resize(len);
+
+					websocket_reconnect = true;
+					if (websocket)
+					{
+						websocket->close(beast::websocket::close_reason(0));
+					}
+					strcpy_s(websocket_message, 1023, "Connecting...");
+					Save();
+				}
+			}
+			{
+				websocket_path.reserve(1024);
+				websocket_path[0] = '/';
+				if (ImGui::InputText("Path", (char*)websocket_path.data() + 1, 1022))
+				{
+					int len = strnlen_s(websocket_path.data() + 1, 1022);
+					websocket_path.resize(len + 1);
+
+					websocket_reconnect = true;
+					if (websocket)
+					{
+						websocket->close(beast::websocket::close_reason(0));
+					}
+					strcpy_s(websocket_message, 1023, "Connecting...");
+					Save();
+				}
+			}
+			if (ImGui::InputInt("Port", &websocket_port))
+			{
+				websocket_reconnect = true;
+				if (websocket)
+				{
+					websocket->close(beast::websocket::close_reason(0));
+				}
+				strcpy_s(websocket_message, 1023, "Connecting...");
+				Save();
+			}
+			ImGui::TreePop();
+		}
+		PreferencesBody();
+		ImGui::Separator();
+		ImGui::TreePop();
+	}
+	ImGui::PopID();
+}
+
+void OverlayContextBase::PreferencesBody()
+{
+	for (auto i = preference_nodes.begin(); i != preference_nodes.end(); ++i)
+	{
+		PreferenceBase::Preferences(*i, preference_storage);
+	}
 }
 

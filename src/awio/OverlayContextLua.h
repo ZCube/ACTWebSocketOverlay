@@ -34,8 +34,8 @@ public:
 public:
 	OverlayContextLua();
 	virtual ~OverlayContextLua();
-	virtual bool Init(boost::filesystem::path path);
-	virtual void Render(bool use_input, struct OverlayOption* options);
+	virtual bool Init(const boost::filesystem::path& path);
+	virtual void Render(bool use_input, class OverlayOption* options);
 	virtual bool IsLoaded();
 	virtual void Preferences();
 	virtual void SetTexture(ImTextureID texture, const std::unordered_map<std::string, Image>* images);

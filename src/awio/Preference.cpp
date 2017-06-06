@@ -5,6 +5,27 @@
 
 #include "Preference.h"
 
+void PreferenceBase::SetRoot(PreferenceBase * root)
+{
+	this->root = root;
+}
+
+void PreferenceBase::Save()
+{
+	if (root != nullptr)
+	{
+		root->Save();
+	}
+}
+
+void PreferenceBase::Load()
+{
+	if (root != nullptr)
+	{
+		root->Load();
+	}
+}
+
 void PreferenceBase::Preferences(PreferenceNode & preference_node, PreferenceStorage & preference_storage)
 {
 	const char* name = preference_node.name.c_str();

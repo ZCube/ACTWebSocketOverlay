@@ -45,22 +45,14 @@ public:
 	}
 };
 
-struct OverlayOption
+class OverlayOption
 {
+public:
 	bool& movable;
 	bool& show_preferences;
 	std::map<std::string, ImVec2> windows_default_pos;
 	std::map<std::string, ImVec2> windows_default_sizes;
-	ImVec2& GetDefaultSize(const std::string& name, ImVec2 default)
-	{
-		auto it = windows_default_sizes.find(name);
-		if (it != windows_default_sizes.end())
-		{
-			return it->second;
-		}
-		windows_default_sizes[name] = default;
-		return windows_default_sizes[name];
-	}
+	ImVec2& GetDefaultSize(const std::string& name, ImVec2 default);
 	void SaveWindowPos();
 };
 

@@ -33,6 +33,7 @@ protected:
 	std::vector<std::pair<std::string, ImVec4*>> style_colors;
 	boost::filesystem::path root_path;
 	boost::filesystem::path setting_path;
+	std::vector<uint8_t> atlas_image;
 
 	bool initialized = false;
 	
@@ -78,6 +79,7 @@ public:
 
 	ImGuiStyle imgui_style;
 	bool font_setting_dirty = false;
+	bool texture_setting_dirty = false;
 
 	void LoadFonts();
 	void LoadOverlays();

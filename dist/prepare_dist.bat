@@ -41,10 +41,22 @@ if %errorlevel% neq 0 exit /b %errorlevel%
 xcopy /hrkysd "..\external\reshade\bin\Win32\Release\ReShade32.dll" "%dest%\%reshade32dst%"
 if %errorlevel% neq 0 exit /b %errorlevel%
 
+IF /I "%use_atlas%"=="FALSE" (
+    GOTO NON_ATLAS
+)
+:ATLAS
 rem resource
 xcopy /hrkysd "..\resource\overlay_atlas.*" "%dest%\overlay_atlas.*"
 if %errorlevel% neq 0 exit /b %errorlevel%
+GOTO LAST_RESOURCE
 
+:NON_ATLAS
+if not exist %dest%\images             mkdir %dest%\images
+rem resource
+xcopy /hrkysd "..\textures\images\*.png" "%dest%\images\*.*"
+if %errorlevel% neq 0 exit /b %errorlevel%
+
+:LAST_RESOURCE
 xcopy /hrkysd "..\sample_scripts\*.*" "%dest%\sample_scripts\*.*"
 if %errorlevel% neq 0 exit /b %errorlevel%
 

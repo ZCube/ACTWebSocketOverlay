@@ -164,24 +164,9 @@ protected:
 public:
 	std::vector<PreferenceNode> preference_nodes;
 	PreferenceStorage preference_storage;
-	virtual void SetRoot(PreferenceBase* root)
-	{
-		this->root = root;
-	}
-	virtual void Save()
-	{
-		if (root != nullptr)
-		{
-			root->Save();
-		}
-	}
-	virtual void Load()
-	{
-		if (root != nullptr)
-		{
-			root->Load();
-		}
-	}
+	virtual void SetRoot(PreferenceBase* root);
+	virtual void Save();
+	virtual void Load();
 	virtual void Preferences(PreferenceNode& preference_node, PreferenceStorage& preference_storage);
 	virtual void Preferences();
 };

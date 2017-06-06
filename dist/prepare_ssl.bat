@@ -12,6 +12,7 @@ popd
 
 set postfix=_ssl
 set use_ssl=TRUE
+set use_atlas=TRUE
 set dest=ACTWebSocketOverlay%postfix%
 set reshade64dst=ReShade64.*
 set reshade32dst=ReShade32.*
@@ -23,6 +24,7 @@ call prepare_dist.bat
 
 set postfix=_lua_ssl
 set use_ssl=TRUE
+set use_atlas=FALSE
 set dest=ACTWebSocketOverlay%postfix%
 set reshade64dst=ReShade64.*
 set reshade32dst=ReShade32.*
@@ -34,6 +36,7 @@ call prepare_dist.bat
 
 set postfix=_ffxiv_ssl
 set use_ssl=TRUE
+set use_atlas=TRUE
 set dest=ACTWebSocketOverlay%postfix%
 set reshade64dst=dxgi.*
 set reshade32dst=d3d9.*
@@ -45,6 +48,7 @@ call prepare_dist.bat
 
 set postfix=_ffxiv_lua_ssl
 set use_ssl=TRUE
+set use_atlas=FALSE
 set dest=ACTWebSocketOverlay%postfix%
 set reshade64dst=dxgi.*
 set reshade32dst=d3d9.*

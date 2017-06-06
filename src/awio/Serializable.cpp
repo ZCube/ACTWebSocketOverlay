@@ -30,6 +30,17 @@ const std::string ImVec4TohtmlCode(ImVec4 val)
 	return ret;
 }
 
+ImVec2 & OverlayOption::GetDefaultSize(const std::string & name, ImVec2 default)
+{
+	auto it = windows_default_sizes.find(name);
+	if (it != windows_default_sizes.end())
+	{
+		return it->second;
+	}
+	windows_default_sizes[name] = default;
+	return windows_default_sizes[name];
+}
+
 void OverlayOption::SaveWindowPos()
 {
 	if (ImGui::GetCurrentContext())

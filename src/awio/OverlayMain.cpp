@@ -447,6 +447,11 @@ extern "C" bool ModUpdateFont(ImGuiContext* context)
 		instance.LoadFonts();
 		return true;
 	}
+	//if (instance.texture_setting_dirty)
+	//{
+	//	instance.context = context;
+	//	instance.LoadTexture();
+	//}
 	return false;
 }
 
@@ -1095,7 +1100,7 @@ void OverlayInstance::Load() {
 								g.Initialized = true;
 								ImGuiID id = ImHash(name.c_str(), 0);
 								{
-									for (int i = 0; i != g.Settings.Size; i++)
+									for (int i = 0; i != g.Settings.Size; ++i)
 									{
 										ImGuiIniData* ini = &g.Settings[i];
 										if (ini->Id == id)
@@ -1171,7 +1176,7 @@ void OverlayInstance::Save() {
 	//{
 	//	ImGuiContext& g = *context;
 	//	{
-	//		for (int i = 0; i != g.Windows.Size; i++)
+	//		for (int i = 0; i != g.Windows.Size; ++i)
 	//		{
 	//			ImGuiWindow* window = g.Windows[i];
 	//			if (window->Flags & ImGuiWindowFlags_NoSavedSettings)
@@ -1229,6 +1234,7 @@ void OverlayInstance::Init(ImGuiContext * context, const boost::filesystem::path
 		ReloadScripts();
 	}
 	LoadTexture();
+	SetTexture(overlay_texture);
 }
 
 void OverlayInstance::ReloadScripts() {
@@ -1244,57 +1250,182 @@ void OverlayInstance::UnloadScripts() {
 	ClearUniqueValues();
 }
 
-void OverlayInstance::LoadTexture()
+#define STBRP_STATIC
+#define STB_RECT_PACK_IMPLEMENTATION
+#include <stb_rect_pack.h>
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image_write.h>
+
+#define STB_TRUETYPE_IMPLEMENTATION
+#define STBTT_malloc(x,u)  ((void)(u), ImGui::MemAlloc(x))
+#define STBTT_free(x,u)    ((void)(u), ImGui::MemFree(x))
+#include "stb_truetype.h"
+
+void GetImages(const boost::filesystem::path& image_dir, std::vector<boost::filesystem::path>& image_paths)
 {
-	// texture
-	boost::filesystem::path texture_path = root_path / "overlay_atlas.png";
-	boost::filesystem::path atlas_json_path = root_path / "overlay_atlas.json";
-
-	if (!overlay_texture_filedata)
-	{
-		if (boost::filesystem::exists(texture_path))
-		{
-			FILE *file;
-			bool success = false;
-
-			if (_wfopen_s(&file, texture_path.wstring().c_str(), L"rb") == 0)
+	try {
+		boost::filesystem::directory_iterator itr, end_itr;
+		for (boost::filesystem::directory_iterator itr(image_dir); itr != end_itr; ++itr) {
+			if (boost::filesystem::exists(*itr) && boost::filesystem::is_regular_file(*itr))
 			{
-				overlay_texture_filedata = stbi_load_from_file(file, &overlay_texture_width, &overlay_texture_height, &overlay_texture_channels, STBI_rgb_alpha);
-				fclose(file);
-			}
-		}
-	}
-	if (boost::filesystem::exists(atlas_json_path) && overlay_texture_width > 0 && overlay_texture_height > 0)
-	{
-		bool success = false;
-
-		std::ifstream fin(atlas_json_path.wstring().c_str());
-		if (fin.is_open())
-		{
-			std::unordered_map<std::string, Image> overlay_images;
-			Json::Value overlay_atlas;;
-			Json::Reader r;
-			if (r.parse(fin, overlay_atlas))
-			{
-				for (auto i = overlay_atlas.begin(); i != overlay_atlas.end(); ++i)
+				std::string extension = boost::to_lower_copy(itr->path().extension().string());
+				if (extension == ".png")
 				{
-					std::string name = boost::to_lower_copy(i.key().asString());
-					boost::replace_all(name, ".png", "");
-					Image im;
-					im.x = (*i)["left"].asInt();
-					im.y = (*i)["top"].asInt();
-					im.width = (*i)["width"].asInt();
-					im.height = (*i)["height"].asInt();
-					im.uv0 = ImVec2(((float)im.x + 0.5f) / (float)overlay_texture_width,
-						((float)im.y + 0.5f) / (float)overlay_texture_width);
-					im.uv1 = ImVec2((float)(im.x + im.width - 1 + 0.5f) / (float)overlay_texture_width,
-						(float)(im.y + im.height - 1 + 0.5f) / (float)overlay_texture_width);
-					overlay_images[name] = im;
+					image_paths.push_back(itr->path());
 				}
 			}
-			this->overlay_images = overlay_images;
 		}
 	}
+	catch (...)
+	{
+	}
+}
+
+void OverlayInstance::LoadTexture()
+{
+	boost::filesystem::directory_iterator itr, end_itr;
+
+	std::map<std::string, std::vector<boost::filesystem::path>> image_paths;
+	std::vector<std::vector<std::string>> image_names;
+
+	for (auto i = overlays.begin(); i != overlays.end(); ++i) {
+		GetImages(i->second->GetImagesPath(), image_paths[i->second->name]);
+	}
+	std::vector<Image> image_infos;
+	std::vector<stbrp_rect> image_rects;
+	std::vector<uint8_t*> image_bytes;
+	for (auto i = overlays.begin(); i != overlays.end(); ++i) {
+		auto & paths = image_paths[i->second->name];
+		for (auto j = paths.begin(); j != paths.end(); ++j) {
+			int width = 0;
+			int height = 0;
+			int channels = 0;
+			{
+				FILE *file = nullptr;
+				uint8_t* image = nullptr;
+				if (_wfopen_s(&file, j->wstring().c_str(), L"rb") == 0)
+				{
+					image = stbi_load_from_file(file, &width, &height, &channels, STBI_rgb_alpha);
+					fclose(file);
+					if (image)
+					{
+						boost::filesystem::path rel = boost::filesystem::relative(*j, i->second->GetImagesPath());
+						rel = rel.replace_extension("");
+						std::string rel_name = boost::to_lower_copy(std::string(CW2A(rel.wstring().c_str(), CP_UTF8)));
+
+						boost::filesystem::path p = j->filename();
+						p = p.replace_extension("");
+						std::string name = boost::to_lower_copy(std::string(CW2A(p.wstring().c_str(), CP_UTF8)));
+						image_names.push_back({
+							name,
+							i->second->name + ":" + name,
+							rel_name,
+							i->second->name + ":" + rel_name
+						});
+
+
+						stbrp_rect rt;
+						rt.w = width;
+						rt.h = height;
+						rt.id = image_names.size() - 1;
+						rt.x = 0;
+						rt.y = 0;
+						image_rects.push_back(rt);
+						image_bytes.push_back(image);
+					}
+				}
+			}
+		}
+	}
+
+	stbrp_context context;
+
+	int s = 256;
+	bool packed_all = false;
+	for (int i = 0; i < image_rects.size(); ++i)
+	{
+		do
+		{
+			if (image_rects[i].x < s && image_rects[i].y < s)
+				break;
+			s = s * 2;
+		} while (true);
+	}
+	do
+	{
+		std::vector<stbrp_node> nodes;
+		nodes.resize(image_rects.size());
+
+		for (int i = 0; i < image_rects.size(); ++i)
+		{
+			image_rects[i].was_packed = 0;
+		}
+
+		stbrp_init_target(&context, s, s, nodes.data(), image_rects.size());
+		stbrp_pack_rects(&context, image_rects.data(), image_rects.size());
+
+		packed_all = true;
+		for (int i = 0; i < image_rects.size(); ++i)
+		{
+			if (!image_rects[i].was_packed)
+			{
+				packed_all = false;
+				break;
+			}
+		}
+		if (packed_all)
+			break;
+		s *= 2;
+	} while (true);
+
+	atlas_image.resize(s * s * 4, 0);
+	const int channels = 4;
+	for (int i = 0; i < image_rects.size(); ++i)
+	{
+		const int& height = image_rects[i].h;
+		const int& width = image_rects[i].w;
+		for (int j = 0; j < height; ++j)
+		{
+			//const int cwidth = width*channels;
+			RGBQUAD* src = (RGBQUAD*)(image_bytes[i] + width * (j)* channels);
+			RGBQUAD* dst = (RGBQUAD*)(atlas_image.data() + ((s*(image_rects[i].y + j)) + image_rects[i].x)*channels);
+
+			for (int k = 0; k < width; ++k)
+			{
+				dst->rgbBlue = src->rgbRed;
+				dst->rgbGreen= src->rgbGreen;
+				dst->rgbRed = src->rgbBlue;
+				dst->rgbReserved = src->rgbReserved;
+				++dst;
+				++src;
+			}
+		}
+	}
+	for (int i = 0; i < image_rects.size(); ++i)
+	{
+		stbi_image_free(image_bytes[i]);
+		Image im;
+		im.x = image_rects[i].x;
+		im.y = image_rects[i].y;
+		im.width = image_rects[i].w;
+		im.height = image_rects[i].h;
+		im.uv0 = ImVec2(((float)im.x + 0.5f) / (float)s,
+			((float)im.y + 0.5f) / (float)s);
+		im.uv1 = ImVec2((float)(im.x + im.width - 1) / (float)s,
+			(float)(im.y + im.height - 1) / (float)s);
+		auto & names = image_names[image_rects[i].id];
+		for (auto j = names.begin(); j != names.end(); ++j)
+		{
+			overlay_images[*j] = im;
+		}
+	}
+	image_bytes.clear();
+
+	overlay_texture_filedata = atlas_image.data();
+	overlay_texture_width = s;
+	overlay_texture_height = s;
+	overlay_texture_channels = 4;
 }
 
 void OverlayInstance::LoadOverlays()

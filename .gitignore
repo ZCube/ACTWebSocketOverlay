@@ -14,3 +14,4 @@ textures/out/*
 src/version
 prebuilt/*
 /test/config.bat
+/src/awio/*.orig
