@@ -447,6 +447,42 @@ void AWIOOverlay::Render(bool use_input, OverlayOption * options)
 				ImGui::SetCursorPos(p);
 				ImGui::PopStyleColor(1);
 			}
+			else
+			{
+				double height = (io.Fonts->Fonts[0]->FontSize* io.FontGlobalScale);
+				ImGui::PushStyleColor(ImGuiCol_ChildWindowBg, ImVec4(0, 0, 0, 0));
+				float icon_color_change = (cosf(GetTickCount() / 500.0f) + 1.0f) / 2.0f;
+				ImVec4 color = ColorWithAlpha(preference_storage.color_map["TitleText"], text_opacity * global_opacity);
+				color.x *= icon_color_change;
+				color.y *= icon_color_change;
+				color.z *= icon_color_change;
+				ImGui::PushStyleColor(ImGuiCol_Text, color);
+				auto p = ImGui::GetCursorPos();
+				ImGui::BeginChild("Btn",
+					//ImVec2(100,100),
+					ImVec2(height, height),
+					false,
+					ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+				if (ImGui::Button("M", ImVec2(height,height)))
+				{
+					options->movable = !options->movable;
+				}
+				ImGui::EndChild();
+				ImGui::SameLine(height);
+				ImGui::BeginChild("Btn1",
+					//ImVec2(100,100),
+					ImVec2(height, height),
+					false,
+					ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+				if (ImGui::Button("S", ImVec2(height, height)))
+				{
+					options->show_preferences = !options->show_preferences;
+				}
+				ImGui::EndChild();
+				ImGui::SameLine();
+				ImGui::SetCursorPos(p);
+				ImGui::PopStyleColor(2);
+			}
 		}
 
 		dealerTable.RenderTable(texture, images);

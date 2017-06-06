@@ -26,6 +26,11 @@ protected:
 
 	char websocket_message[1024] = { 0, };
 	bool websocket_reconnect = true;
+	
+	bool current_websocket_ssl = false;
+	std::string current_websocket_host="localhost";
+	int current_websocket_port=0;
+	std::string current_websocket_path="/";
 
 	bool& visible =
 		preference_storage.boolean_map["Visible"] = true;
@@ -58,6 +63,7 @@ public:
 	virtual boost::filesystem::path GetImagesPath();
 	virtual bool Init(const boost::filesystem::path& path) = 0;
 	virtual void Render(bool use_input, class OverlayOption* options) = 0;
+	virtual void WebSocketCheck();
 	virtual void WebSocketRun();
 	virtual void WebSocketStop();
 	virtual bool IsLoaded() = 0;

@@ -1138,6 +1138,7 @@ void OverlayInstance::Load() {
 		}
 		for (auto i = overlays.begin(); i != overlays.end(); ++i) {
 			i->second->FromJson(setting);
+			i->second->WebSocketCheck();
 		}
 
 		fin.close();
@@ -1231,6 +1232,7 @@ void OverlayInstance::Init(ImGuiContext * context, const boost::filesystem::path
 	}
 	else
 	{
+		font_setting_dirty = true;
 		ReloadScripts();
 	}
 	LoadTexture();
@@ -1339,93 +1341,103 @@ void OverlayInstance::LoadTexture()
 		}
 	}
 
-	stbrp_context context;
-
-	int s = 256;
-	bool packed_all = false;
-	for (int i = 0; i < image_rects.size(); ++i)
+	if (image_rects.size())
 	{
+		stbrp_context context;
+
+		int s = 256;
+		bool packed_all = false;
+		for (int i = 0; i < image_rects.size(); ++i)
+		{
+			do
+			{
+				if (image_rects[i].x < s && image_rects[i].y < s)
+					break;
+				s = s * 2;
+			} while (true);
+		}
 		do
 		{
-			if (image_rects[i].x < s && image_rects[i].y < s)
+			std::vector<stbrp_node> nodes;
+			nodes.resize(image_rects.size());
+
+			for (int i = 0; i < image_rects.size(); ++i)
+			{
+				image_rects[i].was_packed = 0;
+			}
+
+			stbrp_init_target(&context, s, s, nodes.data(), image_rects.size());
+			stbrp_pack_rects(&context, image_rects.data(), image_rects.size());
+
+			packed_all = true;
+			for (int i = 0; i < image_rects.size(); ++i)
+			{
+				if (!image_rects[i].was_packed)
+				{
+					packed_all = false;
+					break;
+				}
+			}
+			if (packed_all)
 				break;
-			s = s * 2;
+			s *= 2;
 		} while (true);
-	}
-	do
-	{
-		std::vector<stbrp_node> nodes;
-		nodes.resize(image_rects.size());
 
+		atlas_image.resize(s * s * 4, 0);
+		const int channels = 4;
 		for (int i = 0; i < image_rects.size(); ++i)
 		{
-			image_rects[i].was_packed = 0;
+			const int& height = image_rects[i].h;
+			const int& width = image_rects[i].w;
+			for (int j = 0; j < height; ++j)
+			{
+				//const int cwidth = width*channels;
+				RGBQUAD* src = (RGBQUAD*)(image_bytes[i] + width * (j)* channels);
+				RGBQUAD* dst = (RGBQUAD*)(atlas_image.data() + ((s*(image_rects[i].y + j)) + image_rects[i].x)*channels);
+
+				for (int k = 0; k < width; ++k)
+				{
+					dst->rgbBlue = src->rgbRed;
+					dst->rgbGreen = src->rgbGreen;
+					dst->rgbRed = src->rgbBlue;
+					dst->rgbReserved = src->rgbReserved;
+					++dst;
+					++src;
+				}
+			}
 		}
-
-		stbrp_init_target(&context, s, s, nodes.data(), image_rects.size());
-		stbrp_pack_rects(&context, image_rects.data(), image_rects.size());
-
-		packed_all = true;
 		for (int i = 0; i < image_rects.size(); ++i)
 		{
-			if (!image_rects[i].was_packed)
+			stbi_image_free(image_bytes[i]);
+			Image im;
+			im.x = image_rects[i].x;
+			im.y = image_rects[i].y;
+			im.width = image_rects[i].w;
+			im.height = image_rects[i].h;
+			im.uv0 = ImVec2(((float)im.x + 0.5f) / (float)s,
+				((float)im.y + 0.5f) / (float)s);
+			im.uv1 = ImVec2((float)(im.x + im.width - 1) / (float)s,
+				(float)(im.y + im.height - 1) / (float)s);
+			auto & names = image_names[image_rects[i].id];
+			for (auto j = names.begin(); j != names.end(); ++j)
 			{
-				packed_all = false;
-				break;
+				overlay_images[*j] = im;
 			}
 		}
-		if (packed_all)
-			break;
-		s *= 2;
-	} while (true);
+		image_bytes.clear();
 
-	atlas_image.resize(s * s * 4, 0);
-	const int channels = 4;
-	for (int i = 0; i < image_rects.size(); ++i)
-	{
-		const int& height = image_rects[i].h;
-		const int& width = image_rects[i].w;
-		for (int j = 0; j < height; ++j)
-		{
-			//const int cwidth = width*channels;
-			RGBQUAD* src = (RGBQUAD*)(image_bytes[i] + width * (j)* channels);
-			RGBQUAD* dst = (RGBQUAD*)(atlas_image.data() + ((s*(image_rects[i].y + j)) + image_rects[i].x)*channels);
-
-			for (int k = 0; k < width; ++k)
-			{
-				dst->rgbBlue = src->rgbRed;
-				dst->rgbGreen= src->rgbGreen;
-				dst->rgbRed = src->rgbBlue;
-				dst->rgbReserved = src->rgbReserved;
-				++dst;
-				++src;
-			}
-		}
+		overlay_texture_filedata = atlas_image.data();
+		overlay_texture_width = s;
+		overlay_texture_height = s;
+		overlay_texture_channels = 4;
 	}
-	for (int i = 0; i < image_rects.size(); ++i)
+	else
 	{
-		stbi_image_free(image_bytes[i]);
-		Image im;
-		im.x = image_rects[i].x;
-		im.y = image_rects[i].y;
-		im.width = image_rects[i].w;
-		im.height = image_rects[i].h;
-		im.uv0 = ImVec2(((float)im.x + 0.5f) / (float)s,
-			((float)im.y + 0.5f) / (float)s);
-		im.uv1 = ImVec2((float)(im.x + im.width - 1) / (float)s,
-			(float)(im.y + im.height - 1) / (float)s);
-		auto & names = image_names[image_rects[i].id];
-		for (auto j = names.begin(); j != names.end(); ++j)
-		{
-			overlay_images[*j] = im;
-		}
+		overlay_texture_filedata = nullptr;
+		overlay_texture_width = 16;
+		overlay_texture_height = 16;
+		overlay_texture_channels = 4;
 	}
-	image_bytes.clear();
-
-	overlay_texture_filedata = atlas_image.data();
-	overlay_texture_width = s;
-	overlay_texture_height = s;
-	overlay_texture_channels = 4;
 }
 
 void OverlayInstance::LoadOverlays()

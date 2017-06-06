@@ -9,6 +9,20 @@
 #define STR2UTF8(s) (CW2A(CA2W(s), CP_UTF8))
 #define UTF82WSTR(s) (CA2W(s), CP_UTF8)
 
+void OverlayContextBase::WebSocketCheck()
+{
+	if (current_websocket_port != websocket_port ||
+#ifdef USE_SSL
+		current_websocket_ssl != websocket_ssl ||
+#endif
+		current_websocket_host != websocket_host ||
+		current_websocket_path != websocket_path
+		)
+	{
+		websocket_reconnect = true;
+	}
+}
+
 void OverlayContextBase::Process(const std::string & message_str) {}
 
 OverlayContextBase::OverlayContextBase() {
@@ -62,6 +76,10 @@ void OverlayContextBase::WebSocketRun()
 					{
 						strcpy_s(websocket_message, 1023, "Connected");
 					}
+					current_websocket_host = websocket_host;
+					current_websocket_port = websocket_port;
+					current_websocket_ssl = websocket_ssl;
+					current_websocket_path = websocket_path;
 					beast::multi_buffer b;
 					beast::websocket::opcode op;
 					//std::function<void(std::string write) > write;
