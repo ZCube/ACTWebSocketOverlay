@@ -208,6 +208,8 @@ extern "C" int getImage(lua_State* L);
 extern "C" int saveWindowPos(lua_State* L);
 extern "C" int getWindowSize(lua_State* L);
 extern "C" int setWindowSize(lua_State* L);
+extern "C" int getStyleColor4(lua_State* L);
+extern "C" int setStyleColor4(lua_State* L);
 extern "C" int getColor4(lua_State* L);
 extern "C" int setColor4(lua_State* L);
 extern "C" int getColor3(lua_State* L);
@@ -339,7 +341,9 @@ bool OverlayContextLua::Init(const boost::filesystem::path& path_) {
 				lua_register(L_render, "saveWindowPos", saveWindowPos);
 				lua_register(L_render, "getWindowSize", getWindowSize);
 				lua_register(L_render, "setWindowSize", setWindowSize);
-				
+
+				lua_register(L_render, "getStyleColor4", getStyleColor4);
+				lua_register(L_render, "setStyleColor4", setStyleColor4);
 				lua_register(L_render, "getColor4", getColor4);
 				lua_register(L_render, "setColor4", setColor4);
 				lua_register(L_render, "getColor3", getColor3);
@@ -373,7 +377,7 @@ bool OverlayContextLua::Init(const boost::filesystem::path& path_) {
 				int status = luaL_loadbufferx(L_render, render.c_str(), render.size(), u8name.c_str(), NULL);
 				if (status) {
 					char buf[1024] = { 0, };
-					sprintf_s(buf, 1024, "Couldn't load string: %s\n", lua_tostring(L_render, -1));
+					sprintf_s(buf, 1024, "Couldn't load script: %s\n", lua_tostring(L_render, -1));
 					errors_mutex.lock();
 					errors.insert(buf);
 					errors_mutex.unlock();
@@ -400,6 +404,8 @@ bool OverlayContextLua::Init(const boost::filesystem::path& path_) {
 				lua_register(L_script, "jsonEncodePretty", jsonEncodePretty);
 				lua_register(L_script, "jsonDecode", jsonDecode);
 
+				lua_register(L_render, "getStyleColor4", getStyleColor4);
+				lua_register(L_render, "setStyleColor4", setStyleColor4);
 				lua_register(L_script, "getColor4", getColor4);
 				lua_register(L_script, "setColor4", setColor4);
 				lua_register(L_script, "getColor3", getColor3);
@@ -430,7 +436,7 @@ bool OverlayContextLua::Init(const boost::filesystem::path& path_) {
 					int status = luaL_loadbufferx(L_script, script.c_str(), script.size(), u8name.c_str(), NULL);
 					if (status) {
 						char buf[1024] = { 0, };
-						sprintf_s(buf, 1024, "Couldn't load string: %s\n", lua_tostring(L_script, -1));
+						sprintf_s(buf, 1024, "Couldn't load script: %s\n", lua_tostring(L_script, -1));
 						errors_mutex.lock();
 						errors.insert(buf);
 						errors_mutex.unlock();

@@ -123,6 +123,54 @@ extern "C" int getImage(lua_State* L)
 	return 6;
 }
 
+extern "C" int getStyleColor4(lua_State* L)
+{
+	int idx = luaL_checkint(L, 1);
+	if (ImGui::GetCurrentContext())
+	{
+		if (idx < ImGuiCol_COUNT)
+		{
+			ImVec4& v = ImGui::GetCurrentContext()->Style.Colors[idx];
+			lua_pushnumber(L, v.x);
+			lua_pushnumber(L, v.y);
+			lua_pushnumber(L, v.z);
+			lua_pushnumber(L, v.w);
+			return 4;
+		}
+	}
+	ImVec4 v(0, 0, 0, 1);
+	lua_pushnumber(L, v.x);
+	lua_pushnumber(L, v.y);
+	lua_pushnumber(L, v.z);
+	lua_pushnumber(L, v.w);
+	return 4;
+}
+extern "C" int setStyleColor4(lua_State* L)
+{
+	int idx = luaL_checkint(L, 1);
+	if (idx < ImGuiCol_COUNT &&
+		lua_isnumber(L, 2) &&
+		lua_isnumber(L, 3) &&
+		lua_isnumber(L, 4) &&
+		lua_isnumber(L, 5))
+	{
+		if (ImGui::GetCurrentContext())
+		{
+			ImVec4& v = ImGui::GetCurrentContext()->Style.Colors[idx];
+			const float v0 = luaL_checknumber(L, 2);
+			const float v1 = luaL_checknumber(L, 3);
+			const float v2 = luaL_checknumber(L, 4);
+			const float v3 = luaL_checknumber(L, 5);
+
+			v.x = v0;
+			v.y = v1;
+			v.z = v2;
+			v.w = v3;
+		}
+		return 0;
+	}
+	return 0;
+}
 extern "C" int getColor4(lua_State* L)
 {
 	PreferenceStorage* storage = lua_islightuserdata(L, 1) ? reinterpret_cast<PreferenceStorage*>(lua_touserdata(L, 1)) : nullptr;
@@ -361,21 +409,23 @@ extern "C" int ModInit(ImGuiContext* context)
 {
 	boost::recursive_mutex::scoped_lock l(instanceLock);
 	ImGui::SetCurrentContext(context);
-	ImGui::GetIO().Fonts->AddFontDefault();
+	if (context)
+	{
+		context->IO.Fonts->AddFontDefault();
 
+	}
 	WCHAR result[MAX_PATH] = {};
 	GetModuleFileNameW(NULL, result, MAX_PATH);
 	boost::filesystem::path module_path = result;
 	boost::filesystem::path module_dir = module_path.parent_path();
-
 	instance.Init(context, module_dir);
-
 	return 0;
 }
 
 extern "C" int ModUnInit(ImGuiContext* context)
 {
 	boost::recursive_mutex::scoped_lock l(instanceLock);
+	ImGui::SetCurrentContext(context);
 	try {
 		//instance.UnloadScripts();
 	}
@@ -413,6 +463,7 @@ extern "C" void ModSetTexture(void* texture)
 extern "C" int ModRender(ImGuiContext* context)
 {
 	boost::recursive_mutex::scoped_lock l(instanceLock);
+	ImGui::SetCurrentContext(context);
 	instance.Render(context);
 	ImGuiContext& g = *context;
 	if (g.CurrentWindow && g.CurrentWindow->Accessed)
@@ -443,6 +494,7 @@ extern "C" bool ModUpdateFont(ImGuiContext* context)
 	boost::recursive_mutex::scoped_lock l(instanceLock);
 	if (instance.font_setting_dirty)
 	{
+		ImGui::SetCurrentContext(context);
 		instance.context = context;
 		instance.LoadFonts();
 		return true;
@@ -980,8 +1032,9 @@ void OverlayInstance::Render(ImGuiContext * context)
 		Preferences();
 	}
 
+	if(context)
 	{
-		auto& io = ImGui::GetIO();
+		auto& io = context->IO;
 		if (!use_input)
 		{
 			io.WantCaptureMouse = false;
@@ -1397,9 +1450,9 @@ void OverlayInstance::LoadTexture()
 
 				for (int k = 0; k < width; ++k)
 				{
-					dst->rgbBlue = src->rgbRed;
+					dst->rgbRed = src->rgbRed;
 					dst->rgbGreen = src->rgbGreen;
-					dst->rgbRed = src->rgbBlue;
+					dst->rgbBlue = src->rgbBlue;
 					dst->rgbReserved = src->rgbReserved;
 					++dst;
 					++src;
@@ -1482,7 +1535,7 @@ void OverlayInstance::LoadFonts()
 {
 	// Changing or adding fonts at runtime causes a crash.
 	// TODO: is it possible ?...
-	if (!context)
+	if (!context || (context && !context->IO.Fonts))
 		return;
 	ImGuiIO& io = context->IO;
 
@@ -1491,7 +1544,7 @@ void OverlayInstance::LoadFonts()
 	boost::filesystem::path windows_dir = result;
 
 	// font
-	ImGui::GetIO().Fonts->Clear();
+	io.Fonts->Clear();
 
 	std::map<std::string, const ImWchar*> glyph_range_map = {
 		{ "Default", io.Fonts->GetGlyphRangesDefault() },
