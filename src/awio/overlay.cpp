@@ -723,6 +723,9 @@ extern "C" int ModInit(ImGuiContext* context)
 		color_map["Smn"] = htmlCodeToImVec4("32670B");
 		color_map["Acn"] = htmlCodeToImVec4("32670B");
 
+		color_map["Rdm"] = htmlCodeToImVec4("AC2997");
+		color_map["Sam"] = htmlCodeToImVec4("E45A0F");
+
 		color_map["Sch"] = htmlCodeToImVec4("32307B");
 
 		color_map["Ast"] = htmlCodeToImVec4("B1561C");
