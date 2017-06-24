@@ -29,7 +29,7 @@ std::map<std::string, std::vector<std::string>> AWIOOverlay::color_category_map 
 	"Blm",
 	"Thm",
 	"Smn",
-	"Acn"
+	"Acn",
 	"Rdm",
 	"Sam",
 	},
