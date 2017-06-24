@@ -600,7 +600,9 @@ extern "C" int ModInit(ImGuiContext* context)
 			"Blm",
 			"Thm",
 			"Smn",
-			"Acn"
+			"Acn",
+			"Rdm",
+			"Sam",
 		};
 		color_category_map["Healer"] = {
 			"Whm",

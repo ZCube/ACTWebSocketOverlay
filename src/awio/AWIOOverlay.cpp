@@ -30,6 +30,8 @@ std::map<std::string, std::vector<std::string>> AWIOOverlay::color_category_map 
 	"Thm",
 	"Smn",
 	"Acn"
+	"Rdm",
+	"Sam",
 	},
 	},
 	{"Healer", {
