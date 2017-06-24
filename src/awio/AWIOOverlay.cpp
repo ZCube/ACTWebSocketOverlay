@@ -600,6 +600,223 @@ void AWIOOverlay::FromJson(Json::Value & setting) {
 
 void AWIOOverlay::PreferencesBody()
 {
+	if (ImGui::TreeNode("Table"))
+	{
+		if (ImGui::TreeNode("DPS Table"))
+		{
+			std::vector<const char*> columns;
+			Table& table = dealerTable;
+			columns.reserve(table.columns.size() - 3);
+			for (int i = 3; i < table.columns.size(); ++i)
+			{
+				columns.push_back(table.columns[i].Title.c_str());
+			}
+
+			static int index_ = -1;
+			static char buf[100] = { 0, };
+			static int current_item = -1;
+			static int width = 50.5f;
+			static float align = 0.5f;
+			static int index = -1;
+			bool decIndex = false;
+			bool incIndex = false;
+			if (ImGui::ListBox("Column", &index_, columns.data(), columns.size()))
+			{
+				index = index_ >= 0 ? index_ + 3 : index_;
+				strcpy(buf, table.columns[index].Title.c_str());
+				width = table.columns[index].size;
+				align = table.columns[index].align.x;
+				auto ri = std::find(combatant_attribute_names.begin(), combatant_attribute_names.end(), table.columns[index].index);
+				current_item = (ri != combatant_attribute_names.end()) ? ri - combatant_attribute_names.begin() : -1;
+			}
+			if (ImGui::Button("Up"))
+			{
+				if (index > 3 && index != NULL && index >= 0)
+				{
+					std::swap(table.columns[index], table.columns[index - 1]);
+					for (int j = 0; j < table.values.size(); ++j)
+					{
+						if (table.values[j].size() > index)
+						{
+							std::swap(table.values[j][index], table.values[j][index - 1]);
+						}
+					}
+					Save();
+					decIndex = true;
+				}
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Down"))
+			{
+				if (index + 1 < table.columns.size() && index != NULL && index >= 0)
+				{
+					std::swap(table.columns[index], table.columns[index + 1]);
+					for (int j = 0; j < table.values.size(); ++j)
+					{
+						if (table.values[j].size() > index + 1)
+						{
+							std::swap(table.values[j][index], table.values[j][index + 1]);
+						}
+					}
+					Save();
+					incIndex = true;
+				}
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Edit"))
+			{
+				ImGui::OpenPopup("Edit Column");
+			}
+			if (ImGui::BeginPopup("Edit Column"))
+			{
+				if (ImGui::InputText("Title", buf, 99))
+				{
+					table.columns[index].Title = buf;
+					Save();
+				}
+				if (ImGui::Combo("Attribute", &current_item, combatant_attribute_names.data(), combatant_attribute_names.size()))
+				{
+					if (current_item >= 0)
+					{
+						if (strlen(buf) == 0)
+						{
+							strcpy(buf, combatant_attribute_names[current_item]);
+						}
+						table.columns[index].index = combatant_attribute_names[current_item];
+						for (int j = 0; j < table.values.size(); ++j)
+						{
+							if (table.values[j].size() > index)
+							{
+								table.values[j][index].clear();
+							}
+						}
+						Save();
+					}
+				}
+				if (ImGui::SliderInt("Width", &width, 10, 100))
+				{
+					table.columns[index].size = width;
+					Save();
+				}
+				if (ImGui::SliderFloat("Align", &align, 0.0f, 1.0f))
+				{
+					table.columns[index].align.x = align;
+					Save();
+				}
+				ImGui::EndPopup();
+			}
+			ImGui::SameLine();
+
+			if (ImGui::Button("Remove"))
+			{
+				if (index > 0)
+				{
+					table.columns.erase(table.columns.begin() + index);
+					for (int j = 0; j < table.values.size(); ++j)
+					{
+						if (table.values[j].size() > index)
+						{
+							table.values[j].erase(table.values[j].begin() + index);
+						}
+					}
+					Save();
+				}
+				if (index >= table.columns.size())
+				{
+					decIndex = true;
+				}
+			}
+			if (decIndex)
+			{
+				--index_;
+				index = index_ >= 0 ? index_ + 3 : index_;
+				if (index >= 0)
+				{
+					strcpy(buf, table.columns[index].Title.c_str());
+					width = table.columns[index].size;
+					align = table.columns[index].align.x;
+				}
+				else
+				{
+					strcpy(buf, "");
+					width = 50;
+					align = 0.5f;
+				}
+			}
+			if (incIndex)
+			{
+				++index_;
+				index = index_ >= 0 ? index_ + 3 : index_;
+				if (index < table.columns.size())
+				{
+					strcpy(buf, table.columns[index].Title.c_str());
+					width = table.columns[index].size;
+					align = table.columns[index].align.x;
+				}
+				else
+				{
+					strcpy(buf, "");
+					width = 50;
+					align = 0.5f;
+				}
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Append"))
+			{
+				ImGui::OpenPopup("Append Column");
+			}
+			if (ImGui::BeginPopup("Append Column"))
+			{
+				static char buf[100] = { 0, };
+				static int current_item = -1;
+				static int width = 50.5f;
+				static float align = 0.5f;
+				if (ImGui::InputText("Title", buf, 99))
+				{
+
+				}
+				if (ImGui::Combo("Attribute", &current_item, combatant_attribute_names.data(), combatant_attribute_names.size()))
+				{
+					if (current_item >= 0)
+					{
+						if (strlen(buf) == 0)
+						{
+							strcpy(buf, combatant_attribute_names[current_item]);
+						}
+					}
+				}
+				if (ImGui::SliderInt("Width", &width, 10, 100))
+				{
+
+				}
+				if (ImGui::SliderFloat("Align", &align, 0.0f, 1.0f))
+				{
+
+				}
+				if (ImGui::Button("Append"))
+				{
+					if (current_item >= 0)
+					{
+						Table::Column col(buf, combatant_attribute_names[current_item],
+							width, 0.0f, ImVec2(align, 0.5f), true);
+						table.columns.push_back(col);
+
+						ImGui::CloseCurrentPopup();
+						strcpy(buf, "");
+						current_item = -1;
+						width = 50;
+						align = 0.5f;
+						Save();
+					}
+				}
+				ImGui::EndPopup();
+			}
+			ImGui::TreePop();
+		}
+		//ImGui::Edit
+		//dealerTable
+		ImGui::TreePop();
+	}
 	if (ImGui::TreeNode("Opacity"))
 	{
 		static int group_opacity = 255;

@@ -133,13 +133,13 @@
       "height" : 20,
       "is_9patch" : false,
       "key" : "center.png",
-      "left" : 160,
+      "left" : 166,
       "offsetx" : 0,
       "offsety" : 0,
       "ori_height" : 20,
       "ori_width" : 10,
       "rotated" : false,
-      "top" : 200,
+      "top" : 224,
       "width" : 10
    },
    "chocobo.png" : {
@@ -360,14 +360,14 @@
       "ori_height" : 20,
       "ori_width" : 6,
       "rotated" : false,
-      "top" : 180,
+      "top" : 224,
       "width" : 6
    },
    "limit break.png" : {
       "height" : 32,
       "is_9patch" : false,
       "key" : "limit break.png",
-      "left" : 192,
+      "left" : 224,
       "offsetx" : 0,
       "offsety" : 0,
       "ori_height" : 32,
@@ -380,19 +380,6 @@
       "height" : 32,
       "is_9patch" : false,
       "key" : "lnc.png",
-      "left" : 224,
-      "offsetx" : 0,
-      "offsety" : 0,
-      "ori_height" : 32,
-      "ori_width" : 32,
-      "rotated" : false,
-      "top" : 96,
-      "width" : 32
-   },
-   "ltw.png" : {
-      "height" : 32,
-      "is_9patch" : false,
-      "key" : "ltw.png",
       "left" : 96,
       "offsetx" : 0,
       "offsety" : 0,
@@ -402,11 +389,24 @@
       "top" : 128,
       "width" : 32
    },
+   "ltw.png" : {
+      "height" : 32,
+      "is_9patch" : false,
+      "key" : "ltw.png",
+      "left" : 0,
+      "offsetx" : 0,
+      "offsety" : 0,
+      "ori_height" : 32,
+      "ori_width" : 32,
+      "rotated" : false,
+      "top" : 156,
+      "width" : 32
+   },
    "mch.png" : {
       "height" : 32,
       "is_9patch" : false,
       "key" : "mch.png",
-      "left" : 0,
+      "left" : 32,
       "offsetx" : 0,
       "offsety" : 0,
       "ori_height" : 32,
@@ -419,7 +419,7 @@
       "height" : 32,
       "is_9patch" : false,
       "key" : "min.png",
-      "left" : 32,
+      "left" : 64,
       "offsetx" : 0,
       "offsety" : 0,
       "ori_height" : 32,
@@ -432,13 +432,13 @@
       "height" : 32,
       "is_9patch" : false,
       "key" : "mnk.png",
-      "left" : 64,
+      "left" : 192,
       "offsetx" : 0,
       "offsety" : 0,
       "ori_height" : 32,
       "ori_width" : 32,
       "rotated" : false,
-      "top" : 156,
+      "top" : 96,
       "width" : 32
    },
    "mrd.png" : {
@@ -506,6 +506,19 @@
       "top" : 220,
       "width" : 32
    },
+   "rdm.png" : {
+      "height" : 32,
+      "is_9patch" : false,
+      "key" : "rdm.png",
+      "left" : 32,
+      "offsetx" : 0,
+      "offsety" : 0,
+      "ori_height" : 32,
+      "ori_width" : 32,
+      "rotated" : false,
+      "top" : 220,
+      "width" : 32
+   },
    "resize.png" : {
       "height" : 60,
       "is_9patch" : false,
@@ -523,45 +536,19 @@
       "height" : 20,
       "is_9patch" : false,
       "key" : "right.png",
-      "left" : 160,
+      "left" : 176,
       "offsetx" : 0,
       "offsety" : 0,
       "ori_height" : 20,
       "ori_width" : 6,
       "rotated" : false,
-      "top" : 160,
+      "top" : 224,
       "width" : 6
    },
    "rog.png" : {
       "height" : 32,
       "is_9patch" : false,
       "key" : "rog.png",
-      "left" : 32,
-      "offsetx" : 0,
-      "offsety" : 0,
-      "ori_height" : 32,
-      "ori_width" : 32,
-      "rotated" : false,
-      "top" : 220,
-      "width" : 32
-   },
-   "rook.png" : {
-      "height" : 32,
-      "is_9patch" : false,
-      "key" : "rook.png",
-      "left" : 64,
-      "offsetx" : 0,
-      "offsety" : 0,
-      "ori_height" : 32,
-      "ori_width" : 32,
-      "rotated" : false,
-      "top" : 220,
-      "width" : 32
-   },
-   "sch.png" : {
-      "height" : 32,
-      "is_9patch" : false,
-      "key" : "sch.png",
       "left" : 96,
       "offsetx" : 0,
       "offsety" : 0,
@@ -571,10 +558,10 @@
       "top" : 192,
       "width" : 32
    },
-   "selene.png" : {
+   "rook.png" : {
       "height" : 32,
       "is_9patch" : false,
-      "key" : "selene.png",
+      "key" : "rook.png",
       "left" : 96,
       "offsetx" : 0,
       "offsety" : 0,
@@ -584,10 +571,10 @@
       "top" : 224,
       "width" : 32
    },
-   "smn.png" : {
+   "sam.png" : {
       "height" : 32,
       "is_9patch" : false,
-      "key" : "smn.png",
+      "key" : "sam.png",
       "left" : 128,
       "offsetx" : 0,
       "offsety" : 0,
@@ -597,10 +584,10 @@
       "top" : 128,
       "width" : 32
    },
-   "thm.png" : {
+   "sch.png" : {
       "height" : 32,
       "is_9patch" : false,
-      "key" : "thm.png",
+      "key" : "sch.png",
       "left" : 128,
       "offsetx" : 0,
       "offsety" : 0,
@@ -610,10 +597,10 @@
       "top" : 160,
       "width" : 32
    },
-   "titan.png" : {
+   "selene.png" : {
       "height" : 32,
       "is_9patch" : false,
-      "key" : "titan.png",
+      "key" : "selene.png",
       "left" : 128,
       "offsetx" : 0,
       "offsety" : 0,
@@ -623,17 +610,56 @@
       "top" : 192,
       "width" : 32
    },
-   "topaz.png" : {
+   "smn.png" : {
       "height" : 32,
       "is_9patch" : false,
-      "key" : "topaz.png",
-      "left" : 128,
+      "key" : "smn.png",
+      "left" : 64,
       "offsetx" : 0,
       "offsety" : 0,
       "ori_height" : 32,
       "ori_width" : 32,
       "rotated" : false,
-      "top" : 224,
+      "top" : 220,
+      "width" : 32
+   },
+   "thm.png" : {
+      "height" : 32,
+      "is_9patch" : false,
+      "key" : "thm.png",
+      "left" : 160,
+      "offsetx" : 0,
+      "offsety" : 0,
+      "ori_height" : 32,
+      "ori_width" : 32,
+      "rotated" : false,
+      "top" : 128,
+      "width" : 32
+   },
+   "titan.png" : {
+      "height" : 32,
+      "is_9patch" : false,
+      "key" : "titan.png",
+      "left" : 192,
+      "offsetx" : 0,
+      "offsety" : 0,
+      "ori_height" : 32,
+      "ori_width" : 32,
+      "rotated" : false,
+      "top" : 128,
+      "width" : 32
+   },
+   "topaz.png" : {
+      "height" : 32,
+      "is_9patch" : false,
+      "key" : "topaz.png",
+      "left" : 224,
+      "offsetx" : 0,
+      "offsety" : 0,
+      "ori_height" : 32,
+      "ori_width" : 32,
+      "rotated" : false,
+      "top" : 128,
       "width" : 32
    },
    "war.png" : {
@@ -646,33 +672,33 @@
       "ori_height" : 32,
       "ori_width" : 32,
       "rotated" : false,
-      "top" : 128,
+      "top" : 160,
       "width" : 32
    },
    "whm.png" : {
       "height" : 32,
       "is_9patch" : false,
       "key" : "whm.png",
-      "left" : 192,
+      "left" : 160,
       "offsetx" : 0,
       "offsety" : 0,
       "ori_height" : 32,
       "ori_width" : 32,
       "rotated" : false,
-      "top" : 128,
+      "top" : 192,
       "width" : 32
    },
    "wvr.png" : {
       "height" : 32,
       "is_9patch" : false,
       "key" : "wvr.png",
-      "left" : 224,
+      "left" : 128,
       "offsetx" : 0,
       "offsety" : 0,
       "ori_height" : 32,
       "ori_width" : 32,
       "rotated" : false,
-      "top" : 128,
+      "top" : 224,
       "width" : 32
    }
 }
