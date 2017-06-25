@@ -9,15 +9,17 @@
 #include <dinput.h>
 #include <tchar.h>
 
-
 /////////////////////////////////////////////////////////////////////////////////
 #include <boost/filesystem.hpp>
 #include <Windows.h>
 typedef int(*TModUnInit)(ImGuiContext* context);
 typedef int(*TModRender)(ImGuiContext* context);
 typedef int(*TModInit)(ImGuiContext* context);
-typedef void(*TModTextureData)(unsigned char** out_pixels, int* out_width, int* out_height, int* out_bytes_per_pixel);
-typedef void(*TModSetTexture)(void* texture);
+typedef void(*TModTextureData)(int index, unsigned char** out_pixels, int* out_width, int* out_height, int* out_bytes_per_pixel);
+typedef bool(*TModGetTextureDirtyRect)(int index, int dindex, RECT* rect);
+typedef void(*TModSetTexture)(int index, void* texture);
+typedef int(*TModTextureBegin)();
+typedef void(*TModTextureEnd)();
 typedef bool(*TModUpdateFont)(ImGuiContext* context);
 typedef bool(*TModMenu)(bool* show);
 
@@ -25,34 +27,40 @@ TModUnInit modUnInit = nullptr;
 TModRender modRender = nullptr;
 TModInit modInit = nullptr;
 TModTextureData modTextureData = nullptr;
+TModGetTextureDirtyRect modGetTextureDirtyRect = nullptr;
 TModSetTexture modSetTexture = nullptr;
+TModTextureBegin modTextureBegin = nullptr;
+TModTextureEnd modTextureEnd = nullptr;
 TModUpdateFont modUpdateFont = nullptr;
 TModMenu modMenu = nullptr;
-HMODULE mod;
+HMODULE mod = nullptr;
 /////////////////////////////////////////////////////////////////////////////////
 
 // Data
 //static LPDIRECT3DDEVICE9        g_pd3dDevice = NULL;
 static D3DPRESENT_PARAMETERS    g_d3dpp;
-static LPDIRECT3DTEXTURE9       g_ModTexture = NULL;
+static std::vector<LPDIRECT3DTEXTURE9>       g_ModTextures;
 
-static bool ImGui_ImplDX9_CreateModTexture()
+static bool ImGui_ImplDX9_CreateModTexture(int texindex)
 {
 	if (!modTextureData)
-		return true;
+		return false;
+
+	g_ModTextures.resize(std::max<size_t>(g_ModTextures.size(), texindex + 1));
+	auto& g_ModTexture = g_ModTextures.at(texindex);
 
 	if (LPDIRECT3DTEXTURE9 tex = g_ModTexture)
 	{
 		tex->Release();
 		if (modSetTexture)
-			modSetTexture(nullptr);
+			modSetTexture(texindex, nullptr);
 		g_ModTexture = nullptr;
 	}
 	// Build texture atlas
 	ImGuiIO& io = ImGui::GetIO();
 	unsigned char* pixels;
 	int width, height, bytes_per_pixel;
-	modTextureData(&pixels, &width, &height, &bytes_per_pixel);
+	modTextureData(texindex, &pixels, &width, &height, &bytes_per_pixel);
 
 	// Upload texture to graphics system
 	if (g_pd3dDevice->CreateTexture(width, height, 1, D3DUSAGE_DYNAMIC, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &g_ModTexture, NULL) < 0)
@@ -65,9 +73,20 @@ static bool ImGui_ImplDX9_CreateModTexture()
 	g_ModTexture->UnlockRect(0);
 
 	if (modSetTexture)
-		modSetTexture(g_ModTexture);
+		modSetTexture(texindex, g_ModTexture);
 	return true;
 }
+
+bool ImGui_ImplDX9_CreateDeviceObjects_()
+{
+	ImGui_ImplDX9_InvalidateDeviceObjects();
+	if (!g_pd3dDevice)
+		return false;
+	if (!ImGui_ImplDX9_CreateFontsTexture())
+		return false;
+	return true;
+}
+
 
 extern LRESULT ImGui_ImplDX9_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -80,21 +99,25 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_SIZE:
         if (g_pd3dDevice != NULL && wParam != SIZE_MINIMIZED)
         {
-            ImGui_ImplDX9_InvalidateDeviceObjects();
-
-			if (LPDIRECT3DTEXTURE9 tex = g_ModTexture)
+			ImGui_ImplDX9_InvalidateDeviceObjects();
+			int idx = 0;
+			for (auto& tex : g_ModTextures)
 			{
-				tex->Release();
-				modSetTexture(nullptr);
-				g_ModTexture = nullptr;
+				if (tex)
+				{
+					tex->Release();
+					modSetTexture(idx, nullptr);
+					++idx;
+				}
 			}
+			g_ModTextures.clear();
+
 			g_d3dpp.BackBufferWidth = LOWORD(lParam);
 			g_d3dpp.BackBufferHeight = HIWORD(lParam);
 			HRESULT hr = g_pd3dDevice->Reset(&g_d3dpp);
             if (hr == D3DERR_INVALIDCALL)
                 IM_ASSERT(0);
-			ImGui_ImplDX9_CreateDeviceObjects();
-			ImGui_ImplDX9_CreateModTexture();
+			ImGui_ImplDX9_CreateDeviceObjects_();
         }
         return 0;
     case WM_SYSCOMMAND:
@@ -107,7 +130,6 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
     return DefWindowProc(hWnd, msg, wParam, lParam);
 }
-
 
 int main(int argc, char** argv)
 {
@@ -134,7 +156,11 @@ int main(int argc, char** argv)
 		modUnInit = (TModUnInit)GetProcAddress(mod, "ModUnInit");
 		modTextureData = (TModTextureData)GetProcAddress(mod, "ModTextureData");
 		modSetTexture = (TModSetTexture)GetProcAddress(mod, "ModSetTexture");
+		modGetTextureDirtyRect = (TModGetTextureDirtyRect)GetProcAddress(mod, "ModGetTextureDirtyRect");
+		modTextureBegin = (TModTextureBegin)GetProcAddress(mod, "ModTextureBegin");
+		modTextureEnd = (TModTextureEnd)GetProcAddress(mod, "ModTextureEnd");
 		modUpdateFont = (TModUpdateFont)GetProcAddress(mod, "ModUpdateFont");
+		modMenu = (TModMenu)GetProcAddress(mod, "ModMenu");
 	}
 	/////////////////////////////////////////////////////////////////////////////////
 
@@ -208,7 +234,7 @@ int main(int argc, char** argv)
     ZeroMemory(&msg, sizeof(msg));
     ShowWindow(hwnd, SW_SHOWDEFAULT);
     UpdateWindow(hwnd);
-	ImGui_ImplDX9_CreateModTexture();
+	ImGui_ImplDX9_CreateDeviceObjects_();
     while (msg.message != WM_QUIT)
     {
         if (PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE))
@@ -224,8 +250,55 @@ int main(int argc, char** argv)
 				if (g_FontTexture)
 					g_FontTexture->Release();
 				g_FontTexture = nullptr;
-				ImGui_ImplDX9_CreateDeviceObjects();
 			}
+		}
+		if (modTextureBegin && modTextureEnd && modTextureData && modGetTextureDirtyRect && modSetTexture)
+		{
+			int textures = modTextureBegin();
+			for (int texidx = 0; texidx < textures; ++texidx)
+			{
+				if (texidx >= g_ModTextures.size() || !g_ModTextures[texidx]) {
+					ImGui_ImplDX9_CreateModTexture(texidx);
+				}
+				else
+				{
+					RECT rect;
+					int rectidx = 0;
+					int width, height, bits_per_pixel;
+					unsigned char *pixels;
+					if (modGetTextureDirtyRect(texidx, 0, &rect))
+					{
+						modTextureData(texidx, &pixels, &width, &height, &bits_per_pixel);
+						int rectidx = 0;
+						D3DLOCKED_RECT mod_atlas_rect;
+
+						HRESULT hr = S_OK;
+						auto tex = g_ModTextures[texidx];
+						if (SUCCEEDED(tex->LockRect(0, &mod_atlas_rect, nullptr, 0)))
+						{
+							if (mod_atlas_rect.pBits)
+							{
+								while (modGetTextureDirtyRect(texidx, rectidx++, &rect))
+								{
+									int bx = std::min<int>(rect.left, std::min<int>(rect.right, width - 1));
+									int by = std::min<int>(rect.top, std::min<int>(rect.bottom, height - 1));
+									int ex = std::max<int>(rect.left, std::min<int>(rect.right, width - 1));
+									int ey = std::max<int>(rect.top, std::min<int>(rect.bottom, height - 1));
+									for (int y = by; y <= ey; y++)
+									{
+										BYTE* mapped_data = static_cast<BYTE *>(mod_atlas_rect.pBits) + mod_atlas_rect.Pitch * y + bx *bits_per_pixel;
+										BYTE* data = pixels + (width * bits_per_pixel) * y + bx *bits_per_pixel;
+										const int size = (ex - bx + 1) * bits_per_pixel;
+										memcpy(mapped_data, data, size);
+									}
+								}
+							}
+							tex->UnlockRect(0);
+						}
+					}
+				}
+			}
+			modTextureEnd();
 		}
         ImGui_ImplDX9_NewFrame();
 

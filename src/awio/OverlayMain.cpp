@@ -436,7 +436,7 @@ extern "C" int ModUnInit(ImGuiContext* context)
 	return 0;
 }
 
-extern "C" void ModTextureData(unsigned char** out_pixels, int* out_width, int* out_height, int* out_bytes_per_pixel)
+extern "C" void ModTextureData(int index, unsigned char** out_pixels, int* out_width, int* out_height, int* out_bytes_per_pixel)
 {
 	boost::recursive_mutex::scoped_lock l(instanceLock);
 	assert(out_pixels != nullptr && out_width != nullptr && out_height != nullptr);
@@ -451,13 +451,28 @@ extern "C" void ModTextureData(unsigned char** out_pixels, int* out_width, int* 
 		*out_bytes_per_pixel = instance.overlay_texture_channels;
 }
 
-extern "C" void ModSetTexture(void* texture)
+extern "C" void ModSetTexture(int index, void* texture)
 {
 	boost::recursive_mutex::scoped_lock l(instanceLock);
 	instance.SetTexture(texture);
 	if (texture == nullptr)
 	{
 	}
+}
+
+extern "C" bool ModGetTextureDirtyRect(int index, int dindex, RECT* rect)
+{
+	return false;
+}
+
+extern "C" int ModTextureBegin()
+{
+	return 1; // texture Size and lock
+}
+
+extern "C" void ModTextureEnd()
+{
+	return;
 }
 
 extern "C" int ModRender(ImGuiContext* context)
@@ -1379,6 +1394,8 @@ void OverlayInstance::LoadTexture()
 							i->second->name + ":" + rel_name
 						});
 
+						for (UINT i = 0; i < width*height; i += 4)
+							std::swap(image[i], image[i + 2]);
 
 						stbrp_rect rt;
 						rt.w = width;

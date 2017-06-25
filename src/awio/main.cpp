@@ -14,14 +14,24 @@
 typedef int(*TModUnInit)(ImGuiContext* context);
 typedef int(*TModRender)(ImGuiContext* context);
 typedef int(*TModInit)(ImGuiContext* context);
-typedef void(*TModTextureData)(unsigned char** out_pixels, int* out_width, int* out_height, int* out_bytes_per_pixel);
-typedef void(*TModSetTexture)(void* texture);
+typedef void(*TModTextureData)(int index, unsigned char** out_pixels, int* out_width, int* out_height, int* out_bytes_per_pixel);
+typedef bool(*TModGetTextureDirtyRect)(int index, int dindex, RECT* rect);
+typedef void(*TModSetTexture)(int index, void* texture);
+typedef int(*TModTextureBegin)();
+typedef void(*TModTextureEnd)();
+typedef bool(*TModUpdateFont)(ImGuiContext* context);
+typedef bool(*TModMenu)(bool* show);
 
 TModUnInit modUnInit = nullptr;
 TModRender modRender = nullptr;
 TModInit modInit = nullptr;
 TModTextureData modTextureData = nullptr;
+TModGetTextureDirtyRect modGetTextureDirtyRect = nullptr;
 TModSetTexture modSetTexture = nullptr;
+TModTextureBegin modTextureBegin = nullptr;
+TModTextureEnd modTextureEnd = nullptr;
+TModUpdateFont modUpdateFont = nullptr;
+TModMenu modMenu = nullptr;
 HMODULE mod = nullptr;
 /////////////////////////////////////////////////////////////////////////////////
 
@@ -92,6 +102,9 @@ void CleanupDeviceD3D()
     if (g_pd3dDevice) { g_pd3dDevice->Release(); g_pd3dDevice = NULL; }
 }
 
+static std::vector<ID3D11ShaderResourceView*> g_pModTextureViews;
+static std::vector<ID3D11Texture2D*> g_pModTextures;
+
 extern LRESULT ImGui_ImplDX11_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -103,6 +116,26 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_SIZE:
         if (g_pd3dDevice != NULL && wParam != SIZE_MINIMIZED)
         {
+			int idx = 0;
+			for (auto& tex : g_pModTextureViews)
+			{
+				if (tex)
+				{
+					tex->Release();
+					modSetTexture(idx, nullptr);
+					++idx;
+				}
+			}
+			g_pModTextureViews.clear();
+			for (auto& tex : g_pModTextures)
+			{
+				if (tex)
+				{
+					tex->Release();
+				}
+			}
+			g_pModTextures.clear();
+
             ImGui_ImplDX11_InvalidateDeviceObjects();
             CleanupRenderTarget();
             g_pSwapChain->ResizeBuffers(0, (UINT)LOWORD(lParam), (UINT)HIWORD(lParam), DXGI_FORMAT_UNKNOWN, 0);
@@ -121,25 +154,28 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     return DefWindowProc(hWnd, msg, wParam, lParam);
 }
 
-static ID3D11ShaderResourceView*g_pModTextureView = NULL;
-static void ImGui_ImplDX11_CreateModTexture()
+static void ImGui_ImplDX11_CreateModTexture(int texindex)
 {
 	if (!modTextureData)
 		return;
 
+	g_pModTextureViews.resize(std::max<size_t>(g_pModTextureViews.size(), texindex + 1));
+	g_pModTextures.resize(std::max<size_t>(g_pModTextures.size(), texindex + 1));
+	auto& g_pModTexture = g_pModTextures.at(texindex);
+	auto& g_pModTextureView = g_pModTextureViews.at(texindex);
 	if (g_pModTextureView)
 	{
 		g_pModTextureView->Release();
 		g_pModTextureView = nullptr;
 		if (modSetTexture)
-			modSetTexture(nullptr);
+			modSetTexture(texindex, nullptr);
 	}
 	// Build texture atlas
 	ImGuiIO& io = ImGui::GetIO();
 	unsigned char* pixels;
 	int width, height;
 	int bpp;
-	modTextureData(&pixels, &width, &height, &bpp);
+	modTextureData(texindex, &pixels, &width, &height, &bpp);
 	if (pixels == nullptr)
 		return;
 
@@ -151,11 +187,11 @@ static void ImGui_ImplDX11_CreateModTexture()
 		desc.Height = height;
 		desc.MipLevels = 1;
 		desc.ArraySize = 1;
-		desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
 		desc.SampleDesc.Count = 1;
-		desc.Usage = D3D11_USAGE_DEFAULT;
+		desc.Usage = D3D11_USAGE_DYNAMIC;
 		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-		desc.CPUAccessFlags = 0;
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
 		ID3D11Texture2D *pTexture = NULL;
 		D3D11_SUBRESOURCE_DATA subResource;
@@ -167,13 +203,12 @@ static void ImGui_ImplDX11_CreateModTexture()
 		// Create texture view
 		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
 		ZeroMemory(&srvDesc, sizeof(srvDesc));
-		srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		srvDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
 		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 		srvDesc.Texture2D.MipLevels = desc.MipLevels;
 		srvDesc.Texture2D.MostDetailedMip = 0;
 		g_pd3dDevice->CreateShaderResourceView(pTexture, &srvDesc, &g_pModTextureView);
-		if(pTexture)
-			pTexture->Release();
+		g_pModTexture = pTexture;
 	}
 
 	// Store our identifier
@@ -195,7 +230,7 @@ static void ImGui_ImplDX11_CreateModTexture()
 	//}
 
 	if (modSetTexture)
-		modSetTexture(g_pModTextureView);
+		modSetTexture(texindex, g_pModTextureView);
 }
 
 int main(int argc, char** argv)
@@ -224,6 +259,11 @@ int main(int argc, char** argv)
 		modUnInit = (TModUnInit)GetProcAddress(mod, "ModUnInit");
 		modTextureData = (TModTextureData)GetProcAddress(mod, "ModTextureData");
 		modSetTexture = (TModSetTexture)GetProcAddress(mod, "ModSetTexture");
+		modGetTextureDirtyRect = (TModGetTextureDirtyRect)GetProcAddress(mod, "ModGetTextureDirtyRect");
+		modTextureBegin = (TModTextureBegin)GetProcAddress(mod, "ModTextureBegin");
+		modTextureEnd = (TModTextureEnd)GetProcAddress(mod, "ModTextureEnd");
+		modUpdateFont = (TModUpdateFont)GetProcAddress(mod, "ModUpdateFont");
+		modMenu = (TModMenu)GetProcAddress(mod, "ModMenu");
 	}
 	/////////////////////////////////////////////////////////////////////////////////
 
@@ -294,8 +334,79 @@ int main(int argc, char** argv)
             continue;
         }
 
-		if (!g_pModTextureView) {
-			ImGui_ImplDX11_CreateModTexture();
+		if (modTextureBegin && modTextureEnd && modTextureData && modGetTextureDirtyRect && modSetTexture)
+		{
+			int textures = modTextureBegin();
+			for (int texidx = 0; texidx < textures; ++texidx)
+			{
+				if (texidx>=g_pModTextureViews.size() || !g_pModTextureViews[texidx]) {
+					ImGui_ImplDX11_CreateModTexture(texidx);
+					modSetTexture(texidx, g_pModTextureViews[texidx]);
+				}
+				else
+				{
+					RECT rect;
+					int rectidx = 0;
+					unsigned char* pixels;
+					int width, height;
+					int bits_per_pixel = 4;
+					int bpp;
+					if (modGetTextureDirtyRect(texidx, 0, &rect))
+					{
+						// get texture first
+						modTextureData(texidx, &pixels, &width, &height, &bpp);
+
+						D3D11_MAPPED_SUBRESOURCE res = { 0, };
+						HRESULT hr = g_pd3dDeviceContext->Map(g_pModTextures[texidx], 0, D3D11_MAP_WRITE_DISCARD, 0, &res);
+						if (res.pData)
+						{
+							//while (modGetTextureDirtyRect(texidx, rectidx++, &rect))
+							if (modGetTextureDirtyRect(texidx, -1, &rect))
+							{
+								int bx = std::min<int>(rect.left, std::min<int>(rect.right, width - 1));
+								int by = std::min<int>(rect.top, std::min<int>(rect.bottom, height - 1));
+								int ex = std::max<int>(rect.left, std::min<int>(rect.right, width - 1));
+								int ey = std::max<int>(rect.top, std::min<int>(rect.bottom, height - 1));
+								for (int y = by; y <= ey; y++)
+								{
+									BYTE* mapped_data = static_cast<BYTE *>(res.pData) + res.RowPitch * y + bx *bits_per_pixel;
+									BYTE* data = pixels + (width * bits_per_pixel) * y + bx *bits_per_pixel;
+									const int size = (ex - bx + 1) * bits_per_pixel;
+									memcpy(mapped_data, data, size);
+								}
+							}
+							//rect.left = 0;
+							//rect.top = 0;
+							//rect.bottom = height - 1;
+							//rect.right = width - 1;
+							//int bx = std::min<int>(rect.left, std::min<int>(rect.right, width - 1));
+							//int by = std::min<int>(rect.top, std::min<int>(rect.bottom, height - 1));
+							//int ex = std::max<int>(rect.left, std::min<int>(rect.right, width - 1));
+							//int ey = std::max<int>(rect.top, std::min<int>(rect.bottom, height - 1));
+							//for (int y = by; y <= ey; y++)
+							//{
+							//	BYTE* mapped_data = static_cast<BYTE *>(res.pData) + res.RowPitch * y + bx *bits_per_pixel;
+							//	BYTE* data = pixels + (width * bits_per_pixel) * y + bx *bits_per_pixel;
+							//	const int size = (ex - bx + 1) * bits_per_pixel;
+							//	memcpy(mapped_data, data, size);
+							//}
+						}
+						g_pd3dDeviceContext->Unmap(g_pModTextures[texidx], 0);
+					}
+				}
+			}
+			modTextureEnd();
+		}
+		if (modUpdateFont)
+		{
+			if (modUpdateFont(ImGui::GetCurrentContext()))
+			{
+				if (g_pFontTextureView)
+					g_pFontTextureView->Release();
+				if (g_pFontSampler)
+					g_pFontSampler->Release();
+				ImGui_ImplDX11_CreateFontsTexture();
+			}
 		}
         ImGui_ImplDX11_NewFrame();
 

@@ -532,6 +532,9 @@ extern "C" int ModInit(ImGuiContext* context)
 				{
 					overlay_texture_filedata = stbi_load_from_file(file, &overlay_texture_width, &overlay_texture_height, &overlay_texture_channels, STBI_rgb_alpha);
 					fclose(file);
+
+					for (UINT i = 0; i < overlay_texture_width*overlay_texture_height; i += 4)
+						std::swap(overlay_texture_filedata[i], overlay_texture_filedata[i + 2]);
 				}
 			}
 		}
@@ -1094,7 +1097,7 @@ extern "C" int ModUnInit(ImGuiContext* context)
 	return 0;
 }
 
-extern "C" void ModTextureData(unsigned char** out_pixels, int* out_width, int* out_height, int* out_bytes_per_pixel)
+extern "C" void ModTextureData(int index, unsigned char** out_pixels, int* out_width, int* out_height, int* out_bytes_per_pixel)
 {
 	boost::unique_lock<boost::mutex> l(font_mutex);
 	assert(out_pixels != nullptr && out_width != nullptr && out_height != nullptr);
@@ -1109,7 +1112,7 @@ extern "C" void ModTextureData(unsigned char** out_pixels, int* out_width, int* 
 		*out_bytes_per_pixel = overlay_texture_channels;
 }
 
-extern "C" void ModSetTexture(void* texture)
+extern "C" void ModSetTexture(int index, void* texture)
 {
 	boost::unique_lock<boost::mutex> l(font_mutex);
 	overlay_texture = texture;
@@ -1120,6 +1123,20 @@ extern "C" void ModSetTexture(void* texture)
 	}
 }
 
+extern "C" bool ModGetTextureDirtyRect(int index, int dindex, RECT* rect)
+{
+	return false;
+}
+
+extern "C" int ModTextureBegin()
+{
+	return 1; // texture Size and lock
+}
+
+extern "C" void ModTextureEnd()
+{
+	return;
+}
 
 void FontsPreferences() {
 	if (ImGui::TreeNode("Fonts"))
