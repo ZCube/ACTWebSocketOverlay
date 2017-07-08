@@ -49,6 +49,7 @@ Library | Description
 [Beast](https://github.com/vinniefalco/Beast) | WebSocket Library
 [ImGui](https://github.com/ocornut/imgui) | Dear ImGui 
 [JsonCPP](https://github.com/open-source-parsers/jsoncpp) | Json Library for parsing Message and Settings
+[Reshade](https://github.com/crosire/reshade) | Used as overlay injector
 
 ## [Installation Guide](/docs/Installation/Installation.md)
 
