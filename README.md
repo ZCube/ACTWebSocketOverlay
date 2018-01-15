@@ -90,3 +90,7 @@ Microsoft Visual Studio Community 2017
 ##
 
 NO WARRANTY. ANY USE OF THE SOFTWARE IS ENTIRELY AT YOUR OWN RISK.
+
+## Note ##
+
+This repository is no longer maintained.
