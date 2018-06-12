@@ -3,6 +3,7 @@ SETLOCAL
 
 set _ROOT=%CD%
 pushd external\reshade
+set PATH=C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin;C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\MSBuild\15.0\Bin;%PATH%
 CALL "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars32.bat"
 msbuild ReShade.sln /property:Configuration=Release "/property:Platform=32-bit"
 msbuild ReShade.sln /property:Configuration=Release "/property:Platform=64-bit"

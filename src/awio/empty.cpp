@@ -20,8 +20,8 @@
 
 #include <boost/bind.hpp>
 #include <boost/thread/mutex.hpp>
-#include <beast/core.hpp>
-#include <beast/websocket.hpp>
+#include <boost/beast/core.hpp>
+#include <boost/beast/websocket.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/hex.hpp>

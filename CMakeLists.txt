@@ -2,6 +2,54 @@ cmake_minimum_required(VERSION 3.0.0)
 
 project(ActWebSocketOverlay C CXX)
 
+# Download automatically, you can also just copy the conan.cmake file
+if(NOT EXISTS "${CMAKE_BINARY_DIR}/conan.cmake")
+   message(STATUS "Downloading conan.cmake from https://github.com/conan-io/cmake-conan")
+   file(DOWNLOAD "https://raw.githubusercontent.com/conan-io/cmake-conan/v0.11/conan.cmake"
+                 "${CMAKE_BINARY_DIR}/conan.cmake")
+endif()
+
+include (CheckTypeSize)
+CHECK_TYPE_SIZE("void*"  CMAKE_SIZEOF_VOID_P)
+
+if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+  if(DEFINED ENV{QTDIR32})
+    SET(QTDIR_ROOT "$ENV{QTDIR32}")
+  elseif(DEFINED ENV{QTDIR})
+    SET(QTDIR_ROOT "$ENV{QTDIR}")
+  endif()
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
+  if(DEFINED ENV{QTDIR64})
+    SET(QTDIR_ROOT "$ENV{QTDIR64}")
+  elseif(DEFINED ENV{QTDIR})
+    SET(QTDIR_ROOT "$ENV{QTDIR}")
+  endif()
+endif()
+
+include(${CMAKE_BINARY_DIR}/conan.cmake)
+
+if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+  configure_file(conanfile.txt "${CMAKE_CURRENT_SOURCE_DIR}/_conanfile86.txt" @ONLY)
+  conan_cmake_run(CONANFILE "_conanfile86.txt"
+                BASIC_SETUP
+                SETTINGS arch=x86
+                BUILD missing)
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
+  configure_file(conanfile.txt "${CMAKE_CURRENT_SOURCE_DIR}/_conanfile64.txt" @ONLY)
+  conan_cmake_run(CONANFILE "_conanfile64.txt"
+                BASIC_SETUP
+                SETTINGS arch=x86_64
+                BUILD missing)
+endif()
+
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
+conan_define_targets()
+
+ADD_DEFINITIONS(
+  ${CONAN_DEFINES_BOOST}
+)
+
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 ADD_DEFINITIONS(

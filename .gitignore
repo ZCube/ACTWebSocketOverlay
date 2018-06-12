@@ -16,3 +16,5 @@ lib/*
 prebuilt/*
 src/version
 textures/out/*
+/_conanfile64.txt
+/_conanfile86.txt

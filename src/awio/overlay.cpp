@@ -21,11 +21,12 @@
 
 #include <boost/bind.hpp>
 #include <boost/thread/mutex.hpp>
-#include <beast/core.hpp>
+#include <boost/beast/core.hpp>
 #include "websocket.h"
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/hex.hpp>
+#include <boost/lexical_cast.hpp>
 #include "Serializable.h"
 
 #include <atlstr.h>
@@ -292,11 +293,11 @@ public:
 						{
 							strcpy_s(websocket_message, 1023, "Connected");
 						}
-						beast::multi_buffer b;
-						beast::websocket::opcode op;
+						boost::beast::multi_buffer b;
+						boost::beast::websocket::detail::opcode op;
 						//std::function<void(std::string write) > write;
-						std::function<void(beast::error_code) > read_handler =
-							[this, &read_handler, &b, &op](beast::error_code ec) {
+						std::function<void(boost::beast::error_code, std::size_t) > read_handler =
+							[this, &read_handler, &b, &op](boost::beast::error_code ec, std::size_t bytes_transferred) {
 							if (ec || websocket_reconnect)
 							{
 								strcpy_s(websocket_message, 1023, "Disconnected");
@@ -304,24 +305,24 @@ public:
 							else
 							{
 								std::string message_str;
-								message_str = boost::lexical_cast<std::string>(beast::buffers(b.data()));
+								message_str = boost::lexical_cast<std::string>(boost::beast::buffers(b.data()));
 								// debug
-//std::cout << beast::buffers(b.data()) << "\n";
-b.consume(b.size());
-if (message_str.size() == 1)
-{
-	websocket->write(boost::asio::buffer(std::string(".")));
-}
-else
-{
-	Process(message_str);
-}
-if (loop)
-websocket->async_read(op, b, websocket->strand.wrap(read_handler));
+								//std::cout << boost::beast::buffers(b.data()) << "\n";
+								b.consume(b.size());
+								if (message_str.size() == 1)
+								{
+									websocket->write(boost::asio::buffer(std::string(".")));
+								}
+								else
+								{
+									Process(message_str);
+								}
+								if (loop)
+									websocket->async_read(b, websocket->strand.wrap(read_handler));
 							}
 						};
 						if (loop)
-							websocket->async_read(op, b, websocket->strand.wrap(read_handler));
+							websocket->async_read(b, websocket->strand.wrap(read_handler));
 						websocket->ios.run();
 					}
 				}
@@ -1676,7 +1677,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 				websocket_reconnect = true;
 				if (websocket.websocket)
 				{
-					websocket.websocket->close(beast::websocket::close_reason(0));
+					websocket.websocket->close(boost::beast::websocket::none);
 				}
 				strcpy_s(websocket_message, 1023, "Connecting...");
 				SaveSettings();

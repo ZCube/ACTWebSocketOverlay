@@ -58,8 +58,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,0,1,4
- PRODUCTVERSION 0,0,1,4
+ FILEVERSION 0,1,0,24
+ PRODUCTVERSION 0,1,0,24
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -76,12 +76,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "ZCube.Kr"
             VALUE "FileDescription", "ACTWebSocket Overlay"
-            VALUE "FileVersion", "0,0,1,4"
+            VALUE "FileVersion", "0,1,0,24"
             VALUE "InternalName", "ACTWebSocket Overlay"
             VALUE "LegalCopyright", "Copyright (C) 2017"
             VALUE "OriginalFilename", "ACTWebSocketOverlay.dll"
             VALUE "ProductName", "OverlayProc"
-            VALUE "ProductVersion", "0.0.1.4-gae54cb7"
+            VALUE "ProductVersion", "0.1.0.24-g0c7964c"
         END
     END
     BLOCK "VarFileInfo"

@@ -2,17 +2,19 @@ SET(IMGUI_DIRECTORY ${CMAKE_HOME_DIRECTORY}/external/reshade/deps/imgui)
 SET(STB_DIRECTORY ${CMAKE_HOME_DIRECTORY}/external/reshade/deps/stb)
 SET(NUKLEAR_DIRECTORY ${CMAKE_HOME_DIRECTORY}/external/nuklear)
 
+if (MSVC)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
+endif()
+
 INCLUDE_DIRECTORIES(
 	${IMGUI_DIRECTORY}
 	${STB_DIRECTORY}
 	${NUKLEAR_DIRECTORY}
 )
 
-IF(USE_SSL)
-	ADD_DEFINITIONS(
-		-DUSE_SSL
-	)
-ENDIF(USE_SSL)
+ADD_DEFINITIONS(
+  -DUSE_SSL
+)
 
 ADD_LIBRARY(ActWebSocketImguiOverlay
 	SHARED
@@ -33,10 +35,7 @@ ADD_LIBRARY(ActWebSocketImguiOverlay
 	version.h
 )
 
-TARGET_LINK_LIBRARIES(ActWebSocketImguiOverlay
-	jsoncpp_lib_static
-	boost
-)
+CONAN_TARGET_LINK_LIBRARIES(ActWebSocketImguiOverlay)
 
 ADD_LIBRARY(loader
 	SHARED
@@ -73,14 +72,14 @@ ADD_EXECUTABLE(test_main
 )
 
 TARGET_LINK_LIBRARIES(test_main
-	jsoncpp_lib_static
-	boost
 	ActWebSocketImguiOverlayWithLua
 	ActWebSocketImguiOverlay
 	d3d11.lib
 	d3dcompiler.lib
 	dxgi.lib
 )
+
+CONAN_TARGET_LINK_LIBRARIES(test_main)
 
 ADD_EXECUTABLE(test_main_dx9
 	${IMGUI_DIRECTORY}/imconfig.h
@@ -100,13 +99,13 @@ ADD_EXECUTABLE(test_main_dx9
 )
 
 TARGET_LINK_LIBRARIES(test_main_dx9
-	jsoncpp_lib_static
-	boost
 	ActWebSocketImguiOverlayWithLua
 	ActWebSocketImguiOverlay
 	d3d9.lib
 	d3dcompiler.lib
 )
+
+CONAN_TARGET_LINK_LIBRARIES(test_main_dx9)
 
 include_directories(${CMAKE_HOME_DIRECTORY}/external/imgui_lua_bindings)
 
@@ -159,17 +158,6 @@ source_group(lib/stb FILES
 
 TARGET_LINK_LIBRARIES(ActWebSocketImguiOverlayWithLua
 	liblua
-	jsoncpp_lib_static
-	boost
 )
 
-IF(USE_SSL)
-	TARGET_LINK_LIBRARIES(ActWebSocketImguiOverlayWithLua
-		libeay32.lib
-		ssleay32.lib
-	)
-	TARGET_LINK_LIBRARIES(ActWebSocketImguiOverlay
-		libeay32.lib
-		ssleay32.lib
-	)
-ENDIF(USE_SSL)
+CONAN_TARGET_LINK_LIBRARIES(ActWebSocketImguiOverlayWithLua)

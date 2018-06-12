@@ -1,0 +1,16 @@
+[requires]
+boost/1.66.0@conan/stable
+OpenSSL/1.0.2o@conan/stable
+jsoncpp/1.8.4@theirix/stable
+
+[generators]
+cmake
+
+[options]
+boost:shared=False
+OpenSSL:shared=False
+jsoncpp:shared=False
+
+[imports]
+bin, *.dll -> @CMAKE_RUNTIME_OUTPUT_DIRECTORY@/Release
+lib, *.dylib* -> @CMAKE_RUNTIME_OUTPUT_DIRECTORY@/Release

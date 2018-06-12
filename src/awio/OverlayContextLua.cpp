@@ -28,10 +28,10 @@ extern "C"
 
 #include <boost/bind.hpp>
 #include <boost/thread/mutex.hpp>
-#include <beast/core.hpp>
-#include <beast/websocket.hpp>
+#include <boost/beast/core.hpp>
+#include <boost/beast/websocket.hpp>
 #if defined(USE_SSL)
-#include <beast/websocket/ssl.hpp>
+#include <boost/beast/websocket/ssl.hpp>
 #include <boost/asio/ssl.hpp>
 #endif
 #include <boost/asio.hpp>
@@ -519,7 +519,7 @@ void OverlayContextLua::Preferences()
 				websocket_reconnect = true;
 				if (websocket)
 				{
-					websocket->close(beast::websocket::close_reason(0));
+					websocket->close(boost::beast::websocket::none);
 				}
 				strcpy_s(websocket_message, 1023, "Connecting...");
 				Save();
@@ -535,7 +535,7 @@ void OverlayContextLua::Preferences()
 					websocket_reconnect = true;
 					if (websocket)
 					{
-						websocket->close(beast::websocket::close_reason(0));
+						websocket->close(boost::beast::websocket::none);
 					}
 					strcpy_s(websocket_message, 1023, "Connecting...");
 					Save();
@@ -552,7 +552,7 @@ void OverlayContextLua::Preferences()
 					websocket_reconnect = true;
 					if (websocket)
 					{
-						websocket->close(beast::websocket::close_reason(0));
+						websocket->close(boost::beast::websocket::none);
 					}
 					strcpy_s(websocket_message, 1023, "Connecting...");
 					Save();
@@ -563,7 +563,7 @@ void OverlayContextLua::Preferences()
 				websocket_reconnect = true;
 				if (websocket)
 				{
-					websocket->close(beast::websocket::close_reason(0));
+					websocket->close(boost::beast::websocket::none);
 				}
 				strcpy_s(websocket_message, 1023, "Connecting...");
 				Save();
