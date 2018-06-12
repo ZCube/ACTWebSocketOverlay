@@ -1,6 +1,6 @@
 @echo off
 SETLOCAL
-CALL "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars32.bat"
+REM CALL "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars32.bat"
 set _ROOT=%CD%
 
 if not exist build\64 mkdir build\64

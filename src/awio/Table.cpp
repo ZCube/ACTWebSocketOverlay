@@ -35,10 +35,11 @@ bool Table::ButtonCustom(const char* label, const ImVec2& size_arg, ImGuiButtonF
 
 	const ImRect bb(pos, ImVec2(pos.x + size.x, pos.y + size.y));
 	ItemSize(bb, style.FramePadding.y);
-	if (!ItemAdd(bb, &id))
+	if (!ItemAdd(bb, id))
 		return false;
 
-	if (window->DC.ButtonRepeat) flags |= ImGuiButtonFlags_Repeat;
+	if (window->DC.ItemFlags & ImGuiItemFlags_ButtonRepeat)
+		flags |= ImGuiButtonFlags_Repeat;
 	bool hovered, held;
 	bool pressed = ButtonBehavior(bb, id, &hovered, &held, flags);
 

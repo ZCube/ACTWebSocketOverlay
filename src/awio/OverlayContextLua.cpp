@@ -477,17 +477,17 @@ void OverlayContextLua::Render(bool use_input, class OverlayOption* options)
 		}
 		ImGuiContext& g = *ImGui::GetCurrentContext();
 		bool restore_accessed = false;
-		restore_accessed = (g.CurrentWindow && !g.CurrentWindow->Accessed);
+		restore_accessed = (g.CurrentWindow && !g.CurrentWindow->WriteAccessed);
 		ImGui::PushID(name.c_str());
 		if (restore_accessed)
-			g.CurrentWindow->Accessed = false;
+			g.CurrentWindow->WriteAccessed = false;
 
 		ImLuaDraw(L_render, use_input, render_filename.string().c_str(), last_processed_data);
 
-		restore_accessed = (g.CurrentWindow && !g.CurrentWindow->Accessed);
+		restore_accessed = (g.CurrentWindow && !g.CurrentWindow->WriteAccessed);
 		ImGui::PopID();
 		if (restore_accessed)
-			g.CurrentWindow->Accessed = false;
+			g.CurrentWindow->WriteAccessed = false;
 	}
 
 	errors_mutex.lock();

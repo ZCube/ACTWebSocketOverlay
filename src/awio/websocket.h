@@ -43,6 +43,7 @@ public:
 	{
 		stream.handshake(boost::asio::ssl::stream_base::client);
 
+		// FIX pmd has problem
 		//boost::beast::websocket::permessage_deflate pmd;
 		//pmd.client_enable = true;
 		//pmd.server_enable = true;
@@ -50,7 +51,7 @@ public:
 		//pmd.client_no_context_takeover = true;
 		//pmd.compLevel = 3;
 
-		ws.auto_fragment(false);
+		//ws.auto_fragment(false);
 		//ws.set_option(pmd);
 
 		ws.handshake(host_port, path);
@@ -84,6 +85,7 @@ public:
 
 	virtual void handshake(const std::string& host_port, const std::string& path)
 	{
+		// FIX pmd has problem
 		//boost::beast::websocket::permessage_deflate pmd;
 		//pmd.client_enable = true;
 		//pmd.server_enable = true;
@@ -91,7 +93,7 @@ public:
 		//pmd.client_no_context_takeover = true;
 		//pmd.compLevel = 3;
 
-		ws.auto_fragment(false);
+		//ws.auto_fragment(false);
 		//ws.set_option(pmd);
 
 		ws.handshake(host_port, path);

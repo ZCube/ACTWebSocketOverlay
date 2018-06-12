@@ -107,6 +107,59 @@ TARGET_LINK_LIBRARIES(test_main_dx9
 
 CONAN_TARGET_LINK_LIBRARIES(test_main_dx9)
 
+ADD_EXECUTABLE(blank_main_dx11
+	${IMGUI_DIRECTORY}/imconfig.h
+	${IMGUI_DIRECTORY}/imgui.cpp
+	${IMGUI_DIRECTORY}/imgui.h
+	${IMGUI_DIRECTORY}/imgui_demo.cpp
+	${IMGUI_DIRECTORY}/imgui_draw.cpp
+	${IMGUI_DIRECTORY}/examples/directx11_example/imgui_impl_dx11.h
+	${IMGUI_DIRECTORY}/examples/directx11_example/imgui_impl_dx11.cpp
+	${IMGUI_DIRECTORY}/imgui_internal.h
+	blank_main_dx11.cpp
+	Resource.rc
+	resource.h
+	${IMGUI_DIRECTORY}/stb_rect_pack.h
+	${IMGUI_DIRECTORY}/stb_textedit.h
+	${IMGUI_DIRECTORY}/stb_truetype.h
+)
+
+TARGET_LINK_LIBRARIES(blank_main_dx11
+	ActWebSocketImguiOverlayWithLua
+	ActWebSocketImguiOverlay
+	d3d11.lib
+	d3dcompiler.lib
+	dxgi.lib
+)
+
+CONAN_TARGET_LINK_LIBRARIES(blank_main_dx11)
+
+ADD_EXECUTABLE(blank_main_dx9
+	${IMGUI_DIRECTORY}/imconfig.h
+	${IMGUI_DIRECTORY}/imgui.cpp
+	${IMGUI_DIRECTORY}/imgui.h
+	${IMGUI_DIRECTORY}/imgui_demo.cpp
+	${IMGUI_DIRECTORY}/imgui_draw.cpp
+	${IMGUI_DIRECTORY}/examples/directx9_example/imgui_impl_dx9.h
+	${IMGUI_DIRECTORY}/examples/directx9_example/imgui_impl_dx9.cpp
+	${IMGUI_DIRECTORY}/imgui_internal.h
+	blank_main_dx9.cpp
+	Resource.rc
+	resource.h
+	${IMGUI_DIRECTORY}/stb_rect_pack.h
+	${IMGUI_DIRECTORY}/stb_textedit.h
+	${IMGUI_DIRECTORY}/stb_truetype.h
+)
+
+TARGET_LINK_LIBRARIES(blank_main_dx9
+	ActWebSocketImguiOverlayWithLua
+	ActWebSocketImguiOverlay
+	d3d9.lib
+	d3dcompiler.lib
+)
+
+CONAN_TARGET_LINK_LIBRARIES(test_main_dx9)
+
 include_directories(${CMAKE_HOME_DIRECTORY}/external/imgui_lua_bindings)
 
 ADD_DEFINITIONS(

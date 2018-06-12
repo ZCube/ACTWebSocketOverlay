@@ -481,7 +481,7 @@ extern "C" int ModRender(ImGuiContext* context)
 	ImGui::SetCurrentContext(context);
 	instance.Render(context);
 	ImGuiContext& g = *context;
-	if (g.CurrentWindow && g.CurrentWindow->Accessed)
+	if (g.CurrentWindow && g.CurrentWindow->WriteAccessed)
 	{
 		// debug
 		if (ImGui::Button("Reload Overlays"))
@@ -555,7 +555,7 @@ OverlayInstance::OverlayInstance()
 		{ "ScrollbarGrab",         &imgui_style.Colors[ImGuiCol_ScrollbarGrab] },
 		{ "ScrollbarGrabHovered",  &imgui_style.Colors[ImGuiCol_ScrollbarGrabHovered] },
 		{ "ScrollbarGrabActive",   &imgui_style.Colors[ImGuiCol_ScrollbarGrabActive] },
-		{ "ComboBg",               &imgui_style.Colors[ImGuiCol_ComboBg] },
+		//{ "ComboBg",               &imgui_style.Colors[ImGuiCol_PopupBg] },
 		{ "CheckMark",             &imgui_style.Colors[ImGuiCol_CheckMark] },
 		{ "SliderGrab",            &imgui_style.Colors[ImGuiCol_SliderGrab] },
 		{ "SliderGrabActive",      &imgui_style.Colors[ImGuiCol_SliderGrabActive] },
@@ -571,9 +571,9 @@ OverlayInstance::OverlayInstance()
 		{ "ResizeGrip",            &imgui_style.Colors[ImGuiCol_ResizeGrip] },
 		{ "ResizeGripHovered",     &imgui_style.Colors[ImGuiCol_ResizeGripHovered] },
 		{ "ResizeGripActive",      &imgui_style.Colors[ImGuiCol_ResizeGripActive] },
-		{ "CloseButton",           &imgui_style.Colors[ImGuiCol_CloseButton] },
-		{ "CloseButtonHovered",    &imgui_style.Colors[ImGuiCol_CloseButtonHovered] },
-		{ "CloseButtonActive",     &imgui_style.Colors[ImGuiCol_CloseButtonActive] },
+		{ "CloseButton",           &imgui_style.Colors[ImGuiCol_Button] },
+		{ "CloseButtonHovered",    &imgui_style.Colors[ImGuiCol_ButtonHovered] },
+		{ "CloseButtonActive",     &imgui_style.Colors[ImGuiCol_ButtonActive] },
 		{ "PlotLines",             &imgui_style.Colors[ImGuiCol_PlotLines] },
 		{ "PlotLinesHovered",      &imgui_style.Colors[ImGuiCol_PlotLinesHovered] },
 		{ "PlotHistogram",         &imgui_style.Colors[ImGuiCol_PlotHistogram] },
@@ -607,7 +607,7 @@ OverlayInstance::OverlayInstance()
 			{ "ScrollbarGrab",         PreferenceNode::Type::Color4, &imgui_style.Colors[ImGuiCol_ScrollbarGrab] },
 			{ "ScrollbarGrabHovered",  PreferenceNode::Type::Color4, &imgui_style.Colors[ImGuiCol_ScrollbarGrabHovered] },
 			{ "ScrollbarGrabActive",   PreferenceNode::Type::Color4, &imgui_style.Colors[ImGuiCol_ScrollbarGrabActive] },
-			{ "ComboBg",               PreferenceNode::Type::Color4, &imgui_style.Colors[ImGuiCol_ComboBg] },
+			//{ "ComboBg",               PreferenceNode::Type::Color4, &imgui_style.Colors[ImGuiCol_PopupBg] },
 			{ "CheckMark",             PreferenceNode::Type::Color4, &imgui_style.Colors[ImGuiCol_CheckMark] },
 			{ "SliderGrab",            PreferenceNode::Type::Color4, &imgui_style.Colors[ImGuiCol_SliderGrab] },
 			{ "SliderGrabActive",      PreferenceNode::Type::Color4, &imgui_style.Colors[ImGuiCol_SliderGrabActive] },
@@ -623,9 +623,9 @@ OverlayInstance::OverlayInstance()
 			{ "ResizeGrip",            PreferenceNode::Type::Color4, &imgui_style.Colors[ImGuiCol_ResizeGrip] },
 			{ "ResizeGripHovered",     PreferenceNode::Type::Color4, &imgui_style.Colors[ImGuiCol_ResizeGripHovered] },
 			{ "ResizeGripActive",      PreferenceNode::Type::Color4, &imgui_style.Colors[ImGuiCol_ResizeGripActive] },
-			{ "CloseButton",           PreferenceNode::Type::Color4, &imgui_style.Colors[ImGuiCol_CloseButton] },
-			{ "CloseButtonHovered",    PreferenceNode::Type::Color4, &imgui_style.Colors[ImGuiCol_CloseButtonHovered] },
-			{ "CloseButtonActive",     PreferenceNode::Type::Color4, &imgui_style.Colors[ImGuiCol_CloseButtonActive] },
+			{ "CloseButton",           PreferenceNode::Type::Color4, &imgui_style.Colors[ImGuiCol_Button] },
+			{ "CloseButtonHovered",    PreferenceNode::Type::Color4, &imgui_style.Colors[ImGuiCol_ButtonHovered] },
+			{ "CloseButtonActive",     PreferenceNode::Type::Color4, &imgui_style.Colors[ImGuiCol_ButtonActive] },
 			{ "PlotLines",             PreferenceNode::Type::Color4, &imgui_style.Colors[ImGuiCol_PlotLines] },
 			{ "PlotLinesHovered",      PreferenceNode::Type::Color4, &imgui_style.Colors[ImGuiCol_PlotLinesHovered] },
 			{ "PlotHistogram",         PreferenceNode::Type::Color4, &imgui_style.Colors[ImGuiCol_PlotHistogram] },
@@ -1163,14 +1163,14 @@ void OverlayInstance::Load() {
 						{
 							if (context)
 							{
-								ImGuiIniData * settings = nullptr;
+								ImGuiWindowSettings * settings = nullptr;
 								ImGuiContext & g = *context;
 								g.Initialized = true;
 								ImGuiID id = ImHash(name.c_str(), 0);
 								{
-									for (int i = 0; i != g.Settings.Size; ++i)
+									for (int i = 0; i != g.SettingsWindows.Size; ++i)
 									{
-										ImGuiIniData* ini = &g.Settings[i];
+										ImGuiWindowSettings* ini = &g.SettingsWindows[i];
 										if (ini->Id == id)
 										{
 											settings = ini;
@@ -1179,8 +1179,8 @@ void OverlayInstance::Load() {
 									}
 									if (settings == nullptr)
 									{
-										context->Settings.resize(context->Settings.Size + 1);
-										ImGuiIniData* ini = &context->Settings.back();
+										g.SettingsWindows.push_back(ImGuiWindowSettings());
+										ImGuiWindowSettings* ini = &g.SettingsWindows.back();
 										ini->Name = ImStrdup(name.c_str());
 										ini->Id = ImHash(name.c_str(), 0);
 										ini->Collapsed = false;

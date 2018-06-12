@@ -301,6 +301,7 @@ public:
 							if (ec || websocket_reconnect)
 							{
 								strcpy_s(websocket_message, 1023, "Disconnected");
+								//std::cerr << ec.message() << std::endl;
 							}
 							else
 							{
@@ -739,12 +740,21 @@ extern "C" int ModInit(ImGuiContext* context)
 		color_map["Background"] = htmlCodeToImVec4("000000");
 		color_map["Background"].w = 0.5;
 
+		ImGuiStyle style;
+		ImGui::StyleColorsDark(&style);
+		color_map["TitleBackground"] = style.Colors[ImGuiCol_TitleBg];
+		color_map["TitleBackgroundActive"] = style.Colors[ImGuiCol_TitleBgActive];
+		color_map["TitleBackgroundCollapsed"] = style.Colors[ImGuiCol_TitleBgCollapsed];
+
+		color_map["ResizeGrip"] = style.Colors[ImGuiCol_ResizeGrip];
+
+/*
 		color_map["TitleBackground"] = ImGui::GetStyle().Colors[ImGuiCol_TitleBg];
 		color_map["TitleBackgroundActive"] = ImGui::GetStyle().Colors[ImGuiCol_TitleBgActive];
 		color_map["TitleBackgroundCollapsed"] = ImGui::GetStyle().Colors[ImGuiCol_TitleBgCollapsed];
 
 		color_map["ResizeGrip"] = ImGui::GetStyle().Colors[ImGuiCol_ResizeGrip];
-
+*/
 
 		default_pet_job = "chocobo";
 
@@ -955,7 +965,7 @@ void LoadSettings(ImGuiContext* context)
 							ImVec2 pos = ImVec2(win["x"].asFloat(), win["y"].asFloat());
 							ImVec2 size = ImVec2(win["width"].asFloat(), win["height"].asFloat());
 							windows_default_sizes[name] = size;
-							ImGuiIniData* settings = nullptr;
+							ImGuiWindowSettings* settings = nullptr;
 							if (context)
 							{
 								ImGuiContext & g = *context;
@@ -964,9 +974,9 @@ void LoadSettings(ImGuiContext* context)
 								size = ImMax(size, ImVec2(100,50));
 								ImGuiID id = ImHash(name.c_str(), 0);
 								{
-									for (int i = 0; i != g.Settings.Size; i++)
+									for (int i = 0; i != g.SettingsWindows.size(); i++)
 									{
-										ImGuiIniData* ini = &g.Settings[i];
+										ImGuiWindowSettings* ini = &g.SettingsWindows[i];
 										if (ini->Id == id)
 										{
 											settings = ini;
@@ -975,8 +985,8 @@ void LoadSettings(ImGuiContext* context)
 									}
 									if (settings == nullptr)
 									{
-										context->Settings.resize(context->Settings.Size + 1);
-										ImGuiIniData* ini = &context->Settings.back();
+										g.SettingsWindows.push_back(ImGuiWindowSettings());
+										ImGuiWindowSettings* ini = &g.SettingsWindows.back();
 										ini->Name = ImStrdup(name.c_str());
 										ini->Id = ImHash(name.c_str(), 0);
 										ini->Collapsed = false;

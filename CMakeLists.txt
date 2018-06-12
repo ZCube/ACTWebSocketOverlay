@@ -82,8 +82,9 @@ ADD_SUBDIRECTORY(external)
 ADD_SUBDIRECTORY(src)
 
 IF(MSVC)
-  OPTION(USE_STATIC_RUNTIME_LIBRARY "Use Static Runtime Library" ON)
-  OPTION(USE_LINK_TIME_OPTIMIZATION "Use Link Time Optimization" ON)
+  # Static Runtime has problem alloc/free
+  OPTION(USE_STATIC_RUNTIME_LIBRARY "Use Static Runtime Library" OFF)
+  OPTION(USE_LINK_TIME_OPTIMIZATION "Use Link Time Optimization" OFF)
 
   IF(USE_STATIC_RUNTIME_LIBRARY)
       message(STATUS "- MSVC: Use Static Runtime Library")
