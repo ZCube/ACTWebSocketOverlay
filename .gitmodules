@@ -6,5 +6,5 @@
 	url = https://github.com/ZCube/lua.git
 [submodule "external/imgui_lua_bindings"]
 	path = external/imgui_lua_bindings
-	url = https://github.com/patrickriordan/imgui_lua_bindings.git
+	url = https://github.com/ZCube/imgui_lua_bindings.git
 	ignore = dirty
