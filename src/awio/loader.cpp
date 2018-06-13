@@ -50,33 +50,50 @@ extern "C" int ModInit(ImGuiContext* context)
 		GetModuleFileNameW(NULL, result, MAX_PATH);
 		filesystem::path m = result;
 		m.replace_extension("");
-//#ifdef _WIN64
-//		filesystem::path s = m.parent_path() / L"64";
-//#else
-//		filesystem::path s = m.parent_path() / L"32";
-//#endif
-		filesystem::path s = m.parent_path();
-		char* names[] = {
-			//"libcrypto-41.dll",
-			//"libssl-43.dll",
-			//"libtls-15.dll",
-#ifdef USE_SSL
-			"libeay32.dll",
-			"ssleay32.dll",
-#endif
-			"chrome_elf.dll",
-			"libcef.dll",
-			nullptr
-		};
-		for (int i = 0; names[i]; ++i)
+
+		filesystem::path paths[] =
 		{
-			HMODULE ha = LoadLibraryW((s / names[i]).c_str());
+#ifdef _WIN64
+			m.parent_path() / L"64" / L"ActWebSocketImguiOverlay.dll",
+#else
+			m.parent_path() / L"32" / L"ActWebSocketImguiOverlay.dll",
+#endif
+			m.parent_path() / L"ActWebSocketImguiOverlay.dll",
+#ifdef _WIN64
+			m.parent_path() / L"64" / L"ActWebSocketImguiOverlayWithLua.dll",
+#else
+			m.parent_path() / L"32" / L"ActWebSocketImguiOverlayWithLua.dll",
+#endif
+			m.parent_path() / L"ActWebSocketImguiOverlayWithLua.dll",
+#ifdef _WIN64
+			m.parent_path() / L"64" / L"overlay_mod.dll",
+#else
+			m.parent_path() / L"32" / L"overlay_mod.dll",
+#endif
+			m.parent_path() / L"overlay_mod.dll",
+		};
+
+		for (auto path : paths)
+		{
+			if (filesystem::exists(path))
+			{
+				char* names[] = {
+#ifdef USE_SSL
+					"libeay32.dll",
+					"ssleay32.dll",
+#endif
+					nullptr
+				};
+				for (int i = 0; names[i]; ++i)
+				{
+					HMODULE ha = LoadLibraryW((path.parent_path() / names[i]).c_str());
+				}
+				mod = LoadLibraryW(path.wstring().c_str());
+
+				if (mod)
+					break;
+			}
 		}
-		//mod = LoadLibraryW((s / L"overlay_mod.dll").wstring().c_str());
-		//std::cerr << (s / L"overlay_mod.dll") << std::endl;
-		mod = LoadLibraryW((s / L"ActWebSocketImguiOverlay.dll").wstring().c_str());
-		std::cerr << (s / L"ActWebSocketImguiOverlay.dll") << std::endl;
-		std::cerr << filesystem::exists(s / L"ActWebSocketImguiOverlay.dll") << std::endl;
 		if (mod)
 		{
 			modInit = (TModInit)GetProcAddress(mod, "ModInit");
