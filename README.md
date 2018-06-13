@@ -1,7 +1,7 @@
 # ActWebSocketOverlay
 ActWebSocket overlay utility based on ImGui
 
-[![Build Status](https://jenkins.zcube.kr/buildStatus/icon?job=ACTWebSocketOverlay)](https://jenkins.zcube.kr/job/ACTWebSocketOverlay/)
+[![pipeline status](https://gitlab.zcube.kr/zcube/ACTWebSocketOverlay/badges/master/pipeline.svg)](https://gitlab.zcube.kr/zcube/ACTWebSocketOverlay/commits/master)
 
 *ActWebSocket needed.
 
