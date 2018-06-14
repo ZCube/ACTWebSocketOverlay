@@ -8,6 +8,7 @@
 void PreferenceBase::SetRoot(PreferenceBase * root)
 {
 	this->root = root;
+	this->instance = root->instance;
 }
 
 void PreferenceBase::Save()

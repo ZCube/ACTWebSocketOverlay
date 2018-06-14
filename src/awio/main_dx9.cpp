@@ -12,6 +12,11 @@
 /////////////////////////////////////////////////////////////////////////////////
 #include <boost/filesystem.hpp>
 #include <Windows.h>
+#include "../mod.h"
+
+typedef ModInterface* (*TModCreate)();
+typedef int(*TModFree)(ModInterface* context);
+
 typedef int(*TModUnInit)(ImGuiContext* context);
 typedef int(*TModRender)(ImGuiContext* context);
 typedef int(*TModInit)(ImGuiContext* context);
@@ -23,6 +28,8 @@ typedef void(*TModTextureEnd)();
 typedef bool(*TModUpdateFont)(ImGuiContext* context);
 typedef bool(*TModMenu)(bool* show);
 
+TModCreate modCreate = nullptr;
+TModFree  modFree = nullptr;
 TModUnInit modUnInit = nullptr;
 TModRender modRender = nullptr;
 TModInit modInit = nullptr;
@@ -34,6 +41,7 @@ TModTextureEnd modTextureEnd = nullptr;
 TModUpdateFont modUpdateFont = nullptr;
 TModMenu modMenu = nullptr;
 HMODULE mod = nullptr;
+ModInterface* modInterface = nullptr;
 /////////////////////////////////////////////////////////////////////////////////
 
 // Data
@@ -43,7 +51,7 @@ static std::vector<LPDIRECT3DTEXTURE9>       g_ModTextures;
 
 static bool ImGui_ImplDX9_CreateModTexture(int texindex)
 {
-	if (!modTextureData)
+	if (!modInterface)
 		return false;
 
 	g_ModTextures.resize(std::max<size_t>(g_ModTextures.size(), texindex + 1));
@@ -60,7 +68,7 @@ static bool ImGui_ImplDX9_CreateModTexture(int texindex)
 	ImGuiIO& io = ImGui::GetIO();
 	unsigned char* pixels;
 	int width, height, bytes_per_pixel;
-	modTextureData(texindex, &pixels, &width, &height, &bytes_per_pixel);
+	modInterface->TextureData(texindex, &pixels, &width, &height, &bytes_per_pixel);
 
 	// Upload texture to graphics system
 	if (g_pd3dDevice->CreateTexture(width, height, 1, D3DUSAGE_DYNAMIC, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &g_ModTexture, NULL) < 0)
@@ -72,8 +80,8 @@ static bool ImGui_ImplDX9_CreateModTexture(int texindex)
 		memcpy((unsigned char *)tex_locked_rect.pBits + tex_locked_rect.Pitch * y, pixels + (width * bytes_per_pixel) * y, (width * bytes_per_pixel));
 	g_ModTexture->UnlockRect(0);
 
-	if (modSetTexture)
-		modSetTexture(texindex, g_ModTexture);
+	if (modInterface)
+		modInterface->SetTexture(texindex, g_ModTexture);
 	return true;
 }
 
@@ -174,7 +182,8 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 				if (tex)
 				{
 					tex->Release();
-					modSetTexture(idx, nullptr);
+					if(modInterface)
+						modInterface->SetTexture(idx, nullptr);
 					++idx;
 				}
 			}
@@ -219,6 +228,12 @@ int main(int argc, char** argv)
 	mod = LoadLibraryW(p.wstring().c_str());
 	if (mod)
 	{
+		modCreate = (TModCreate)GetProcAddress(mod, "ModCreate");
+		modFree = (TModFree)GetProcAddress(mod, "ModFree");
+
+		if (modCreate && modFree) {
+			modInterface = modCreate();
+		}
 		modInit = (TModInit)GetProcAddress(mod, "ModInit");
 		modRender = (TModRender)GetProcAddress(mod, "ModRender");
 		modUnInit = (TModUnInit)GetProcAddress(mod, "ModUnInit");
@@ -254,21 +269,21 @@ int main(int argc, char** argv)
 	//g_d3dpp.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE; // Present without vsync, maximum unthrottled framerate
 
 	/////////////////////////////////////////////////////////////////////////////////
-	if (modInit)
+	if (modInterface)
 	{
-		modInit(ImGui::GetCurrentContext());
+		modInterface->Init(ImGui::GetCurrentContext());
 	}
 	/////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////
-	if (modUnInit)
+	if (modInterface)
 	{
-		modUnInit(ImGui::GetCurrentContext());
+		modInterface->UnInit(ImGui::GetCurrentContext());
 	}
 	/////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////
-	if (modInit)
+	if (modInterface)
 	{
-		modInit(ImGui::GetCurrentContext());
+		modInterface->Init(ImGui::GetCurrentContext());
 	}
 	/////////////////////////////////////////////////////////////////////////////////
 	// Create the D3DDevice
@@ -335,18 +350,18 @@ int main(int argc, char** argv)
             DispatchMessage(&msg);
             continue;
         }
-		if (modUpdateFont)
+		if (modInterface)
 		{
-			if (modUpdateFont(ImGui::GetCurrentContext()))
+			if (modInterface->UpdateFont(ImGui::GetCurrentContext()))
 			{
 				if (g_FontTexture)
 					g_FontTexture->Release();
 				g_FontTexture = nullptr;
 			}
 		}
-		if (modTextureBegin && modTextureEnd && modTextureData && modGetTextureDirtyRect && modSetTexture)
+		if (modInterface)
 		{
-			int textures = modTextureBegin();
+			int textures = modInterface->TextureBegin();
 			for (int texidx = 0; texidx < textures; ++texidx)
 			{
 				if (texidx >= g_ModTextures.size() || !g_ModTextures[texidx]) {
@@ -358,9 +373,9 @@ int main(int argc, char** argv)
 					int rectidx = 0;
 					int width, height, bits_per_pixel;
 					unsigned char *pixels;
-					if (modGetTextureDirtyRect(texidx, 0, &rect))
+					if (modInterface->GetTextureDirtyRect(texidx, 0, &rect))
 					{
-						modTextureData(texidx, &pixels, &width, &height, &bits_per_pixel);
+						modInterface->TextureData(texidx, &pixels, &width, &height, &bits_per_pixel);
 						int rectidx = 0;
 						D3DLOCKED_RECT mod_atlas_rect;
 
@@ -370,7 +385,7 @@ int main(int argc, char** argv)
 						{
 							if (mod_atlas_rect.pBits)
 							{
-								while (modGetTextureDirtyRect(texidx, rectidx++, &rect))
+								while (modInterface->GetTextureDirtyRect(texidx, rectidx++, &rect))
 								{
 									int bx = std::min<int>(rect.left, std::min<int>(rect.right, width - 1));
 									int by = std::min<int>(rect.top, std::min<int>(rect.bottom, height - 1));
@@ -390,7 +405,7 @@ int main(int argc, char** argv)
 					}
 				}
 			}
-			modTextureEnd();
+			modInterface->TextureEnd();
 		}
         ImGui_ImplDX9_NewFrame();
 
@@ -403,9 +418,9 @@ int main(int argc, char** argv)
         if (g_pd3dDevice->BeginScene() >= 0)
         {
 			/////////////////////////////////////////////////////////////////////////////////
-			if (modRender)
+			if (modInterface)
 			{
-				modRender(ImGui::GetCurrentContext());
+				modInterface->Render(ImGui::GetCurrentContext());
 			}
 			/////////////////////////////////////////////////////////////////////////////////
 
@@ -431,9 +446,9 @@ int main(int argc, char** argv)
     UnregisterClass(_T("ImGui Example"), wc.hInstance);
 
 	/////////////////////////////////////////////////////////////////////////////////
-	if (modUnInit)
+	if (modInterface)
 	{
-		modUnInit(ImGui::GetCurrentContext());
+		modInterface->UnInit(ImGui::GetCurrentContext());
 	}
 	/////////////////////////////////////////////////////////////////////////////////
 	ImGui::DestroyContext();

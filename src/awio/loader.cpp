@@ -14,6 +14,11 @@
 struct ImGuiContext;
 /////////////////////////////////////////////////////////////////////////////////
 #include <Windows.h>
+#include "../mod.h"
+
+typedef ModInterface* (*TModCreate)();
+typedef int(*TModFree)(ModInterface* context);
+
 typedef int(*TModUnInit)(ImGuiContext* context);
 typedef int(*TModRender)(ImGuiContext* context);
 typedef int(*TModInit)(ImGuiContext* context);
@@ -25,6 +30,8 @@ typedef void(*TModTextureEnd)();
 typedef bool(*TModUpdateFont)(ImGuiContext* context);
 typedef bool(*TModMenu)(bool* show);
 
+TModCreate modCreate = nullptr;
+TModFree  modFree = nullptr;
 TModUnInit modUnInit = nullptr;
 TModRender modRender = nullptr;
 TModInit modInit = nullptr;
@@ -40,7 +47,7 @@ std::mutex m;
 /////////////////////////////////////////////////////////////////////////////////
 
 
-extern "C" int ModInit(ImGuiContext* context)
+static void LoadModule()
 {
 	m.lock();
 	if (!mod)
@@ -78,15 +85,16 @@ extern "C" int ModInit(ImGuiContext* context)
 			if (filesystem::exists(path))
 			{
 				char* names[] = {
-#ifdef USE_SSL
 					"libeay32.dll",
 					"ssleay32.dll",
-#endif
 					nullptr
 				};
 				for (int i = 0; names[i]; ++i)
 				{
 					HMODULE ha = LoadLibraryW((path.parent_path() / names[i]).c_str());
+					if (!ha) {
+						HMODULE ha2 = LoadLibraryW(filesystem::path(names[i]).c_str());
+					}
 				}
 				mod = LoadLibraryW(path.wstring().c_str());
 
@@ -96,6 +104,8 @@ extern "C" int ModInit(ImGuiContext* context)
 		}
 		if (mod)
 		{
+			modCreate = (TModCreate)GetProcAddress(mod, "ModCreate");
+			modFree = (TModFree)GetProcAddress(mod, "ModFree");
 			modInit = (TModInit)GetProcAddress(mod, "ModInit");
 			modRender = (TModRender)GetProcAddress(mod, "ModRender");
 			modUnInit = (TModUnInit)GetProcAddress(mod, "ModUnInit");
@@ -109,6 +119,25 @@ extern "C" int ModInit(ImGuiContext* context)
 		}
 	}
 	m.unlock();
+}
+
+extern "C" ModInterface* ModCreate()
+{
+	if (!mod)
+		LoadModule();
+	if (modCreate)
+		return modCreate();
+}
+
+extern "C" int ModFree(ModInterface* context)
+{
+	if (modFree)
+		return modFree(context);
+	return 0;
+}
+
+extern "C" int ModInit(ImGuiContext* context)
+{
 	if (modInit)
 		return modInit(context);
 	return 0;

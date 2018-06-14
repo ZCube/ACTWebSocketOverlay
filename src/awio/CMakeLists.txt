@@ -116,7 +116,7 @@ ADD_EXECUTABLE(blank_main_dx11
 	${IMGUI_DIRECTORY}/examples/directx11_example/imgui_impl_dx11.h
 	${IMGUI_DIRECTORY}/examples/directx11_example/imgui_impl_dx11.cpp
 	${IMGUI_DIRECTORY}/imgui_internal.h
-	blank_main_dx11.cpp
+	${IMGUI_DIRECTORY}/examples/directx11_example/main.cpp
 	Resource.rc
 	resource.h
 	${IMGUI_DIRECTORY}/stb_rect_pack.h
@@ -125,8 +125,6 @@ ADD_EXECUTABLE(blank_main_dx11
 )
 
 TARGET_LINK_LIBRARIES(blank_main_dx11
-	ActWebSocketImguiOverlayWithLua
-	ActWebSocketImguiOverlay
 	d3d11.lib
 	d3dcompiler.lib
 	dxgi.lib
@@ -143,7 +141,7 @@ ADD_EXECUTABLE(blank_main_dx9
 	${IMGUI_DIRECTORY}/examples/directx9_example/imgui_impl_dx9.h
 	${IMGUI_DIRECTORY}/examples/directx9_example/imgui_impl_dx9.cpp
 	${IMGUI_DIRECTORY}/imgui_internal.h
-	blank_main_dx9.cpp
+	${IMGUI_DIRECTORY}/examples/directx9_example/main.cpp
 	Resource.rc
 	resource.h
 	${IMGUI_DIRECTORY}/stb_rect_pack.h
@@ -152,8 +150,6 @@ ADD_EXECUTABLE(blank_main_dx9
 )
 
 TARGET_LINK_LIBRARIES(blank_main_dx9
-	ActWebSocketImguiOverlayWithLua
-	ActWebSocketImguiOverlay
 	d3d9.lib
 	d3dcompiler.lib
 )

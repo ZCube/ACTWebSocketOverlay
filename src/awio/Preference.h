@@ -162,6 +162,7 @@ class PreferenceBase : public Serializable
 protected:
 	PreferenceBase* root = nullptr;
 public:
+	void* instance = nullptr;
 	std::vector<PreferenceNode> preference_nodes;
 	PreferenceStorage preference_storage;
 	virtual void SetRoot(PreferenceBase* root);

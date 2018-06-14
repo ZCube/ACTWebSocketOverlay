@@ -357,6 +357,9 @@ bool OverlayContextLua::Init(const boost::filesystem::path& path_) {
 				lua_register(L_render, "getBoolean", getBoolean);
 				lua_register(L_render, "setBoolean", setBoolean);
 
+				lua_pushlightuserdata(L_render, instance);
+				lua_setglobal(L_render, "__instance");
+
 				lua_pushlightuserdata(L_render, &preference_storage);
 				lua_setglobal(L_render, "storage");
 
@@ -418,6 +421,9 @@ bool OverlayContextLua::Init(const boost::filesystem::path& path_) {
 				lua_register(L_script, "setFloat", setFloat);
 				lua_register(L_script, "getBoolean", getBoolean);
 				lua_register(L_script, "setBoolean", setBoolean);
+
+				lua_pushlightuserdata(L_render, instance);
+				lua_setglobal(L_render, "__instance");
 
 				lua_pushlightuserdata(L_script, &preference_storage);
 				lua_setglobal(L_script, "storage");

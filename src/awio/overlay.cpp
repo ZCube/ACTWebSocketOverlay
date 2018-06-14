@@ -31,76 +31,11 @@
 
 #include <atlstr.h>
 #define STR2UTF8(s) (CW2A(CA2W(s), CP_UTF8))
-
-static boost::mutex font_mutex;
-static boost::mutex mutex;
-static bool initialized = false;
-static bool font_setting_dirty = false;
-std::unordered_map<ImGuiContext*, bool> font_inited;
-
-static bool show_name = true;
-
-static char websocket_message[1024] = { 0, };
-static char websocket_host[256] = { 0, };
-static char websocket_port[256] = { 0, };
-static const char* websocket_path = "/MiniParse";
-static bool websocket_reconnect = true;
-static void* overlay_texture = nullptr;
-static unsigned char *overlay_texture_filedata = nullptr;
-static int overlay_texture_width = 0, overlay_texture_height = 0, overlay_texture_channels = 0;
-static ImFont* largeFont = nullptr;
-static ImFont* korFont = nullptr;
-static ImFont* japFont = nullptr;
-static bool need_font_init = true;
-static std::map<std::string, ImVec2> windows_default_sizes;
-static float font_sizes = 12.0f;
-std::vector<boost::filesystem::path> font_paths;
-std::vector<std::string> font_filenames;
-std::vector<const char *> font_cstr_filenames;
-std::string your_name = "YOU";
-
-static std::vector<Font> fonts;
-static std::unordered_map<std::string, Image> overlay_images;
-static std::map<std::string, std::vector<std::string>> color_category_map;
-static Json::Value overlay_atlas;
-static std::vector<const char*> glyph_range_key;
-static std::map<std::string, bool> boolean_map;
-static bool& show_status = boolean_map["ShowStatus"];
-static bool& movable = boolean_map["Movable"];
-static bool& websocket_ssl = boolean_map["WebSocketSSL"];
-
+#include "../mod.h"
 #include "Table.h"
 
+const char* websocket_path = "/MiniParse";
 typedef std::map<std::string, ImVec4> ColorMapType;
-static ColorMapType color_map;
-static std::map<std::string, float> opacity_map;
-std::map<std::string, std::string> name_to_job_map;
-static std::string Title;
-static std::string zone;
-static std::string duration;
-static std::string rdps;
-static std::string rhps;
-
-static std::vector<const char*> combatant_attribute_names;
-
-static float& global_opacity = opacity_map["Global"];
-static float& text_opacity = opacity_map["Text"];
-static float& background_opacity = opacity_map["Background"];
-static float& title_background_opacity = opacity_map["TitleBackground"];
-static float& toolbar_opacity = opacity_map["Toolbar"];
-static float& resizegrip_opacity = opacity_map["ResizeGrip"];
-static float& graph_opacity = opacity_map["Graph"];
-static std::string graph = "center";
-static Table dealerTable(
-	global_opacity,
-	text_opacity,
-	graph_opacity,
-	color_map["GraphText"],
-	color_map["etc"],
-	graph
-);
-
-static std::string default_pet_job;
 
 ImVec4 htmlCodeToImVec4(const std::string hex)
 {
@@ -123,7 +58,15 @@ const std::string ImVec4TohtmlCode(ImVec4 val)
 class WebSocket
 {
 public:
-	WebSocket() {}
+	char websocket_message[1024] = { 0, };
+	char websocket_host[256] = { 0, };
+	char websocket_port[256] = { 0, };
+	bool websocket_reconnect = true;
+	bool *websocket_ssl;
+public:
+	WebSocket(bool* _websocket_ssl) {
+		websocket_ssl = _websocket_ssl;
+	}
 	~WebSocket()
 	{
 		loop = false;
@@ -138,119 +81,7 @@ public:
 	std::shared_ptr<websocket_context_base> websocket;
 	std::shared_ptr<std::thread> websocket_thread;
 
-	void Process(const std::string& message_str)
-	{
-		{
-			Json::Value root;
-			Json::Reader r;
-
-			if (r.parse(message_str, root))
-			{
-				std::vector<Table::Row> _rows;
-				std::vector<std::vector<std::string> > _values;
-				//{"type":"broadcast", "msgtype" : "SendCharName", "from" : null, "to" : "uuid", "msg" : {"charID":00, "charName" : "charname"}}
-				if (root["type"].asString() == "broadcast" && root["msgtype"].asString() == "SendCharName")
-				{
-					your_name = root["msg"]["charName"].asString();
-				}
-
-				if (root["type"].asString() == "broadcast" && root["msgtype"].asString() == "CombatData")
-				{
-					float _maxValue = 0;
-					mutex.lock();
-					Table& table = dealerTable;
-					{
-						_values.clear();
-						Json::Value combatant = root["msg"]["Combatant"];
-						Json::Value encounter = root["msg"]["Encounter"];
-
-						rdps = encounter["encdps"].asString();
-						rhps = encounter["enchps"].asString();
-
-						zone = encounter["CurrentZoneName"].asString();
-						duration = encounter["duration"].asString();
-
-						for (auto i = combatant.begin(); i != combatant.end(); ++i)
-						{
-							std::vector<std::string> vals;
-							for (int j = 0; j < table.columns.size(); ++j)
-							{
-								vals.push_back((*i)[table.columns[j].index].asString());
-							}
-							_maxValue = std::max<float>(atof(vals[table.progressColumn].c_str()), _maxValue);
-
-							_values.push_back(vals);
-						}
-
-						// sort first
-						std::sort(_values.begin(), _values.end(), [](const std::vector<std::string>& vals0, const std::vector<std::string>& vals1)
-						{
-							return atof(vals0[2].c_str()) > atof(vals1[2].c_str());
-						});
-
-						for (auto i = 0; i < _values.size(); ++i)
-						{
-							auto& vals = _values[i];
-							Table::Row row;
-							{
-								std::string& jobStr = vals[0];
-								const std::string& progressStr = vals[2];
-								std::string& nameStr = vals[1];
-								if (jobStr.empty())
-								{
-									std::string jobStrAlter;
-									typedef std::vector< std::string > split_vector_type;
-									split_vector_type splitVec; // #2: Search for tokens
-									boost::split(splitVec, nameStr, boost::is_any_of("()"), boost::token_compress_on);
-									if (splitVec.size() >= 1)
-									{
-										boost::trim(splitVec[0]);
-										auto i = name_to_job_map.find(splitVec[0]);
-										if (i != name_to_job_map.end())
-										{
-											jobStr = i->second;
-										}
-										else if (splitVec.size() > 1)
-										{
-											jobStr = default_pet_job;
-										}
-									}
-								}
-
-								ColorMapType::iterator ji;
-
-								// name and job
-								if ((ji = color_map.find(nameStr)) != color_map.end())
-								{
-									row.color = &ji->second;
-								}
-								else
-								{
-									if ((ji = color_map.find(jobStr)) != color_map.end())
-									{
-										row.color = &ji->second;
-									}
-									else
-									{
-										row.color = &color_map["etc"];
-									}
-								}
-								if (nameStr == "YOU" && !your_name.empty())
-								{
-									nameStr = your_name;
-								}
-								_rows.push_back(row);
-							}
-						}
-					}
-					dealerTable.rows = _rows;
-					dealerTable.values = _values;
-					dealerTable.maxValue = _maxValue;
-					mutex.unlock();
-				}
-			}
-		}
-	}
+	virtual void Process(const std::string& message_str) = 0;
 
 	void Run()
 	{
@@ -350,163 +181,135 @@ public:
 		loop = true;
 		websocket_thread = std::make_shared<std::thread>(func);
 	}
+
+	void Stop() {
+		loop = false;
+		websocket_reconnect = true;
+		if (websocket)
+			websocket->close(boost::beast::websocket::none);
+		if (websocket_thread)
+			websocket_thread->join();
+	}
 };
 
-static WebSocket websocket;
 
-inline static void websocketThread()
+class OverlayInstance : public ModInterface, public WebSocket
 {
-	// only one.
-	if (!websocket.websocket_thread)
-		websocket.Run();
+public:
+	bool show_preferences = false;
+	boost::mutex font_mutex;
+	boost::mutex mutex;
+	bool initialized = false;
+	bool font_setting_dirty = false;
+	std::unordered_map<ImGuiContext*, bool> font_inited;
+
+	bool show_name = true;
+/*
+	char websocket_message[1024];
+	char websocket_host[256];
+	char websocket_port[256];
+	bool websocket_reconnect;
+*/
+
+	void* overlay_texture = nullptr;
+	unsigned char *overlay_texture_filedata = nullptr;
+	int overlay_texture_width = 0, overlay_texture_height = 0, overlay_texture_channels = 0;
+	ImFont* largeFont = nullptr;
+	ImFont* korFont = nullptr;
+	ImFont* japFont = nullptr;
+	bool need_font_init = true;
+	std::map<std::string, ImVec2> windows_default_sizes;
+	float font_sizes = 12.0f;
+	std::vector<boost::filesystem::path> font_paths;
+	std::vector<std::string> font_filenames;
+	std::vector<const char *> font_cstr_filenames;
+	std::string your_name = "YOU";
+
+	std::vector<Font> fonts;
+	std::unordered_map<std::string, Image> overlay_images;
+	std::map<std::string, std::vector<std::string>> color_category_map;
+	Json::Value overlay_atlas;
+	std::vector<const char*> glyph_range_key;
+	std::map<std::string, bool> boolean_map;
+	bool& show_status = boolean_map["ShowStatus"];
+	bool& movable = boolean_map["Movable"];
+	bool& websocket_ssl = boolean_map["WebSocketSSL"];
+
+
+	ColorMapType color_map;
+	std::map<std::string, float> opacity_map;
+	std::map<std::string, std::string> name_to_job_map;
+	std::string Title;
+	std::string zone;
+	std::string duration;
+	std::string rdps;
+	std::string rhps;
+
+	std::vector<const char*> combatant_attribute_names;
+
+	float& global_opacity = opacity_map["Global"];
+	float& text_opacity = opacity_map["Text"];
+	float& background_opacity = opacity_map["Background"];
+	float& title_background_opacity = opacity_map["TitleBackground"];
+	float& toolbar_opacity = opacity_map["Toolbar"];
+	float& resizegrip_opacity = opacity_map["ResizeGrip"];
+	float& graph_opacity = opacity_map["Graph"];
+	std::string graph = "center";
+	Table dealerTable;
+
+	std::string default_pet_job;
+
+public:
+	OverlayInstance() :
+		dealerTable(
+			global_opacity,
+			text_opacity,
+			graph_opacity,
+			color_map["GraphText"],
+			color_map["etc"],
+			graph
+		),
+		WebSocket(&websocket_ssl)
+	{
+
+	}
+	virtual ~OverlayInstance() {
+		boost::unique_lock<boost::mutex> l(mutex);
+		Stop();
+	}
+	virtual int Init(ImGuiContext* context);
+	virtual int UnInit(ImGuiContext* context);
+	virtual int Render(ImGuiContext* context);
+	virtual int TextureBegin();
+	virtual void TextureEnd();
+	virtual void TextureData(int index, unsigned char** out_pixels, int* out_width, int* out_height, int* out_bytes_per_pixel);
+	virtual bool GetTextureDirtyRect(int index, int dindex, RECT* rect);
+	virtual void SetTexture(int index, void* texture);
+	virtual bool UpdateFont(ImGuiContext* context);
+	virtual bool Menu(bool* show);
+	virtual void OverlayInstance::Process(const std::string& message_str);
+
+	void LoadSettings(ImGuiContext* context);
+	void SaveSettings();
+	void FontsPreferences();
+	void Preference(ImGuiContext* context, bool* show_preferences);
+	bool LoadFonts(ImGuiContext* context);
+	void websocketThread();
+};
+
+extern "C" ModInterface* ModCreate()
+{
+	return new OverlayInstance();
 }
 
-bool LoadFonts(ImGuiContext* context)
+extern "C" int ModFree(ModInterface* context)
 {
-	if (!context)
-		return false;
-
-	{
-		// Changing or adding fonts at runtime causes a crash.
-		// TODO: is it possible ?...
-
-		ImGuiIO& io = context->IO;
-
-		WCHAR result[MAX_PATH] = {};
-		GetWindowsDirectoryW(result, MAX_PATH);
-		boost::filesystem::path p = result;
-
-		GetModuleFileNameW(NULL, result, MAX_PATH);
-		boost::filesystem::path m = result;
-
-		// font
-		io.Fonts->Clear();
-		io.Fonts->TexID = 0;
-
-		std::map<std::string, const ImWchar*> glyph_range_map = {
-			{ "Default", io.Fonts->GetGlyphRangesDefault() },
-			{ "Chinese", io.Fonts->GetGlyphRangesChinese() },
-			{ "Cyrillic", io.Fonts->GetGlyphRangesCyrillic() },
-			{ "Japanese", io.Fonts->GetGlyphRangesJapanese() },
-			{ "Korean", io.Fonts->GetGlyphRangesKorean() },
-			{ "Thai", io.Fonts->GetGlyphRangesThai() },
-		};
-
-		// Add fonts in this order.
-		glyph_range_key = {
-			"Default",
-			"Chinese",
-			"Cyrillic",
-			"Japanese",
-			"Korean",
-			"Thai",
-		};
-
-		std::vector<boost::filesystem::path> font_find_folders = {
-			m.parent_path(), // dll path
-			p / "Fonts", // windows fonts
-		};
-		font_paths.clear();
-		// first time
-		if (font_filenames.empty())
-		{
-			font_filenames.clear();
-			font_cstr_filenames.clear();
-			boost::filesystem::directory_iterator itr, end_itr;
-
-			font_filenames.push_back("Default");
-			for (auto i = font_find_folders.begin(); i != font_find_folders.end(); ++i)
-			{
-				if (boost::filesystem::exists(*i))
-				{
-					for (boost::filesystem::directory_iterator itr(*i); itr != end_itr; ++itr)
-					{
-						if (is_regular_file(itr->path())) {
-							std::string extension = boost::to_lower_copy(itr->path().extension().string());
-							if (extension == ".ttc" || extension == ".ttf")
-							{
-								font_paths.push_back(itr->path());
-								font_filenames.push_back(itr->path().filename().string());
-							}
-						}
-					}
-				}
-			}
-			{
-				for (auto i = font_filenames.begin(); i != font_filenames.end(); ++i)
-				{
-					font_cstr_filenames.push_back(i->c_str());
-				}
-			}
-		}
-
-		ImFontConfig config;
-		config.MergeMode = false;
-		for (auto i = glyph_range_key.begin(); i != glyph_range_key.end(); ++i)
-		{
-			bool is_loaded = false;
-
-			for (auto j = fonts.begin(); j != fonts.end() && !is_loaded; ++j)
-			{
-				if (j->glyph_range == *i)
-				{
-					if (j->fontname == "Default")
-					{
-						io.Fonts->AddFontDefault(&config);
-						is_loaded = true;
-						config.MergeMode = true;
-					}
-					else
-					{
-						for (auto k = font_find_folders.begin(); k != font_find_folders.end(); ++k)
-						{
-							if (j->fontname.empty())
-								continue;
-							std::vector<std::string> extensions = { "", ".ttc", ".ttf" };
-							for (auto l = extensions.begin(); l != extensions.end(); ++l) {
-								// ttf, ttc only
-								auto fontpath = (*k) / (j->fontname + *l);
-								if (boost::filesystem::exists(fontpath) && boost::filesystem::is_regular_file(fontpath))
-								{
-									io.Fonts->AddFontFromFileTTF((fontpath).string().c_str(), j->font_size, &config, glyph_range_map[j->glyph_range]);
-									is_loaded = true;
-									config.MergeMode = true;
-								}
-							}
-						}
-					}
-				}
-			}
-
-			if (*i == "Default" && !is_loaded)
-			{
-				io.Fonts->AddFontDefault(&config);
-				is_loaded = true;
-				config.MergeMode = true;
-			}
-
-		}
-		// do not remove
-		io.Fonts->AddFontDefault();
-	}
-	if (fonts.empty())
-	{
-		font_sizes = 13;
-	}
-	else
-	{
-		font_sizes = fonts[0].font_size;
-		for (auto i = fonts.begin(); i != fonts.end(); ++i)
-		{
-			font_sizes = std::min(font_sizes, i->font_size);
-		}
-	}
-	font_setting_dirty = false;
-	return true;
+	if (context)
+		delete context;
+	return 0;
 }
 
-void LoadSettings(ImGuiContext* context);
-extern "C" int ModInit(ImGuiContext* context)
+int OverlayInstance::Init(ImGuiContext* context)
 {
 	boost::unique_lock<boost::mutex> l(font_mutex);
 	need_font_init = true;
@@ -855,7 +658,8 @@ extern "C" int ModInit(ImGuiContext* context)
 	}
 	return 0;
 }
-void LoadSettings(ImGuiContext* context)
+
+void OverlayInstance::LoadSettings(ImGuiContext* context)
 {
 	{
 		WCHAR result[MAX_PATH] = {};
@@ -936,14 +740,14 @@ void LoadSettings(ImGuiContext* context)
 				{
 					if (fonts.size() > 0)
 					{
-						::fonts.clear();
+						this->fonts.clear();
 						for (auto i = fonts.begin();
 							i != fonts.end();
 							++i)
 						{
 							Font font;
 							font.FromJson(*i);
-							::fonts.push_back(font);
+							this->fonts.push_back(font);
 						}
 					}
 				}
@@ -1012,7 +816,8 @@ void LoadSettings(ImGuiContext* context)
 		}
 	}
 }
-void SaveSettings()
+
+void OverlayInstance::SaveSettings()
 {
 	WCHAR result[MAX_PATH] = {};
 	GetModuleFileNameW(NULL, result, MAX_PATH);
@@ -1065,10 +870,10 @@ void SaveSettings()
 	setting["dealer_columns"] = dealer_columns;
 
 	Json::Value fonts;
-	for (int i = 0; i < ::fonts.size(); ++i)
+	for (int i = 0; i < this->fonts.size(); ++i)
 	{
 		Json::Value font;
-		::fonts[i].ToJson(font);
+		this->fonts[i].ToJson(font);
 		fonts.append(font);
 	}
 	setting["fonts"] = fonts;
@@ -1099,7 +904,7 @@ void SaveSettings()
 }
 
 
-extern "C" int ModUnInit(ImGuiContext* context)
+int OverlayInstance::UnInit(ImGuiContext* context)
 {
 	boost::unique_lock<boost::mutex> l(font_mutex);
 	ImGui::SetCurrentContext(context);
@@ -1108,7 +913,7 @@ extern "C" int ModUnInit(ImGuiContext* context)
 	return 0;
 }
 
-extern "C" void ModTextureData(int index, unsigned char** out_pixels, int* out_width, int* out_height, int* out_bytes_per_pixel)
+void OverlayInstance::TextureData(int index, unsigned char** out_pixels, int* out_width, int* out_height, int* out_bytes_per_pixel)
 {
 	boost::unique_lock<boost::mutex> l(font_mutex);
 	assert(out_pixels != nullptr && out_width != nullptr && out_height != nullptr);
@@ -1123,7 +928,7 @@ extern "C" void ModTextureData(int index, unsigned char** out_pixels, int* out_w
 		*out_bytes_per_pixel = overlay_texture_channels;
 }
 
-extern "C" void ModSetTexture(int index, void* texture)
+void OverlayInstance::SetTexture(int index, void* texture)
 {
 	boost::unique_lock<boost::mutex> l(font_mutex);
 	overlay_texture = texture;
@@ -1134,22 +939,23 @@ extern "C" void ModSetTexture(int index, void* texture)
 	}
 }
 
-extern "C" bool ModGetTextureDirtyRect(int index, int dindex, RECT* rect)
+bool OverlayInstance::GetTextureDirtyRect(int index, int dindex, RECT* rect)
 {
 	return false;
 }
 
-extern "C" int ModTextureBegin()
+int OverlayInstance::TextureBegin()
 {
 	return 1; // texture Size and lock
 }
 
-extern "C" void ModTextureEnd()
+void OverlayInstance::TextureEnd()
 {
 	return;
 }
 
-void FontsPreferences() {
+void OverlayInstance::FontsPreferences() 
+{
 	if (ImGui::TreeNode("Fonts"))
 	{
 		ImGui::Text("Default font is \'Default\' with fixed font size 13.0");
@@ -1442,7 +1248,7 @@ void FontsPreferences() {
 	}
 }
 
-void Preference(ImGuiContext* context, bool* show_preferences)
+void OverlayInstance::Preference(ImGuiContext* context, bool* show_preferences)
 {	
 	if(ImGui::Begin("Preferences", show_preferences, windows_default_sizes["Preferences"], -1, ImGuiWindowFlags_NoCollapse))
 	{
@@ -1685,9 +1491,9 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 			if (ImGui::Checkbox("Use SSL", &boolean_map["WebSocketSSL"]))
 			{
 				websocket_reconnect = true;
-				if (websocket.websocket)
+				if (websocket)
 				{
-					websocket.websocket->close(boost::beast::websocket::none);
+					websocket->close(boost::beast::websocket::none);
 				}
 				strcpy_s(websocket_message, 1023, "Connecting...");
 				SaveSettings();
@@ -1796,9 +1602,7 @@ void Preference(ImGuiContext* context, bool* show_preferences)
 	ImGui::End();
 }
 
-static bool show_preferences = false;
-
-extern "C" int ModRender(ImGuiContext* context)
+int OverlayInstance::Render(ImGuiContext* context)
 {
 	bool move_key_pressed = GetAsyncKeyState(VK_SHIFT) && GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_MENU);
 	bool use_input = movable || show_preferences || move_key_pressed;
@@ -1952,7 +1756,7 @@ extern "C" int ModRender(ImGuiContext* context)
 	return 0;
 }
 
-extern "C" bool ModMenu(bool* show)
+bool OverlayInstance::Menu(bool* show)
 {
 	if (show)
 		show_preferences = *show;
@@ -1961,7 +1765,7 @@ extern "C" bool ModMenu(bool* show)
 	return show_preferences;
 }
 
-extern "C" bool ModUpdateFont(ImGuiContext* context)
+bool OverlayInstance::UpdateFont(ImGuiContext* context)
 {
 	if (font_setting_dirty)
 	{
@@ -1971,3 +1775,268 @@ extern "C" bool ModUpdateFont(ImGuiContext* context)
 	return false;
 }
 
+bool OverlayInstance::LoadFonts(ImGuiContext* context)
+{
+	if (!context)
+		return false;
+
+	{
+		// Changing or adding fonts at runtime causes a crash.
+		// TODO: is it possible ?...
+
+		ImGuiIO& io = context->IO;
+
+		WCHAR result[MAX_PATH] = {};
+		GetWindowsDirectoryW(result, MAX_PATH);
+		boost::filesystem::path p = result;
+
+		GetModuleFileNameW(NULL, result, MAX_PATH);
+		boost::filesystem::path m = result;
+
+		// font
+		io.Fonts->Clear();
+		io.Fonts->TexID = 0;
+
+		std::map<std::string, const ImWchar*> glyph_range_map = {
+			{ "Default", io.Fonts->GetGlyphRangesDefault() },
+		{ "Chinese", io.Fonts->GetGlyphRangesChinese() },
+		{ "Cyrillic", io.Fonts->GetGlyphRangesCyrillic() },
+		{ "Japanese", io.Fonts->GetGlyphRangesJapanese() },
+		{ "Korean", io.Fonts->GetGlyphRangesKorean() },
+		{ "Thai", io.Fonts->GetGlyphRangesThai() },
+		};
+
+		// Add fonts in this order.
+		glyph_range_key = {
+			"Default",
+			"Chinese",
+			"Cyrillic",
+			"Japanese",
+			"Korean",
+			"Thai",
+		};
+
+		std::vector<boost::filesystem::path> font_find_folders = {
+			m.parent_path(), // dll path
+			p / "Fonts", // windows fonts
+		};
+		font_paths.clear();
+		// first time
+		if (font_filenames.empty())
+		{
+			font_filenames.clear();
+			font_cstr_filenames.clear();
+			boost::filesystem::directory_iterator itr, end_itr;
+
+			font_filenames.push_back("Default");
+			for (auto i = font_find_folders.begin(); i != font_find_folders.end(); ++i)
+			{
+				if (boost::filesystem::exists(*i))
+				{
+					for (boost::filesystem::directory_iterator itr(*i); itr != end_itr; ++itr)
+					{
+						if (is_regular_file(itr->path())) {
+							std::string extension = boost::to_lower_copy(itr->path().extension().string());
+							if (extension == ".ttc" || extension == ".ttf")
+							{
+								font_paths.push_back(itr->path());
+								font_filenames.push_back(itr->path().filename().string());
+							}
+						}
+					}
+				}
+			}
+			{
+				for (auto i = font_filenames.begin(); i != font_filenames.end(); ++i)
+				{
+					font_cstr_filenames.push_back(i->c_str());
+				}
+			}
+		}
+
+		ImFontConfig config;
+		config.MergeMode = false;
+		for (auto i = glyph_range_key.begin(); i != glyph_range_key.end(); ++i)
+		{
+			bool is_loaded = false;
+
+			for (auto j = fonts.begin(); j != fonts.end() && !is_loaded; ++j)
+			{
+				if (j->glyph_range == *i)
+				{
+					if (j->fontname == "Default")
+					{
+						io.Fonts->AddFontDefault(&config);
+						is_loaded = true;
+						config.MergeMode = true;
+					}
+					else
+					{
+						for (auto k = font_find_folders.begin(); k != font_find_folders.end(); ++k)
+						{
+							if (j->fontname.empty())
+								continue;
+							std::vector<std::string> extensions = { "", ".ttc", ".ttf" };
+							for (auto l = extensions.begin(); l != extensions.end(); ++l) {
+								// ttf, ttc only
+								auto fontpath = (*k) / (j->fontname + *l);
+								if (boost::filesystem::exists(fontpath) && boost::filesystem::is_regular_file(fontpath))
+								{
+									io.Fonts->AddFontFromFileTTF((fontpath).string().c_str(), j->font_size, &config, glyph_range_map[j->glyph_range]);
+									is_loaded = true;
+									config.MergeMode = true;
+								}
+							}
+						}
+					}
+				}
+			}
+
+			if (*i == "Default" && !is_loaded)
+			{
+				io.Fonts->AddFontDefault(&config);
+				is_loaded = true;
+				config.MergeMode = true;
+			}
+
+		}
+		// do not remove
+		io.Fonts->AddFontDefault();
+	}
+	if (fonts.empty())
+	{
+		font_sizes = 13;
+	}
+	else
+	{
+		font_sizes = fonts[0].font_size;
+		for (auto i = fonts.begin(); i != fonts.end(); ++i)
+		{
+			font_sizes = std::min(font_sizes, i->font_size);
+		}
+	}
+	font_setting_dirty = false;
+	return true;
+}
+
+void OverlayInstance::websocketThread()
+{
+	boost::unique_lock<boost::mutex> l(mutex);
+	// only one.
+	if (!websocket_thread)
+		Run();
+}
+
+void OverlayInstance::Process(const std::string& message_str)
+{
+	{
+		Json::Value root;
+		Json::Reader r;
+
+		if (r.parse(message_str, root))
+		{
+			std::vector<Table::Row> _rows;
+			std::vector<std::vector<std::string> > _values;
+			//{"type":"broadcast", "msgtype" : "SendCharName", "from" : null, "to" : "uuid", "msg" : {"charID":00, "charName" : "charname"}}
+			if (root["type"].asString() == "broadcast" && root["msgtype"].asString() == "SendCharName")
+			{
+				your_name = root["msg"]["charName"].asString();
+			}
+
+			if (root["type"].asString() == "broadcast" && root["msgtype"].asString() == "CombatData")
+			{
+				float _maxValue = 0;
+				mutex.lock();
+				Table& table = dealerTable;
+				{
+					_values.clear();
+					Json::Value combatant = root["msg"]["Combatant"];
+					Json::Value encounter = root["msg"]["Encounter"];
+
+					rdps = encounter["encdps"].asString();
+					rhps = encounter["enchps"].asString();
+
+					zone = encounter["CurrentZoneName"].asString();
+					duration = encounter["duration"].asString();
+
+					for (auto i = combatant.begin(); i != combatant.end(); ++i)
+					{
+						std::vector<std::string> vals;
+						for (int j = 0; j < table.columns.size(); ++j)
+						{
+							vals.push_back((*i)[table.columns[j].index].asString());
+						}
+						_maxValue = std::max<float>(atof(vals[table.progressColumn].c_str()), _maxValue);
+
+						_values.push_back(vals);
+					}
+
+					// sort first
+					std::sort(_values.begin(), _values.end(), [](const std::vector<std::string>& vals0, const std::vector<std::string>& vals1)
+					{
+						return atof(vals0[2].c_str()) > atof(vals1[2].c_str());
+					});
+
+					for (auto i = 0; i < _values.size(); ++i)
+					{
+						auto& vals = _values[i];
+						Table::Row row;
+						{
+							std::string& jobStr = vals[0];
+							const std::string& progressStr = vals[2];
+							std::string& nameStr = vals[1];
+							if (jobStr.empty())
+							{
+								std::string jobStrAlter;
+								typedef std::vector< std::string > split_vector_type;
+								split_vector_type splitVec; // #2: Search for tokens
+								boost::split(splitVec, nameStr, boost::is_any_of("()"), boost::token_compress_on);
+								if (splitVec.size() >= 1)
+								{
+									boost::trim(splitVec[0]);
+									auto i = name_to_job_map.find(splitVec[0]);
+									if (i != name_to_job_map.end())
+									{
+										jobStr = i->second;
+									}
+									else if (splitVec.size() > 1)
+									{
+										jobStr = default_pet_job;
+									}
+								}
+							}
+
+							ColorMapType::iterator ji;
+
+							// name and job
+							if ((ji = color_map.find(nameStr)) != color_map.end())
+							{
+								row.color = &ji->second;
+							}
+							else
+							{
+								if ((ji = color_map.find(jobStr)) != color_map.end())
+								{
+									row.color = &ji->second;
+								}
+								else
+								{
+									row.color = &color_map["etc"];
+								}
+							}
+							if (nameStr == "YOU" && !your_name.empty())
+							{
+								nameStr = your_name;
+							}
+							_rows.push_back(row);
+						}
+					}
+				}
+				dealerTable.rows = _rows;
+				dealerTable.values = _values;
+				dealerTable.maxValue = _maxValue;
+				mutex.unlock();
+			}
+		}
+	}
+}

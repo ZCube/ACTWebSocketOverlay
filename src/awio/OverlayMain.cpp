@@ -33,33 +33,69 @@ void ClearUniqueValues();
 #include "OverlayMain.h"
 
 #include <boost/thread/recursive_mutex.hpp>
-boost::recursive_mutex instanceLock;
-static OverlayInstance instance;
+
+class ModInstance : public ModInterface
+{
+public:
+	boost::recursive_mutex instanceLock;
+	OverlayInstance instance;
+public:
+	virtual ~ModInstance() {
+	}
+	virtual int Init(ImGuiContext* context);
+	virtual int UnInit(ImGuiContext* context);
+	virtual int Render(ImGuiContext* context);
+	virtual int TextureBegin();
+	virtual void TextureEnd();
+	virtual void TextureData(int index, unsigned char** out_pixels, int* out_width, int* out_height, int* out_bytes_per_pixel);
+	virtual bool GetTextureDirtyRect(int index, int dindex, RECT* rect);
+	virtual void SetTexture(int index, void* texture);
+	virtual bool UpdateFont(ImGuiContext* context);
+	virtual bool Menu(bool* show);
+};
+
+ModInstance* getModInstance(lua_State* L)
+{
+	lua_getglobal(L, "__instance");
+	return lua_islightuserdata(L, 1) ? reinterpret_cast<ModInstance*>(lua_touserdata(L, 1)) : nullptr;
+}
 
 extern "C" int saveWindowPos(lua_State* L)
 {
-	boost::recursive_mutex::scoped_lock l(instanceLock);
+	auto mod = getModInstance(L);
+	if (!mod)
 	{
-		instance.options.SaveWindowPos();
+		return 0;
+	}
+	boost::recursive_mutex::scoped_lock l(mod->instanceLock);
+	{
+		mod->instance.options.SaveWindowPos();
 	}
 	return 0;
 }
 
 extern "C" int getWindowSize(lua_State* L)
 {
-	boost::recursive_mutex::scoped_lock l(instanceLock);
+	auto mod = getModInstance(L);
+	if (!mod)
+	{
+		lua_pushnumber(L, 300);
+		lua_pushnumber(L, 300);
+		return 2;
+	}
+	boost::recursive_mutex::scoped_lock l(mod->instanceLock);
 	const char* str = luaL_checkstring(L, 1);
 	if (str)
 	{
 		if (lua_isnumber(L, 2) && lua_isnumber(L, 3))
 		{
-			ImVec2& v = instance.options.GetDefaultSize(str, ImVec2(lua_tonumber(L, 2), lua_tonumber(L, 3)));
+			ImVec2& v = mod->instance.options.GetDefaultSize(str, ImVec2(lua_tonumber(L, 2), lua_tonumber(L, 3)));
 			lua_pushnumber(L, v.x);
 			lua_pushnumber(L, v.y);
 		}
 		else
 		{
-			ImVec2& v = instance.options.GetDefaultSize(str, ImVec2(300,300));
+			ImVec2& v = mod->instance.options.GetDefaultSize(str, ImVec2(300,300));
 			lua_pushnumber(L, v.x);
 			lua_pushnumber(L, v.y);
 		}
@@ -74,7 +110,12 @@ extern "C" int getWindowSize(lua_State* L)
 
 extern "C" int setWindowSize(lua_State* L)
 {
-	boost::recursive_mutex::scoped_lock l(instanceLock);
+	auto mod = getModInstance(L);
+	if (!mod)
+	{
+		return 0;
+	}
+	boost::recursive_mutex::scoped_lock l(mod->instanceLock);
 	const char* str = luaL_checkstring(L, 1);
 	if (str)
 	{
@@ -83,8 +124,8 @@ extern "C" int setWindowSize(lua_State* L)
 			float x = luaL_checknumber(L, 2);
 			float y = luaL_checknumber(L, 3);
 
-			auto i = instance.options.windows_default_sizes.find(str);
-			if (i != instance.options.windows_default_sizes.end())
+			auto i = mod->instance.options.windows_default_sizes.find(str);
+			if (i != mod->instance.options.windows_default_sizes.end())
 			{
 				i->second.x = x;
 				i->second.y = y;
@@ -96,12 +137,23 @@ extern "C" int setWindowSize(lua_State* L)
 
 extern "C" int getImage(lua_State* L)
 {
-	boost::recursive_mutex::scoped_lock l(instanceLock);
+	auto mod = getModInstance(L);
+	if (!mod)
+	{
+		lua_pushnumber(L, -1);
+		lua_pushnumber(L, -1);
+		lua_pushnumber(L, -1);
+		lua_pushnumber(L, -1);
+		lua_pushnumber(L, -1);
+		lua_pushnumber(L, -1);
+		return 6;
+	}
+	boost::recursive_mutex::scoped_lock l(mod->instanceLock);
 	const char* str = luaL_checkstring(L, 1);
 	if (str)
 	{
-		auto i = instance.overlay_images.find(str);
-		if (i != instance.overlay_images.end())
+		auto i = mod->instance.overlay_images.find(str);
+		if (i != mod->instance.overlay_images.end())
 		{
 			lua_pushnumber(L, i->second.width);
 			lua_pushnumber(L, i->second.height);
@@ -405,7 +457,20 @@ extern "C" int setBoolean(lua_State* L)
 	return 0;
 }
 
-extern "C" int ModInit(ImGuiContext* context)
+
+extern "C" ModInterface* ModCreate()
+{
+	return new ModInstance();
+}
+
+extern "C" int ModFree(ModInterface* context)
+{
+	if (context)
+		delete context;
+	return 0;
+}
+
+int ModInstance::Init(ImGuiContext* context)
 {
 	boost::recursive_mutex::scoped_lock l(instanceLock);
 	ImGui::SetCurrentContext(context);
@@ -419,10 +484,11 @@ extern "C" int ModInit(ImGuiContext* context)
 	boost::filesystem::path module_path = result;
 	boost::filesystem::path module_dir = module_path.parent_path();
 	instance.Init(context, module_dir);
+	instance.instance = this;
 	return 0;
 }
 
-extern "C" int ModUnInit(ImGuiContext* context)
+int ModInstance::UnInit(ImGuiContext* context)
 {
 	boost::recursive_mutex::scoped_lock l(instanceLock);
 	ImGui::SetCurrentContext(context);
@@ -436,7 +502,7 @@ extern "C" int ModUnInit(ImGuiContext* context)
 	return 0;
 }
 
-extern "C" void ModTextureData(int index, unsigned char** out_pixels, int* out_width, int* out_height, int* out_bytes_per_pixel)
+void ModInstance::TextureData(int index, unsigned char** out_pixels, int* out_width, int* out_height, int* out_bytes_per_pixel)
 {
 	boost::recursive_mutex::scoped_lock l(instanceLock);
 	assert(out_pixels != nullptr && out_width != nullptr && out_height != nullptr);
@@ -451,7 +517,7 @@ extern "C" void ModTextureData(int index, unsigned char** out_pixels, int* out_w
 		*out_bytes_per_pixel = instance.overlay_texture_channels;
 }
 
-extern "C" void ModSetTexture(int index, void* texture)
+void ModInstance::SetTexture(int index, void* texture)
 {
 	boost::recursive_mutex::scoped_lock l(instanceLock);
 	instance.SetTexture(texture);
@@ -460,22 +526,22 @@ extern "C" void ModSetTexture(int index, void* texture)
 	}
 }
 
-extern "C" bool ModGetTextureDirtyRect(int index, int dindex, RECT* rect)
+bool ModInstance::GetTextureDirtyRect(int index, int dindex, RECT* rect)
 {
 	return false;
 }
 
-extern "C" int ModTextureBegin()
+int ModInstance::TextureBegin()
 {
 	return 1; // texture Size and lock
 }
 
-extern "C" void ModTextureEnd()
+void ModInstance::TextureEnd()
 {
 	return;
 }
 
-extern "C" int ModRender(ImGuiContext* context)
+int ModInstance::Render(ImGuiContext* context)
 {
 	boost::recursive_mutex::scoped_lock l(instanceLock);
 	ImGui::SetCurrentContext(context);
@@ -494,7 +560,7 @@ extern "C" int ModRender(ImGuiContext* context)
 	return 0;
 }
 
-extern "C" bool ModMenu(bool* show)
+bool ModInstance::Menu(bool* show)
 {
 	if (show)
 		instance.options.show_preferences = *show;
@@ -504,7 +570,7 @@ extern "C" bool ModMenu(bool* show)
 }
 
 
-extern "C" bool ModUpdateFont(ImGuiContext* context)
+bool ModInstance::UpdateFont(ImGuiContext* context)
 {
 	boost::recursive_mutex::scoped_lock l(instanceLock);
 	if (instance.font_setting_dirty)
@@ -983,7 +1049,7 @@ void OverlayInstance::Preferences() {
 		{
 			if (ImGui::Button("Reload Overlays"))
 			{
-				instance.ReloadScripts();
+				ReloadScripts();
 			}
 			ImGui::TreePop();
 		}

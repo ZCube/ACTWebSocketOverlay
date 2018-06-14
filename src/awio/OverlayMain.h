@@ -14,6 +14,7 @@
 #include <boost/algorithm/string.hpp>
 #define STR2UTF8(s) (CW2A(CA2W(s), CP_UTF8))
 #define UTF82WSTR(s) (CA2W(s), CP_UTF8)
+#include "../mod.h"
 
 #include "Serializable.h"
 #include "Preference.h"
