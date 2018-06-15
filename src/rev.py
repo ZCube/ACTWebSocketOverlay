@@ -8,7 +8,7 @@ dev = False
 if len(sys.argv) > 1:
   dev = True
 
-out = check_output(["git", "describe", "--long"]).replace('-', '.', 1).replace("\r","").replace("\n","")
+out = str(check_output(["git", "describe", "--long"]), "utf-8").replace('-', '.', 1).replace("\r","").replace("\n","")
 arr = out.split(".")
 var = arr[0:-1]
 if len(var) < 3:
@@ -48,7 +48,7 @@ print(shortVersionWithComma())
 files = glob.glob("**/*.in") + glob.glob("*.in")
 for f in files:
   print(f[:-3])
-  with open(f, 'rb') as infile, open(f[:-3], 'wb') as outfile:
+  with open(f, 'r') as infile, open(f[:-3], 'w') as outfile:
     ctx = infile.read()
     ctx = ctx.replace("@VERSION_TAG@", tagOnly())
     ctx = ctx.replace("@VERSION_TAG_WITH_COMMA@", tagOnlyWithComma())

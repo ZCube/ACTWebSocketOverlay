@@ -1,0 +1,19 @@
+stages:
+  - build
+
+build_2017:
+  artifacts:
+    paths:
+    - dist/
+    expire_in: 1 week
+  variables:
+    CMAKE_GENERATOR: 'Visual Studio 15 2017'
+  stage: build
+  script:
+  - cd dist
+  - call dist.bat
+  tags:
+  - msvc2017
+  
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
