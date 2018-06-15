@@ -49,6 +49,8 @@ ADD_LIBRARY(loader
 TARGET_LINK_LIBRARIES(loader
 )
 
+set_target_properties(loader PROPERTIES OUTPUT_NAME "mod_loader_${address_model}")
+
 include_directories(
 	${IMGUI_DIRECTORY}/examples/directx11_example
 	${IMGUI_DIRECTORY}/examples/directx9_example

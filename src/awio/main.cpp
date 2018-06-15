@@ -16,29 +16,29 @@
 typedef ModInterface* (*TModCreate)();
 typedef int(*TModFree)(ModInterface* context);
 
-typedef int(*TModUnInit)(ImGuiContext* context);
-typedef int(*TModRender)(ImGuiContext* context);
-typedef int(*TModInit)(ImGuiContext* context);
-typedef void(*TModTextureData)(int index, unsigned char** out_pixels, int* out_width, int* out_height, int* out_bytes_per_pixel);
-typedef bool(*TModGetTextureDirtyRect)(int index, int dindex, RECT* rect);
-typedef void(*TModSetTexture)(int index, void* texture);
-typedef int(*TModTextureBegin)();
-typedef void(*TModTextureEnd)();
-typedef bool(*TModUpdateFont)(ImGuiContext* context);
-typedef bool(*TModMenu)(bool* show);
+//typedef int(*TModUnInit)(ImGuiContext* context);
+//typedef int(*TModRender)(ImGuiContext* context);
+//typedef int(*TModInit)(ImGuiContext* context);
+//typedef void(*TModTextureData)(int index, unsigned char** out_pixels, int* out_width, int* out_height, int* out_bytes_per_pixel);
+//typedef bool(*TModGetTextureDirtyRect)(int index, int dindex, RECT* rect);
+//typedef void(*TModSetTexture)(int index, void* texture);
+//typedef int(*TModTextureBegin)();
+//typedef void(*TModTextureEnd)();
+//typedef bool(*TModUpdateFont)(ImGuiContext* context);
+//typedef bool(*TModMenu)(bool* show);
 
 TModCreate modCreate = nullptr;
 TModFree  modFree = nullptr;
-TModUnInit modUnInit = nullptr;
-TModRender modRender = nullptr;
-TModInit modInit = nullptr;
-TModTextureData modTextureData = nullptr;
-TModGetTextureDirtyRect modGetTextureDirtyRect = nullptr;
-TModSetTexture modSetTexture = nullptr;
-TModTextureBegin modTextureBegin = nullptr;
-TModTextureEnd modTextureEnd = nullptr;
-TModUpdateFont modUpdateFont = nullptr;
-TModMenu modMenu = nullptr;
+//TModUnInit modUnInit = nullptr;
+//TModRender modRender = nullptr;
+//TModInit modInit = nullptr;
+//TModTextureData modTextureData = nullptr;
+//TModGetTextureDirtyRect modGetTextureDirtyRect = nullptr;
+//TModSetTexture modSetTexture = nullptr;
+//TModTextureBegin modTextureBegin = nullptr;
+//TModTextureEnd modTextureEnd = nullptr;
+//TModUpdateFont modUpdateFont = nullptr;
+//TModMenu modMenu = nullptr;
 HMODULE mod = nullptr;
 ModInterface* modInterface = nullptr;
 /////////////////////////////////////////////////////////////////////////////////
@@ -189,7 +189,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 				if (tex)
 				{
 					tex->Release();
-					modSetTexture(idx, nullptr);
+					modInterface->SetTexture(idx, nullptr);
 					++idx;
 				}
 			}
@@ -223,7 +223,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 static void ImGui_ImplDX11_CreateModTexture(int texindex)
 {
-	if (!modTextureData)
+	if (!modInterface)
 		return;
 
 	g_pModTextureViews.resize(std::max<size_t>(g_pModTextureViews.size(), texindex + 1));
@@ -234,15 +234,15 @@ static void ImGui_ImplDX11_CreateModTexture(int texindex)
 	{
 		g_pModTextureView->Release();
 		g_pModTextureView = nullptr;
-		if (modSetTexture)
-			modSetTexture(texindex, nullptr);
+		if (modInterface)
+			modInterface->SetTexture(texindex, nullptr);
 	}
 	// Build texture atlas
 	ImGuiIO& io = ImGui::GetIO();
 	unsigned char* pixels;
 	int width, height;
 	int bpp;
-	modTextureData(texindex, &pixels, &width, &height, &bpp);
+	modInterface->TextureData(texindex, &pixels, &width, &height, &bpp);
 	if (pixels == nullptr)
 		return;
 
@@ -296,8 +296,8 @@ static void ImGui_ImplDX11_CreateModTexture(int texindex)
 	//	g_pd3dDevice->CreateSamplerState(&desc, &g_pFontSampler);
 	//}
 
-	if (modSetTexture)
-		modSetTexture(texindex, g_pModTextureView);
+	if (modInterface)
+		modInterface->SetTexture(texindex, g_pModTextureView);
 }
 
 int main(int argc, char** argv)
@@ -327,16 +327,16 @@ int main(int argc, char** argv)
 		if (modCreate && modFree) {
 			modInterface = modCreate();
 		}
-		modInit = (TModInit)GetProcAddress(mod, "ModInit");
-		modRender = (TModRender)GetProcAddress(mod, "ModRender");
-		modUnInit = (TModUnInit)GetProcAddress(mod, "ModUnInit");
-		modTextureData = (TModTextureData)GetProcAddress(mod, "ModTextureData");
-		modSetTexture = (TModSetTexture)GetProcAddress(mod, "ModSetTexture");
-		modGetTextureDirtyRect = (TModGetTextureDirtyRect)GetProcAddress(mod, "ModGetTextureDirtyRect");
-		modTextureBegin = (TModTextureBegin)GetProcAddress(mod, "ModTextureBegin");
-		modTextureEnd = (TModTextureEnd)GetProcAddress(mod, "ModTextureEnd");
-		modUpdateFont = (TModUpdateFont)GetProcAddress(mod, "ModUpdateFont");
-		modMenu = (TModMenu)GetProcAddress(mod, "ModMenu");
+		//modInit = (TModInit)GetProcAddress(mod, "ModInit");
+		//modRender = (TModRender)GetProcAddress(mod, "ModRender");
+		//modUnInit = (TModUnInit)GetProcAddress(mod, "ModUnInit");
+		//modTextureData = (TModTextureData)GetProcAddress(mod, "ModTextureData");
+		//modSetTexture = (TModSetTexture)GetProcAddress(mod, "ModSetTexture");
+		//modGetTextureDirtyRect = (TModGetTextureDirtyRect)GetProcAddress(mod, "ModGetTextureDirtyRect");
+		//modTextureBegin = (TModTextureBegin)GetProcAddress(mod, "ModTextureBegin");
+		//modTextureEnd = (TModTextureEnd)GetProcAddress(mod, "ModTextureEnd");
+		//modUpdateFont = (TModUpdateFont)GetProcAddress(mod, "ModUpdateFont");
+		//modMenu = (TModMenu)GetProcAddress(mod, "ModMenu");
 	}
 	/////////////////////////////////////////////////////////////////////////////////
 

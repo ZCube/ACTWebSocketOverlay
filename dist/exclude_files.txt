@@ -8,3 +8,5 @@ zlibd
 zlib
 ActWebSocketImguiOverlay
 loader
+d3d9
+dxgi

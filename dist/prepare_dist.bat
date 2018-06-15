@@ -15,9 +15,9 @@ xcopy /hrkysd /exclude:exclude_files.txt "..\bin\32\Release\*.dll" "%dest%\32\*.
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 rem loader
-xcopy /hrkysd "..\bin\64\Release\loader.dll" "%dest%\%overlay64dst%"
+xcopy /hrkysd "..\bin\64\Release\mod_loader_64.dll" "%dest%\%overlay64dst%"
 if %errorlevel% neq 0 exit /b %errorlevel%
-xcopy /hrkysd "..\bin\32\Release\loader.dll" "%dest%\%overlay32dst%"
+xcopy /hrkysd "..\bin\32\Release\mod_loader_32.dll" "%dest%\%overlay32dst%"
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 rem module
@@ -63,7 +63,7 @@ if %errorlevel% neq 0 exit /b %errorlevel%
 
 if exist %dest%_latest.zip del %dest%_latest.zip
 pushd %dest%
-"c:\Program Files\7-Zip\7z.exe" a ..\%dest%_latest.zip *
+..\archiver_windows_386 make ..\%dest%_latest.zip .
 if %errorlevel% neq 0 exit /b %errorlevel%
 popd %dest%
 

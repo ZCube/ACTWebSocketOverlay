@@ -17,29 +17,29 @@
 typedef ModInterface* (*TModCreate)();
 typedef int(*TModFree)(ModInterface* context);
 
-typedef int(*TModUnInit)(ImGuiContext* context);
-typedef int(*TModRender)(ImGuiContext* context);
-typedef int(*TModInit)(ImGuiContext* context);
-typedef void(*TModTextureData)(int index, unsigned char** out_pixels, int* out_width, int* out_height, int* out_bytes_per_pixel);
-typedef bool(*TModGetTextureDirtyRect)(int index, int dindex, RECT* rect);
-typedef void(*TModSetTexture)(int index, void* texture);
-typedef int(*TModTextureBegin)();
-typedef void(*TModTextureEnd)();
-typedef bool(*TModUpdateFont)(ImGuiContext* context);
-typedef bool(*TModMenu)(bool* show);
+//typedef int(*TModUnInit)(ImGuiContext* context);
+//typedef int(*TModRender)(ImGuiContext* context);
+//typedef int(*TModInit)(ImGuiContext* context);
+//typedef void(*TModTextureData)(int index, unsigned char** out_pixels, int* out_width, int* out_height, int* out_bytes_per_pixel);
+//typedef bool(*TModGetTextureDirtyRect)(int index, int dindex, RECT* rect);
+//typedef void(*TModSetTexture)(int index, void* texture);
+//typedef int(*TModTextureBegin)();
+//typedef void(*TModTextureEnd)();
+//typedef bool(*TModUpdateFont)(ImGuiContext* context);
+//typedef bool(*TModMenu)(bool* show);
 
 TModCreate modCreate = nullptr;
 TModFree  modFree = nullptr;
-TModUnInit modUnInit = nullptr;
-TModRender modRender = nullptr;
-TModInit modInit = nullptr;
-TModTextureData modTextureData = nullptr;
-TModGetTextureDirtyRect modGetTextureDirtyRect = nullptr;
-TModSetTexture modSetTexture = nullptr;
-TModTextureBegin modTextureBegin = nullptr;
-TModTextureEnd modTextureEnd = nullptr;
-TModUpdateFont modUpdateFont = nullptr;
-TModMenu modMenu = nullptr;
+//TModUnInit modUnInit = nullptr;
+//TModRender modRender = nullptr;
+//TModInit modInit = nullptr;
+//TModTextureData modTextureData = nullptr;
+//TModGetTextureDirtyRect modGetTextureDirtyRect = nullptr;
+//TModSetTexture modSetTexture = nullptr;
+//TModTextureBegin modTextureBegin = nullptr;
+//TModTextureEnd modTextureEnd = nullptr;
+//TModUpdateFont modUpdateFont = nullptr;
+//TModMenu modMenu = nullptr;
 HMODULE mod = nullptr;
 ModInterface* modInterface = nullptr;
 /////////////////////////////////////////////////////////////////////////////////
@@ -60,8 +60,8 @@ static bool ImGui_ImplDX9_CreateModTexture(int texindex)
 	if (LPDIRECT3DTEXTURE9 tex = g_ModTexture)
 	{
 		tex->Release();
-		if (modSetTexture)
-			modSetTexture(texindex, nullptr);
+		if (modInterface)
+			modInterface->SetTexture(texindex, nullptr);
 		g_ModTexture = nullptr;
 	}
 	// Build texture atlas
@@ -234,16 +234,16 @@ int main(int argc, char** argv)
 		if (modCreate && modFree) {
 			modInterface = modCreate();
 		}
-		modInit = (TModInit)GetProcAddress(mod, "ModInit");
-		modRender = (TModRender)GetProcAddress(mod, "ModRender");
-		modUnInit = (TModUnInit)GetProcAddress(mod, "ModUnInit");
-		modTextureData = (TModTextureData)GetProcAddress(mod, "ModTextureData");
-		modSetTexture = (TModSetTexture)GetProcAddress(mod, "ModSetTexture");
-		modGetTextureDirtyRect = (TModGetTextureDirtyRect)GetProcAddress(mod, "ModGetTextureDirtyRect");
-		modTextureBegin = (TModTextureBegin)GetProcAddress(mod, "ModTextureBegin");
-		modTextureEnd = (TModTextureEnd)GetProcAddress(mod, "ModTextureEnd");
-		modUpdateFont = (TModUpdateFont)GetProcAddress(mod, "ModUpdateFont");
-		modMenu = (TModMenu)GetProcAddress(mod, "ModMenu");
+		//modInit = (TModInit)GetProcAddress(mod, "ModInit");
+		//modRender = (TModRender)GetProcAddress(mod, "ModRender");
+		//modUnInit = (TModUnInit)GetProcAddress(mod, "ModUnInit");
+		//modTextureData = (TModTextureData)GetProcAddress(mod, "ModTextureData");
+		//modSetTexture = (TModSetTexture)GetProcAddress(mod, "ModSetTexture");
+		//modGetTextureDirtyRect = (TModGetTextureDirtyRect)GetProcAddress(mod, "ModGetTextureDirtyRect");
+		//modTextureBegin = (TModTextureBegin)GetProcAddress(mod, "ModTextureBegin");
+		//modTextureEnd = (TModTextureEnd)GetProcAddress(mod, "ModTextureEnd");
+		//modUpdateFont = (TModUpdateFont)GetProcAddress(mod, "ModUpdateFont");
+		//modMenu = (TModMenu)GetProcAddress(mod, "ModMenu");
 	}
 	/////////////////////////////////////////////////////////////////////////////////
 

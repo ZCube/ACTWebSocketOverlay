@@ -2,89 +2,10 @@ cmake_minimum_required(VERSION 3.0.0)
 
 project(ActWebSocketOverlay C CXX)
 
-# Download automatically, you can also just copy the conan.cmake file
-if(NOT EXISTS "${CMAKE_BINARY_DIR}/conan.cmake")
-   message(STATUS "Downloading conan.cmake from https://github.com/conan-io/cmake-conan")
-   file(DOWNLOAD "https://raw.githubusercontent.com/conan-io/cmake-conan/v0.11/conan.cmake"
-                 "${CMAKE_BINARY_DIR}/conan.cmake")
-endif()
-
-include (CheckTypeSize)
-CHECK_TYPE_SIZE("void*"  CMAKE_SIZEOF_VOID_P)
-
-if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-  if(DEFINED ENV{QTDIR32})
-    SET(QTDIR_ROOT "$ENV{QTDIR32}")
-  elseif(DEFINED ENV{QTDIR})
-    SET(QTDIR_ROOT "$ENV{QTDIR}")
-  endif()
-elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
-  if(DEFINED ENV{QTDIR64})
-    SET(QTDIR_ROOT "$ENV{QTDIR64}")
-  elseif(DEFINED ENV{QTDIR})
-    SET(QTDIR_ROOT "$ENV{QTDIR}")
-  endif()
-endif()
-
-include(${CMAKE_BINARY_DIR}/conan.cmake)
-
-if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-  configure_file(conanfile.txt "${CMAKE_CURRENT_SOURCE_DIR}/_conanfile86.txt" @ONLY)
-  conan_cmake_run(CONANFILE "_conanfile86.txt"
-                BASIC_SETUP
-                SETTINGS arch=x86
-                BUILD missing)
-elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
-  configure_file(conanfile.txt "${CMAKE_CURRENT_SOURCE_DIR}/_conanfile64.txt" @ONLY)
-  conan_cmake_run(CONANFILE "_conanfile64.txt"
-                BASIC_SETUP
-                SETTINGS arch=x86_64
-                BUILD missing)
-endif()
-
-set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-
-conan_define_targets()
-
-ADD_DEFINITIONS(
-  ${CONAN_DEFINES_BOOST}
-)
-
-set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-
-ADD_DEFINITIONS(
-  -DBOOST_ALL_NO_LIB
-  -D_CRT_SECURE_NO_WARNINGS
-  -D_WIN32_WINNT=0x0601
-  -DWIN32_LEAN_AND_MEAN
-  -DUNICODE
-  -D_UNICODE
-  -DNOMINMAX
-)
-
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-	set(address_model "64")
-elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
-	set(address_model "32")
-endif()
-
-include_directories(
-	${CMAKE_BINARY_DIR}/external/zlib
-	zlib
-)
-
-LINK_DIRECTORIES(
-	prebuilt/${address_model}
-	prebuilt/${address_model}/third_party
-	prebuilt/${address_model}/third_party/icu
-)
-ADD_SUBDIRECTORY(external)
-ADD_SUBDIRECTORY(src)
-
 IF(MSVC)
   # Static Runtime has problem alloc/free
-  OPTION(USE_STATIC_RUNTIME_LIBRARY "Use Static Runtime Library" OFF)
-  OPTION(USE_LINK_TIME_OPTIMIZATION "Use Link Time Optimization" OFF)
+  OPTION(USE_STATIC_RUNTIME_LIBRARY "Use Static Runtime Library" ON)
+  OPTION(USE_LINK_TIME_OPTIMIZATION "Use Link Time Optimization" ON)
 
   IF(USE_STATIC_RUNTIME_LIBRARY)
       message(STATUS "- MSVC: Use Static Runtime Library")
@@ -191,4 +112,83 @@ IF(MSVC)
     set(${flag_var} "${${flag_var}}" CACHE STRING "" FORCE)
   endforeach()
 ENDIF()
- 
+
+
+# Download automatically, you can also just copy the conan.cmake file
+if(NOT EXISTS "${CMAKE_BINARY_DIR}/conan.cmake")
+   message(STATUS "Downloading conan.cmake from https://github.com/conan-io/cmake-conan")
+   file(DOWNLOAD "https://raw.githubusercontent.com/conan-io/cmake-conan/v0.11/conan.cmake"
+                 "${CMAKE_BINARY_DIR}/conan.cmake")
+endif()
+
+include (CheckTypeSize)
+CHECK_TYPE_SIZE("void*"  CMAKE_SIZEOF_VOID_P)
+
+if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+  if(DEFINED ENV{QTDIR32})
+    SET(QTDIR_ROOT "$ENV{QTDIR32}")
+  elseif(DEFINED ENV{QTDIR})
+    SET(QTDIR_ROOT "$ENV{QTDIR}")
+  endif()
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
+  if(DEFINED ENV{QTDIR64})
+    SET(QTDIR_ROOT "$ENV{QTDIR64}")
+  elseif(DEFINED ENV{QTDIR})
+    SET(QTDIR_ROOT "$ENV{QTDIR}")
+  endif()
+endif()
+
+include(${CMAKE_BINARY_DIR}/conan.cmake)
+
+if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+  configure_file(conanfile.txt "${CMAKE_CURRENT_SOURCE_DIR}/_conanfile86.txt" @ONLY)
+  conan_cmake_run(CONANFILE "_conanfile86.txt"
+                BASIC_SETUP
+                SETTINGS arch=x86
+                BUILD missing)
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
+  configure_file(conanfile.txt "${CMAKE_CURRENT_SOURCE_DIR}/_conanfile64.txt" @ONLY)
+  conan_cmake_run(CONANFILE "_conanfile64.txt"
+                BASIC_SETUP
+                SETTINGS arch=x86_64
+                BUILD missing)
+endif()
+
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
+conan_define_targets()
+
+ADD_DEFINITIONS(
+  ${CONAN_DEFINES_BOOST}
+)
+
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
+ADD_DEFINITIONS(
+  -DBOOST_ALL_NO_LIB
+  -D_CRT_SECURE_NO_WARNINGS
+  -D_WIN32_WINNT=0x0601
+  -DWIN32_LEAN_AND_MEAN
+  -DUNICODE
+  -D_UNICODE
+  -DNOMINMAX
+)
+
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+	set(address_model "64")
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
+	set(address_model "32")
+endif()
+
+include_directories(
+	${CMAKE_BINARY_DIR}/external/zlib
+	zlib
+)
+
+LINK_DIRECTORIES(
+	prebuilt/${address_model}
+	prebuilt/${address_model}/third_party
+	prebuilt/${address_model}/third_party/icu
+)
+ADD_SUBDIRECTORY(external)
+ADD_SUBDIRECTORY(src)

@@ -16,8 +16,8 @@ set use_atlas=TRUE
 set dest=ACTWebSocketOverlay%postfix%
 set reshade64dst=ReShade64.*
 set reshade32dst=ReShade32.*
-set overlay64dst=ACTWebSocketOverlay64.*
-set overlay32dst=ACTWebSocketOverlay32.*
+set overlay64dst=mod_loader_64.*
+set overlay32dst=mod_loader_32.*
 set overlay64src=ActWebSocketImguiOverlay.dll
 set overlay32src=ActWebSocketImguiOverlay.dll
 call prepare_dist.bat
@@ -28,8 +28,8 @@ set use_atlas=FALSE
 set dest=ACTWebSocketOverlay%postfix%
 set reshade64dst=ReShade64.*
 set reshade32dst=ReShade32.*
-set overlay64dst=ACTWebSocketOverlay64.*
-set overlay32dst=ACTWebSocketOverlay32.*
+set overlay64dst=mod_loader_64.*
+set overlay32dst=mod_loader_32.*
 set overlay64src=ActWebSocketImguiOverlayWithLua.dll
 set overlay32src=ActWebSocketImguiOverlayWithLua.dll
 call prepare_dist.bat
@@ -40,8 +40,8 @@ set use_atlas=TRUE
 set dest=ACTWebSocketOverlay%postfix%
 set reshade64dst=dxgi.*
 set reshade32dst=d3d9.*
-set overlay64dst=ffxiv_dx11_mod.*
-set overlay32dst=ffxiv_mod.*
+set overlay64dst=mod_loader_64.*
+set overlay32dst=mod_loader_32.*
 set overlay64src=ActWebSocketImguiOverlay.dll
 set overlay32src=ActWebSocketImguiOverlay.dll
 call prepare_dist.bat
@@ -52,8 +52,8 @@ set use_atlas=FALSE
 set dest=ACTWebSocketOverlay%postfix%
 set reshade64dst=dxgi.*
 set reshade32dst=d3d9.*
-set overlay64dst=ffxiv_dx11_mod.*
-set overlay32dst=ffxiv_mod.*
+set overlay64dst=mod_loader_64.*
+set overlay32dst=mod_loader_32.*
 set overlay64src=ActWebSocketImguiOverlayWithLua.dll
 set overlay32src=ActWebSocketImguiOverlayWithLua.dll
 call prepare_dist.bat

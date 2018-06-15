@@ -7,8 +7,10 @@ dev = False
 
 if len(sys.argv) > 1:
   dev = True
-
-out = str(check_output(["git", "describe", "--long"]), "utf-8").replace('-', '.', 1).replace("\r","").replace("\n","")
+out = check_output(["git", "describe", "--long"])
+if (sys.version_info > (3, 0)):
+  out = str(out, "utf-8")
+out = out.replace('-', '.', 1).replace("\r","").replace("\n","")
 arr = out.split(".")
 var = arr[0:-1]
 if len(var) < 3:
