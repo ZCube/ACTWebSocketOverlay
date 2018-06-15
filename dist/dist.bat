@@ -1,7 +1,7 @@
 @echo off
 if exist config.bat call config.bat
 pip install httpie
-if not exist archiver_windows_386.exe http --download https://github.com/mholt/archiver/releases/download/v2.0/archiver_windows_386.exe
+if not exist archiver_windows_386.exe http --download https://github.com/mholt/archiver/releases/download/v2.0/archiver_windows_386.exe -o archiver_windows_386.exe
 call prepare_ssl.bat
 
 set /p version=<..\src\version
