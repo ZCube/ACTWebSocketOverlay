@@ -14,6 +14,7 @@ std::map<std::string, std::vector<std::string>> AWIOOverlay::color_category_map 
 	"War",
 	"Mrd",
 	"Drk",
+	"Gnb",
 	},
 	},
 	{"DPS", {
@@ -32,13 +33,14 @@ std::map<std::string, std::vector<std::string>> AWIOOverlay::color_category_map 
 	"Acn",
 	"Rdm",
 	"Sam",
+	"Dnc",
 	},
 	},
 	{"Healer", {
 	"Whm",
 	"Cnj",
 	"Sch",
-	"Ast"
+	"Ast",
 	},
 	},
 	{"Etc", {
