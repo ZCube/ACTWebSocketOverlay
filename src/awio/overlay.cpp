@@ -506,6 +506,7 @@ int OverlayInstance::Init(ImGuiContext* context)
 		color_map["Mrd"] = htmlCodeToImVec4("A91A16");
 
 		color_map["Drk"] = htmlCodeToImVec4("682531");
+		color_map["Gnb"] = htmlCodeToImVec4("682531");
 
 		color_map["Mnk"] = htmlCodeToImVec4("B38915");
 		color_map["Pgl"] = htmlCodeToImVec4("B38915");
@@ -518,6 +519,7 @@ int OverlayInstance::Init(ImGuiContext* context)
 
 		color_map["Brd"] = htmlCodeToImVec4("ADC551");
 		color_map["Arc"] = htmlCodeToImVec4("ADC551");
+		color_map["Dnc"] = htmlCodeToImVec4("ADC551");
 
 		color_map["Mch"] = htmlCodeToImVec4("148AA9");
 
