@@ -4,7 +4,7 @@ pushd src
 call revision.bat
 if %errorlevel% neq 0 exit /b %errorlevel%
 popd
-call configure_nonssl.bat
+call configure.bat
 if %errorlevel% neq 0 exit /b %errorlevel%
 call build.bat
 if %errorlevel% neq 0 exit /b %errorlevel%
